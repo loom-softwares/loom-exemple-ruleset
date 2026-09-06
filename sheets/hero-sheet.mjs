@@ -376,6 +376,10 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    * @param {'attack' | 'dodge' | 'initiative'} actionType
    */
   async rollCombat(actionType) {
+    if (actionType === 'initiative') {
+      return this.rollInitiative();
+    }
+
     const doc = this.document || {};
     const bonus = doc._bonus || {};
     let mod = 0;
@@ -387,9 +391,6 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     } else if (actionType === 'dodge') {
       mod = bonus.dodge ?? Math.floor(((doc.attributes?.swift ?? 5)) / 2);
       label = 'Esquiva';
-    } else if (actionType === 'initiative') {
-      mod = bonus.initiative ?? Math.floor(((doc.attributes?.swift ?? 5)) / 2);
-      label = 'Iniciativa';
     }
 
     const sign = mod >= 0 ? '+' : '';
@@ -401,6 +402,129 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       bonus: mod,
       actionType,
     });
+  }
+
+  /**
+   * Rolagem especializada de Iniciativa:
+   * - Não passa pela caixa de DC / Defesa do alvo.
+   * - Sem badges de Sucesso ou Falha.
+   * - Conecta-se diretamente com o Loom.combat para atualizar a ordem de turno no Combat Tracker!
+   */
+  async rollInitiative() {
+    const doc = this.document || {};
+    const bonus = doc._bonus?.initiative ?? Math.floor(((doc.attributes?.swift ?? 5)) / 2);
+    const sign = bonus >= 0 ? '+' : '';
+    const baseFormula = `1d20 ${sign} ${bonus}`;
+
+    const activeCombat = window.Loom?.combat || window.Loom?.combats?.active;
+    const combatants = Array.isArray(activeCombat?.combatants)
+      ? activeCombat.combatants
+      : Array.from(activeCombat?.combatants?.values?.() || activeCombat?.combatants || []);
+    const combatant = combatants.find((c) => c.actorId === this.actorId || c.id === this.actorId || c.castId === this.actorId);
+
+    const combatNoticeHtml = combatant
+      ? `<div class="roll-initiative-combat-card active">
+          <i class="fa-solid fa-swords"></i>
+          <div>
+            <strong>Em Combate Ativo!</strong>
+            <p>O resultado será enviado diretamente ao <strong>Combat Tracker</strong> para ordenar seu turno.</p>
+          </div>
+        </div>`
+      : `<div class="roll-initiative-combat-card">
+          <i class="fa-solid fa-bolt"></i>
+          <div>
+            <strong>Ordem de Turno</strong>
+            <p>Rola a rapidez do personagem para definir sua posição de ação na rodada.</p>
+          </div>
+        </div>`;
+
+    const contentHtml = `
+      <div class="loom-roll-dialog-body">
+        ${combatNoticeHtml}
+
+        <div class="roll-dialog-stats-row">
+          <div class="roll-dialog-stat-item">
+            <span class="stat-label">Personagem</span>
+            <span class="stat-val">${doc.name || 'Herói'}</span>
+          </div>
+          <div class="roll-dialog-stat-item">
+            <span class="stat-label">Fórmula Base (Swift)</span>
+            <span class="stat-val formula">${baseFormula}</span>
+          </div>
+        </div>
+
+        <div class="roll-dialog-form-grid">
+          <div class="roll-dialog-field full-width">
+            <label for="init-mod-input"><i class="fa-solid fa-plus-minus"></i> Modificador Situacional</label>
+            <input type="number" id="init-mod-input" value="0" class="dialog-input" />
+            <span class="field-hint">Bônus ou penalidade temporária (+2, -1, etc.)</span>
+          </div>
+
+          <div class="roll-dialog-field full-width">
+            <label for="init-mode-select"><i class="fa-solid fa-dice"></i> Tipo de Rolagem</label>
+            <select id="init-mode-select" class="dialog-select">
+              <option value="normal" selected>Normal (1d20)</option>
+              <option value="advantage">Vantagem (Rola 2d20, pega o Maior)</option>
+              <option value="disadvantage">Desvantagem (Rola 2d20, pega o Menor)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const result = await LoomDialog.wait({
+      window: { title: `Iniciativa — ${doc.name || 'Herói'}` },
+      width: 420,
+      classes: ['loom-roll-box-window', 'loom-initiative-window'],
+      content: contentHtml,
+      buttons: [
+        {
+          action: 'roll',
+          label: '<i class="fa-solid fa-bolt"></i> Rolar Iniciativa',
+          default: true,
+          variant: 'primary',
+          callback: (_event, _button, dialog) => {
+            const body = dialog.getBody();
+            const mod = Number(body?.querySelector('#init-mod-input')?.value ?? 0);
+            const mode = body?.querySelector('#init-mode-select')?.value ?? 'normal';
+            return { mod, mode, confirmed: true };
+          },
+        },
+        {
+          action: 'cancel',
+          label: 'Cancelar',
+          variant: 'ghost',
+        },
+      ],
+    });
+
+    if (!result || !result.confirmed) return;
+
+    let dice = '1d20';
+    if (result.mode === 'advantage') dice = '2d20kh1';
+    if (result.mode === 'disadvantage') dice = '2d20kl1';
+
+    const totalMod = (bonus || 0) + (result.mod || 0);
+    const modSign = totalMod >= 0 ? '+' : '-';
+    const formula = `${dice} ${modSign} ${Math.abs(totalMod)}`;
+
+    if (window.Loom?.dispatchRoll) {
+      window.Loom.dispatchRoll({
+        formula,
+        actorId: this.actorId,
+        meta: {
+          system: 'Loom Demo',
+          label: 'Iniciativa',
+          isInitiative: true,
+          actorId: this.actorId,
+          inCombat: !!combatant,
+          actorAvatar: doc.avatarUrl || '',
+          actorName: doc.name || 'Herói',
+        },
+      });
+    } else {
+      showToast(`⚡ Iniciativa: ${formula}`, 'info');
+    }
   }
 
   /**

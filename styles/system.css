@@ -168,6 +168,77 @@
   border: 1px solid #ef4444;
 }
 
+/* Linha de Alvo e Dificuldade no Card */
+.loom-card-target-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(229, 169, 60, 0.2);
+  padding: 4px 8px;
+  border-radius: 5px;
+}
+
+.loom-card-target-chip {
+  font-size: 0.72rem;
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.loom-card-target-chip i {
+  color: #e5a93c;
+}
+
+.loom-card-target-chip strong {
+  color: #fff;
+}
+
+/* Linha de Iniciativa / Ordem de Turno no Card */
+.loom-card-initiative-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.15) 0%, rgba(30, 32, 42, 0.7) 100%);
+  border: 1px solid rgba(229, 169, 60, 0.35);
+  padding: 4px 8px;
+  border-radius: 5px;
+}
+
+.loom-card-initiative-chip {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fef08a;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.5px;
+}
+
+.loom-card-initiative-chip i {
+  color: #f59e0b;
+}
+
+.loom-initiative-status {
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 4px;
+  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+}
+
+.loom-initiative-status.in-combat {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  color: #6ee7b7;
+}
+
 .loom-card-result-row {
   display: flex;
   align-items: center;
@@ -1350,6 +1421,49 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Card de Status de Combate no Dialog de Iniciativa */
+.roll-initiative-combat-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #1a1b24;
+  border: 1px solid var(--rpg-border);
+}
+
+.roll-initiative-combat-card i {
+  font-size: 1.4rem;
+  color: #9ca3af;
+}
+
+.roll-initiative-combat-card.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(30, 32, 42, 0.8) 100%);
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.roll-initiative-combat-card.active i {
+  color: #10b981;
+}
+
+.roll-initiative-combat-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.roll-initiative-combat-card strong {
+  font-size: 0.82rem;
+  color: #fff;
+}
+
+.roll-initiative-combat-card p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--rpg-text-muted);
+  line-height: 1.3;
 }
 
 /* Estatísticas Rápidas da Ação no Dialog */

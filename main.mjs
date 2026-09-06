@@ -288,6 +288,25 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
     ? `<span class="loom-crit-badge crit-fail">FALHA!</span>`
     : '';
 
+  // Sincronização automática com o Combat Tracker quando a iniciativa for rolada
+  if (msg.roll?.meta?.isInitiative && msg.roll.meta?.actorId) {
+    const activeCombat = window.Loom?.combat || window.Loom?.combats?.active;
+    const worldId = window.Loom?.world?.id;
+    if (activeCombat && worldId) {
+      const combatants = Array.isArray(activeCombat.combatants)
+        ? activeCombat.combatants
+        : Array.from(activeCombat.combatants?.values?.() || activeCombat.combatants || []);
+      const combatant = combatants.find(
+        (c) => c.actorId === msg.roll.meta.actorId || c.id === msg.roll.meta.actorId || c.castId === msg.roll.meta.actorId
+      );
+      if (combatant && combatant.initiative !== roll.total) {
+        const castId = combatant.castId || combatant.id;
+        window.Loom?.combats?.updateCombatant?.(worldId, castId, { initiative: roll.total })
+          ?.catch?.(() => {});
+      }
+    }
+  }
+
   return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
     <!-- Header: Avatar do Ator + Identidade + Tipo de Teste -->
     <div class="loom-demo-card-header">
@@ -301,7 +320,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
         </div>
       </div>
       <div class="loom-card-header-icon">
-        <i class="fa-solid fa-dice-d20"></i>
+        <i class="fa-solid ${msg.roll.meta?.isInitiative ? 'fa-bolt' : 'fa-dice-d20'}"></i>
       </div>
     </div>
 
@@ -315,6 +334,16 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
       </div>
 
       ${(() => {
+        if (msg.roll.meta?.isInitiative) {
+          const inCombat = msg.roll.meta?.inCombat;
+          return `<div class="loom-card-initiative-row">
+            <span class="loom-card-initiative-chip">
+              <i class="fa-solid fa-bolt"></i> ORDEM DE TURNO
+            </span>
+            ${inCombat ? `<span class="loom-initiative-status in-combat"><i class="fa-solid fa-swords"></i> Combat Tracker</span>` : ''}
+          </div>`;
+        }
+
         const difficulty = msg.roll.meta?.difficulty;
         const targetName = msg.roll.meta?.targetName;
         if (difficulty === undefined && !targetName) return '';
@@ -339,7 +368,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
           ${modVal !== undefined ? `<span class="breakdown-op">${modVal >= 0 ? '+' : '-'}</span><span class="breakdown-mod">${Math.abs(modVal)}</span>` : ''}
         </div>
         <div class="loom-card-total-box ${isCrit20 ? 'glow-success' : ''} ${isCrit1 ? 'glow-fail' : ''}">
-          <span class="total-label">TOTAL</span>
+          <span class="total-label">${msg.roll.meta?.isInitiative ? 'INICIATIVA' : 'TOTAL'}</span>
           <span class="total-number">${roll.total}</span>
         </div>
       </div>
