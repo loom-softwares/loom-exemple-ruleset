@@ -22,18 +22,24 @@ function computeBonuses(attrs) {
 }
 
 /**
- * Derives common transient fields without mutating the original actor document.
+ * Derives common transient fields and attaches them to the actor document.
+ * Reads from systemData/system if top-level fields are not present.
  * @param {Record<string, any>} actor - Raw actor document from the store.
- * @returns {Record<string, any>} Shallow clone with `_dots`, `_bonus`, and `_maxHp` attached.
+ * @returns {Record<string, any>} Mutated actor document with derived properties attached.
  */
 function baseDerive(actor) {
-  const a = { ...actor };
-  const attrs = a.attributes || {};
-  // Dots rating (rendered on the sheet as clickable pips)
-  a._dots = { might: attrs.might || 0, swift: attrs.swift || 0, wits: attrs.wits || 0 };
-  a._bonus = computeBonuses(attrs);
-  a._maxHp = a.hp?.max || 10;
-  return a;
+  const sd = actor.systemData || actor.system || {};
+  const attrs = sd.attributes || actor.attributes || { might: 5, swift: 5, wits: 5 };
+  const hp = sd.hp || actor.hp || { value: 20, max: 20 };
+  const defense = sd.defense ?? actor.defense ?? 10;
+
+  actor.attributes = attrs;
+  actor.hp = hp;
+  actor.defense = defense;
+  actor._dots = { might: attrs.might || 0, swift: attrs.swift || 0, wits: attrs.wits || 0 };
+  actor._bonus = computeBonuses(attrs);
+  actor._maxHp = hp.max || 20;
+  return actor;
 }
 
 /**
@@ -74,5 +80,5 @@ export function prepareData(actor) {
   if (actor.type === 'hero') return prepareHero(actor);
   if (actor.type === 'villain') return prepareVillain(actor);
   if (actor.type === 'beast') return prepareBeast(actor);
-  return { ...actor };
+  return baseDerive(actor);
 }

@@ -1,110 +1,1850 @@
-/* Loom Demo System — estilos do sistema */
+/* ══════════════════════════════════════════════════════════════
+   Loom Demo System — styles/system.css
+   Estilo visual completo para a ficha de RPG do Loom
+   ══════════════════════════════════════════════════════════════ */
 
+/* Tamanho mínimo e ajustes para a janela da ficha no Loom */
+.loom-window:has(.loom-demo-sheet),
+.loom-window.sheet.actor.hero {
+  min-width: 660px !important;
+  min-height: 580px !important;
+}
+
+.loom-window:has(.loom-demo-sheet) .loom-window-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0.65rem 0.85rem !important;
+}
+
+/* Título da janela do sistema */
 .loom-window .sheet-title {
-  color: var(--color-accent);
+  color: var(--color-accent, #e5a93c);
   font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
-/* Custom roll-card header registered via Loom.wraps.renderMessage (main.mjs).
-   Two-tone banner + background instead of just a colored name — the point
-   isn't a big CSS block, it's showing that a system fully owns its card's
-   look once it takes over the wrap, not just the text color. */
+/* ── Custom Chat Card (renderMessage wrap) ───────────────────── */
 .loom-demo-card {
-  border-radius: 6px;
+  border-radius: 9px;
   overflow: hidden;
-  background: var(--color-bg-surface, #1c1c1c);
-  border: 1px solid var(--color-border, #444);
+  background: #16171d;
+  border: 1px solid rgba(229, 169, 60, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+  margin: 8px 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
+/* Header do Card no Chat com Avatar do Ator */
 .loom-demo-card-header {
   padding: 6px 10px;
-  background: linear-gradient(90deg, #3a1f1f 0%, #3a1f1f 50%, var(--color-accent, #e49a42) 50%, var(--color-accent, #e49a42) 100%);
+  background: linear-gradient(135deg, #2b1414 0%, #441e14 45%, #92400e 85%, #d97706 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(229, 169, 60, 0.3);
+  gap: 8px;
 }
 
-.loom-demo-card-name {
+.loom-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.loom-card-avatar {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 6px;
+  border: 1.5px solid #e5a93c;
+  background: #0f1014;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fef08a;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.loom-card-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.loom-card-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.loom-card-actor-name {
+  font-size: 0.88rem;
+  font-weight: 800;
   color: #fff;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Core renders attribute dots as `.dot-pip` (see sheet-schema.ts), not
-   `.dot` — this block styles those pips for the declarative getSheetSchema()
-   fields (villain/beast). The custom hero-sheet.hbs below uses plain number
-   inputs instead, deliberately, to show both approaches side by side. */
+.loom-card-roll-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fef08a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+
+.loom-card-header-icon {
+  font-size: 1.1rem;
+  color: #fef08a;
+  opacity: 0.85;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+/* Corpo Padronizado do Card no Chat */
+.loom-demo-card-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #16171d;
+  box-sizing: border-box;
+}
+
+.loom-card-formula-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.loom-card-formula-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #d1d5db;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.loom-card-formula-pill i {
+  color: #e5a93c;
+  font-size: 0.75rem;
+}
+
+.loom-crit-badge {
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.loom-crit-badge.crit-success {
+  background: #065f46;
+  color: #6ee7b7;
+  border: 1px solid #10b981;
+}
+
+.loom-crit-badge.crit-fail {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border: 1px solid #ef4444;
+}
+
+.loom-card-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.loom-card-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.breakdown-die {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-weight: 800;
+}
+
+.breakdown-die i {
+  color: #e5a93c;
+  font-size: 0.85rem;
+}
+
+.breakdown-op {
+  color: #9ca3af;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.breakdown-mod {
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: rgba(229, 169, 60, 0.12);
+  border: 1px solid rgba(229, 169, 60, 0.3);
+  color: #fef08a;
+  font-weight: 800;
+}
+
+.loom-card-total-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.22) 0%, rgba(180, 83, 9, 0.28) 100%);
+  border: 1.5px solid #e5a93c;
+  box-shadow: 0 0 10px rgba(229, 169, 60, 0.3);
+}
+
+.loom-card-total-box .total-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #d1d5db;
+  letter-spacing: 0.5px;
+}
+
+.loom-card-total-box .total-number {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #fef08a;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.loom-card-total-box.glow-success {
+  border-color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+}
+.loom-card-total-box.glow-success .total-number {
+  color: #6ee7b7;
+}
+
+.loom-card-total-box.glow-fail {
+  border-color: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+}
+.loom-card-total-box.glow-fail .total-number {
+  color: #fca5a5;
+}
+
+.loom-demo-card-whisper {
+  padding: 8px 12px;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Core Dot Pips (usado por villain/beast na getSheetSchema) ─ */
 .loom-demo-sheet .dot-pip {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--color-bg-surface, #2a2a2a);
-  border: 1px solid var(--color-border, #555);
+  background: #252830;
+  border: 1px solid #4a5060;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s ease;
 }
 
 .loom-demo-sheet .dot-pip.filled {
-  background: var(--color-accent, #e49a42);
-  border-color: var(--color-accent, #e49a42);
+  background: #e5a93c;
+  border-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(229, 169, 60, 0.6);
 }
 
-/* hero-sheet.hbs (custom Handlebars sheet, sheets/hero-sheet.mjs) */
-.loom-demo-sheet-header input {
-  font-size: 1.1rem;
+/* ══════════════════════════════════════════════════════════════
+   HERO RPG SHEET (.loom-demo-sheet)
+   ══════════════════════════════════════════════════════════════ */
+.loom-demo-sheet {
+  --rpg-gold: #e5a93c;
+  --rpg-gold-hover: #f59e0b;
+  --rpg-gold-dim: rgba(229, 169, 60, 0.18);
+  --rpg-dark-bg: #131418;
+  --rpg-surface: #1c1e24;
+  --rpg-surface-elevated: #242730;
+  --rpg-border: rgba(255, 255, 255, 0.08);
+  --rpg-border-focus: rgba(229, 169, 60, 0.5);
+  --rpg-red: #ef4444;
+  --rpg-teal: #10b981;
+  --rpg-blue: #3b82f6;
+  --rpg-text: #f3f4f6;
+  --rpg-text-muted: #9ca3af;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  color: var(--rpg-text);
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+/* ── 1. HEADER DO HERÓI (Retrato + Identidade) ───────────────── */
+.loom-hero-header {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  background: linear-gradient(145deg, #1d1f27 0%, #15161c 100%);
+  border: 1px solid var(--rpg-border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.loom-hero-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--rpg-gold) 35%, var(--rpg-gold) 65%, transparent 100%);
+  opacity: 0.85;
+}
+
+/* Moldura do Retrato */
+.loom-hero-portrait-frame {
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  border-radius: 10px;
+  background: #111216;
+  border: 2px solid var(--rpg-gold);
+  box-shadow: 0 0 10px rgba(229, 169, 60, 0.25), inset 0 0 12px rgba(0, 0, 0, 0.85);
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.loom-hero-portrait-frame:hover {
+  transform: scale(1.02);
+  border-color: #fef08a;
+  box-shadow: 0 0 16px rgba(229, 169, 60, 0.45), inset 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.loom-hero-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.loom-hero-portrait-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: var(--rpg-gold);
+  opacity: 0.9;
+}
+
+.loom-hero-portrait-placeholder i {
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.loom-hero-portrait-placeholder .placeholder-text {
+  font-size: 0.65rem;
+  text-transform: uppercase;
   font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--rpg-text-muted);
+}
+
+.portrait-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 14, 0.82);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.portrait-hover-overlay i {
+  font-size: 1.15rem;
+  color: var(--rpg-gold);
+}
+
+.portrait-hover-overlay span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.loom-hero-portrait-frame:hover .portrait-hover-overlay {
+  opacity: 1;
+}
+
+/* Bloco de Identidade do Herói */
+.loom-hero-identity {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.loom-hero-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.loom-badge-archetype {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #1a1506;
+  background: linear-gradient(135deg, #fcd34d 0%, #e5a93c 100%);
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.loom-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.loom-header-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--rpg-border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.loom-header-stat.stat-hp i {
+  color: var(--rpg-red);
+}
+
+.loom-header-stat.stat-def i {
+  color: #60a5fa;
+}
+
+/* Input do Nome do Herói */
+.loom-hero-name-row {
   width: 100%;
 }
 
-.loom-demo-sheet-attributes .attribute-row,
-.loom-demo-sheet-combat .attribute-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
+.loom-hero-name-input {
+  width: 100%;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2px solid var(--rpg-gold);
+  border-radius: 6px 6px 0 0;
+  padding: 0.25rem 0.5rem;
+  box-sizing: border-box;
+  letter-spacing: 0.4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease;
 }
 
-.loom-demo-sheet-attributes .attribute-row label,
-.loom-demo-sheet-combat .attribute-row label {
-  width: 80px;
+.loom-hero-name-input:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.45);
+  border-color: var(--rpg-gold);
+  box-shadow: 0 3px 10px rgba(229, 169, 60, 0.25);
+}
+
+.loom-hero-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+}
+
+/* Ações Rápidas no Header */
+.loom-hero-quick-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.loom-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.26rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--rpg-surface);
+  border: 1px solid rgba(229, 169, 60, 0.3);
+  color: #fef08a;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.loom-quick-btn:hover {
+  background: rgba(229, 169, 60, 0.22);
+  border-color: var(--rpg-gold);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(229, 169, 60, 0.25);
+}
+
+.loom-quick-btn:active {
+  transform: translateY(0);
+}
+
+/* ── 2. TABS NAVEGAÇÃO ───────────────────────────────────────── */
+.loom-sheet-tabs {
+  display: flex;
+  gap: 0.3rem;
+  border-bottom: 2px solid #282a34;
+  padding-bottom: 0;
+  margin-top: 0.15rem;
+}
+
+.loom-sheet-tabs .tab-button {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--rpg-text-muted);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+  border-radius: 6px 6px 0 0;
+}
+
+.loom-sheet-tabs .tab-button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.loom-sheet-tabs .tab-button.active {
+  color: var(--rpg-gold);
+  border-bottom-color: var(--rpg-gold);
+  background: rgba(229, 169, 60, 0.08);
+}
+
+/* ── 3. TAB 1: GRID DE ATRIBUTOS ALINHADOS ───────────────────── */
+.loom-attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+/* Card Individual de Atributo */
+.loom-attr-card {
+  background: linear-gradient(160deg, #20222a 0%, #171820 100%);
+  border: 1px solid var(--rpg-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.65rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.loom-attr-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+/* Auras específicas por atributo */
+.loom-attr-card.attr-might {
+  border-top: 3px solid #dc2626;
+}
+.loom-attr-card.attr-might .attr-icon-wrapper {
+  background: rgba(220, 38, 38, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+}
+.loom-attr-card.attr-might:hover {
+  border-color: rgba(220, 38, 38, 0.5);
+}
+
+.loom-attr-card.attr-swift {
+  border-top: 3px solid #059669;
+}
+.loom-attr-card.attr-swift .attr-icon-wrapper {
+  background: rgba(5, 150, 105, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(5, 150, 105, 0.35);
+}
+.loom-attr-card.attr-swift:hover {
+  border-color: rgba(5, 150, 105, 0.5);
+}
+
+.loom-attr-card.attr-wits {
+  border-top: 3px solid #2563eb;
+}
+.loom-attr-card.attr-wits .attr-icon-wrapper {
+  background: rgba(37, 99, 235, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+}
+.loom-attr-card.attr-wits:hover {
+  border-color: rgba(37, 99, 235, 0.5);
+}
+
+/* Cabeçalho do Card */
+.attr-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.attr-icon-wrapper {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
   flex-shrink: 0;
 }
 
-.loom-demo-derived {
+.attr-title-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.attr-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #fff;
+}
+
+.attr-subtitle {
+  font-size: 0.68rem;
+  color: var(--rpg-text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Centro do Card (Alinhado Verticalmente sem colisão) */
+.attr-card-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.6rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.attr-score-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.attr-input-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.attr-score-input {
+  width: 58px;
+  height: 40px;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #ffffff !important;
+  background: rgba(15, 16, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  text-align: center;
+  padding: 0;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.attr-score-input:focus {
+  outline: none;
+  border-color: var(--rpg-gold);
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 10px rgba(229, 169, 60, 0.35);
+}
+
+.attr-denom {
+  font-size: 0.78rem;
+  color: var(--rpg-text-muted);
+  font-weight: 700;
+}
+
+.attr-mod-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(229, 169, 60, 0.12);
+  border: 1px solid rgba(229, 169, 60, 0.3);
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+}
+
+.tag-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--rpg-text-muted);
+  letter-spacing: 0.5px;
+}
+
+.tag-bonus {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #fef08a;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Botão de Rolagem do Atributo */
+.attr-card-footer {
+  width: 100%;
+}
+
+.loom-roll-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.52rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(145deg, #323542 0%, #20222a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.loom-roll-btn i {
+  color: var(--rpg-gold);
+  font-size: 0.95rem;
+  transition: transform 0.2s ease;
+}
+
+.loom-roll-btn:hover {
+  background: linear-gradient(145deg, #44495c 0%, #292c38 100%);
+  border-color: var(--rpg-gold);
+  color: #fef08a;
+  box-shadow: 0 3px 10px rgba(229, 169, 60, 0.25);
+}
+
+.loom-roll-btn:hover i {
+  transform: rotate(20deg) scale(1.15);
+}
+
+.loom-roll-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Painel de Bônus Derivados */
+.loom-derived-panel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--rpg-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  margin-top: 0.65rem;
+}
+
+.derived-item {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  margin-top: 0.5rem;
-  color: var(--color-text-muted, #999);
-  font-size: 0.85rem;
+  text-align: center;
 }
 
-.loom-demo-sheet-effects {
-  margin-top: 0.75rem;
-  border-top: 1px solid var(--color-border, #444);
-  padding-top: 0.5rem;
-}
-
-.loom-demo-effects-header {
+.derived-label {
+  font-size: 0.7rem;
+  color: var(--rpg-text-muted);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
 }
 
-.loom-demo-effect-row {
+.derived-label i {
+  color: var(--rpg-gold);
+  font-size: 0.72rem;
+}
+
+.derived-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+/* ── 4. TAB 2: COMBATE & STATUS ──────────────────────────────── */
+.loom-combat-vitals {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 0.8rem;
+  margin-top: 0.4rem;
+}
+
+.loom-vital-card {
+  background: linear-gradient(160deg, #20222a 0%, #171820 100%);
+  border: 1px solid var(--rpg-border);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.55rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.vital-hp {
+  border-top: 3px solid var(--rpg-red);
+}
+
+.vital-defense {
+  border-top: 3px solid #3b82f6;
+}
+
+.vital-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vital-icon-title {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.25rem 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
 }
 
-.loom-demo-effect-name {
+.vital-hp .vital-icon-title i {
+  color: var(--rpg-red);
+}
+
+.vital-defense .vital-icon-title i {
+  color: #60a5fa;
+}
+
+.vital-percent {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f87171;
+}
+
+.vital-tag {
+  font-size: 0.68rem;
+  color: var(--rpg-text-muted);
+}
+
+.vital-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vital-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   flex: 1;
 }
 
-.loom-demo-effect-disabled {
-  opacity: 0.5;
-  text-decoration: line-through;
+.vital-field label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--rpg-text-muted);
+  font-weight: 600;
 }
 
-.loom-demo-effects-empty {
-  color: var(--color-text-muted, #999);
-  font-size: 0.85rem;
+.vital-input {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #fff !important;
+  padding: 0.25rem 0;
+  transition: all 0.2s ease;
 }
+
+.vital-input:focus {
+  outline: none;
+  border-color: var(--rpg-gold);
+}
+
+.vital-separator {
+  font-size: 1.3rem;
+  color: var(--rpg-text-muted);
+  margin-top: 0.7rem;
+  font-weight: 700;
+}
+
+/* Barra de Vida */
+.loom-hp-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 0.15rem;
+}
+
+.loom-hp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #dc2626 0%, #f59e0b 60%, #10b981 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+/* Defesa */
+.vital-defense-value-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0;
+}
+
+.defense-score-input {
+  width: 76px;
+  font-size: 1.7rem;
+  font-weight: 900;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 8px;
+  color: #93c5fd !important;
+  padding: 0.15rem;
+  transition: all 0.2s ease;
+}
+
+.defense-score-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.4);
+}
+
+.vital-hint {
+  font-size: 0.7rem;
+  color: var(--rpg-text-muted);
+  line-height: 1.25;
+  margin: 0;
+}
+
+/* Seção de Ações de Combate */
+.loom-combat-actions-section {
+  margin-top: 0.85rem;
+}
+
+.section-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.section-title i {
+  color: var(--rpg-gold);
+}
+
+.loom-combat-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+}
+
+.combat-action-card {
+  background: linear-gradient(160deg, #20222a 0%, #171820 100%);
+  border: 1px solid var(--rpg-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.6rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.action-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.action-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.action-title i {
+  color: var(--rpg-gold);
+}
+
+.action-formula {
+  font-size: 0.7rem;
+  color: var(--rpg-text-muted);
+}
+
+/* ── 5. TAB 3: EFEITOS ATIVOS ────────────────────────────────── */
+.loom-effects-section {
+  margin-top: 0.4rem;
+}
+
+.loom-effects-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.effects-heading h3 {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.effects-heading h3 i {
+  color: #a78bfa;
+}
+
+.effects-counter {
+  font-size: 0.7rem;
+  color: var(--rpg-text-muted);
+}
+
+.loom-add-effect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.7rem;
+  background: linear-gradient(145deg, #4f46e5 0%, #3730a3 100%);
+  border: 1px solid rgba(165, 180, 252, 0.3);
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.loom-add-effect-btn:hover {
+  background: linear-gradient(145deg, #6366f1 0%, #4338ca 100%);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+.loom-effects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.loom-effect-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #1d1f27;
+  border: 1px solid var(--rpg-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.loom-effect-item:hover {
+  border-color: rgba(165, 180, 252, 0.3);
+  background: #232530;
+}
+
+.loom-effect-item.effect-inactive {
+  opacity: 0.55;
+  background: #16171d;
+}
+
+.effect-status-badge i.status-on {
+  color: #10b981;
+  font-size: 1rem;
+}
+
+.effect-status-badge i.status-off {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.effect-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.effect-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.effect-inactive .effect-name {
+  text-decoration: line-through;
+  color: var(--rpg-text-muted);
+}
+
+.effect-meta {
+  font-size: 0.68rem;
+  color: var(--rpg-text-muted);
+}
+
+.effect-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.effect-actions .btn {
+  padding: 0.28rem 0.5rem;
+  font-size: 0.72rem;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid var(--rpg-border);
+  background: #2b2e3b;
+  color: #d1d5db;
+  transition: all 0.15s ease;
+}
+
+.effect-actions .btn:hover {
+  background: #393d4e;
+  color: #fff;
+}
+
+.effect-actions .btn-danger:hover {
+  background: #dc2626;
+  border-color: #ef4444;
+}
+
+/* Empty State */
+.loom-effects-empty {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed var(--rpg-border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.loom-effects-empty .empty-icon {
+  font-size: 1.8rem;
+  color: var(--rpg-gold);
+  opacity: 0.6;
+  margin-bottom: 0.2rem;
+}
+
+.loom-effects-empty h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.loom-effects-empty p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--rpg-text-muted);
+  max-width: 320px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CAIXA DE ROLAGEM (ROLL BOX / DIALOG)
+   ══════════════════════════════════════════════════════════ */
+.loom-roll-box-window .loom-window-body {
+  padding: 1rem 1.15rem !important;
+  background: #13141a !important;
+}
+
+.loom-roll-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: #e5e7eb;
+}
+
+/* Alvo Selecionado no Dialog */
+.roll-dialog-target-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.15) 0%, rgba(30, 32, 42, 0.8) 100%);
+  border: 1px solid rgba(229, 169, 60, 0.35);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.roll-dialog-target-card .target-avatar {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 6px;
+  border: 1.5px solid var(--rpg-gold);
+  background: #0d0e12;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rpg-gold);
+}
+
+.roll-dialog-target-card .target-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.roll-dialog-target-card .target-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.roll-dialog-target-card .target-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--rpg-gold);
+  letter-spacing: 0.5px;
+}
+
+.roll-dialog-target-card .target-name {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roll-dialog-target-card .target-defense-pill {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(229, 169, 60, 0.4);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.roll-dialog-target-card .def-title {
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: var(--rpg-gold);
+}
+
+.roll-dialog-target-card .def-num {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+/* Sem Alvo */
+.roll-dialog-no-target {
+  font-size: 0.75rem;
+  color: var(--rpg-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--rpg-border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Estatísticas Rápidas da Ação no Dialog */
+.roll-dialog-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.roll-dialog-stat-item {
+  background: #1a1b24;
+  border: 1px solid var(--rpg-border);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.roll-dialog-stat-item .stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--rpg-text-muted);
+  font-weight: 700;
+}
+
+.roll-dialog-stat-item .stat-val {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.roll-dialog-stat-item .stat-val.formula {
+  color: var(--rpg-gold);
+  font-family: monospace;
+}
+
+/* Campos do Formulário do Dialog */
+.roll-dialog-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.roll-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.roll-dialog-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.roll-dialog-field label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #d1d5db;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.roll-dialog-field label i {
+  color: var(--rpg-gold);
+}
+
+.dialog-input,
+.dialog-select {
+  width: 100%;
+  background: #0f1014;
+  border: 1px solid var(--rpg-border);
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.dialog-input:focus,
+.dialog-select:focus {
+  outline: none;
+  border-color: var(--rpg-gold);
+  box-shadow: 0 0 0 2px rgba(229, 169, 60, 0.25);
+}
+
+.field-hint {
+  font-size: 0.65rem;
+  color: var(--rpg-text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════
+   INVENTÁRIO & ITENS (HERO SHEET TAB)
+   ══════════════════════════════════════════════════════════ */
+.loom-items-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.loom-items-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rpg-border);
+}
+
+.items-heading h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.items-heading h3 i {
+  color: var(--rpg-gold);
+}
+
+.items-counter {
+  font-size: 0.72rem;
+  color: var(--rpg-text-muted);
+}
+
+.loom-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.loom-item-row {
+  display: flex;
+  align-items: center;
+  background: #1a1b24;
+  border: 1px solid var(--rpg-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  gap: 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.loom-item-row:hover {
+  background: #20222e;
+  border-color: rgba(229, 169, 60, 0.45);
+}
+
+.item-icon-box {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 6px;
+  border: 1.5px solid var(--rpg-border);
+  background: #0f1014;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--rpg-gold);
+}
+
+.item-icon-box:hover {
+  border-color: var(--rpg-gold);
+}
+
+.item-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.item-icon-default {
+  font-size: 1rem;
+  color: var(--rpg-text-muted);
+}
+
+.item-info-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.item-row-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-row-name:hover {
+  color: var(--rpg-gold);
+}
+
+.item-row-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.item-type-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  color: #9ca3af;
+}
+
+.item-stat-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.item-stat-badge.def {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+}
+
+.item-stat-badge.heal {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.item-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.item-roll-btn {
+  background: linear-gradient(135deg, #b45309 0%, #d97706 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  font-weight: 800 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem !important;
+}
+
+.item-roll-btn:hover {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%) !important;
+}
+
+.loom-items-empty {
+  text-align: center;
+  padding: 2.2rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed var(--rpg-border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.loom-items-empty .empty-icon {
+  font-size: 2rem;
+  color: var(--rpg-gold);
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+
+.loom-items-empty h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.loom-items-empty p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--rpg-text-muted);
+  max-width: 360px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   FICHA DE ITEM (DEMO ITEM SHEET)
+   ══════════════════════════════════════════════════════════ */
+.loom-item-sheet {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: #e5e7eb;
+}
+
+.loom-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: #1a1b24;
+  border: 1px solid var(--rpg-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.loom-item-img-frame {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  border-radius: 8px;
+  border: 2px solid var(--rpg-gold);
+  background: #0f1014;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loom-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.loom-item-placeholder {
+  font-size: 1.6rem;
+  color: var(--rpg-gold);
+}
+
+.item-img-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.loom-item-img-frame:hover .item-img-overlay {
+  opacity: 1;
+}
+
+.loom-item-identity {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.item-type-tag .type-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(229, 169, 60, 0.15);
+  border: 1px solid rgba(229, 169, 60, 0.35);
+  color: var(--rpg-gold);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.loom-item-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(229, 169, 60, 0.4);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  width: 100%;
+  padding: 0.2rem 0;
+}
+
+.loom-item-name-input:focus {
+  outline: none;
+  border-color: var(--rpg-gold);
+}
+
+.loom-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.loom-item-props-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.loom-item-props-grid.single {
+  grid-template-columns: 1fr;
+}
+
+.item-prop-card {
+  background: #1a1b24;
+  border: 1px solid var(--rpg-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.item-prop-card label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--rpg-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.item-prop-card label i {
+  color: var(--rpg-gold);
+}
+
+.prop-input {
+  background: #0f1014;
+  border: 1px solid var(--rpg-border);
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.prop-input:focus {
+  outline: none;
+  border-color: var(--rpg-gold);
+}
+
+.loom-item-action-box {
+  display: flex;
+}
+
+.loom-item-action-box .item-roll-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0.6rem 1rem !important;
+  font-size: 0.88rem !important;
+  border-radius: 8px !important;
+}
+
+.loom-item-desc-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.loom-item-desc-section label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--rpg-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.loom-item-textarea {
+  background: #1a1b24;
+  border: 1px solid var(--rpg-border);
+  border-radius: 8px;
+  color: #e5e7eb;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.loom-item-textarea:focus {
+  outline: none;
+  border-color: var(--rpg-gold);
+}
+

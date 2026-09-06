@@ -1,0 +1,94 @@
+<!--
+  Loom Demo System — item-sheet.hbs
+  Ficha customizada para Itens (Armas, Armaduras, Poções, Pergaminhos)
+-->
+<div class="loom-item-sheet">
+  <!-- Header do Item: Ícone + Nome + Tipo -->
+  <header class="loom-item-header">
+    <div class="loom-item-img-frame" data-action="pick-portrait" data-edit="imgUrl" title="Clique para alterar a imagem do item">
+      {{#if document.imgUrl}}
+        <img src="{{document.imgUrl}}" alt="{{document.name}}" class="loom-item-img" />
+      {{else}}
+        <div class="loom-item-placeholder">
+          {{#if isWeapon}}<i class="fa-solid fa-khanda"></i>
+          {{else if isArmor}}<i class="fa-solid fa-shield-halved"></i>
+          {{else if isPotion}}<i class="fa-solid fa-flask-round-potion"></i>
+          {{else}}<i class="fa-solid fa-box-open"></i>{{/if}}
+        </div>
+      {{/if}}
+      <div class="item-img-overlay">
+        <i class="fa-solid fa-camera"></i>
+      </div>
+    </div>
+
+    <div class="loom-item-identity">
+      <div class="item-type-tag">
+        <span class="type-badge">
+          {{#if isWeapon}}<i class="fa-solid fa-swords"></i> Arma
+          {{else if isArmor}}<i class="fa-solid fa-shield"></i> Armadura
+          {{else if isPotion}}<i class="fa-solid fa-flask"></i> Poção
+          {{else if isScroll}}<i class="fa-solid fa-scroll"></i> Pergaminho
+          {{else}}<i class="fa-solid fa-box"></i> Item{{/if}}
+        </span>
+      </div>
+      <input
+        type="text"
+        name="name"
+        value="{{document.name}}"
+        placeholder="Nome do Item..."
+        class="loom-item-name-input"
+        autocomplete="off"
+      />
+    </div>
+  </header>
+
+  <!-- Corpo do Item com Propriedades Específicas -->
+  <div class="loom-item-body">
+    {{#if isWeapon}}
+      <div class="loom-item-props-grid">
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-dice-d20"></i> Fórmula de Dano</label>
+          <input type="text" name="sd:damage" value="{{systemData.damage}}" placeholder="Ex: 1d8, 2d6" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-burst"></i> Tipo de Dano</label>
+          <input type="text" name="sd:damageType" value="{{systemData.damageType}}" placeholder="Ex: Cortante, Fogo" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-bullseye"></i> Alcance</label>
+          <input type="text" name="sd:range" value="{{systemData.range}}" placeholder="Ex: Corpo a corpo, 9m" class="prop-input" />
+        </div>
+      </div>
+
+      <div class="loom-item-action-box">
+        <button type="button" class="loom-roll-btn item-roll-btn" data-action="roll-damage">
+          <i class="fa-solid fa-dice-d20"></i> Rolar Dano da Arma ({{systemData.damage}})
+        </button>
+      </div>
+    {{/if}}
+
+    {{#if isArmor}}
+      <div class="loom-item-props-grid single">
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-shield"></i> Bônus de Defesa</label>
+          <input type="number" name="sd:defenseBonus" value="{{systemData.defenseBonus}}" class="prop-input" />
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if isPotion}}
+      <div class="loom-item-props-grid single">
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-heart-pulse"></i> Cura / Efeito</label>
+          <input type="text" name="sd:healAmount" value="{{systemData.healAmount}}" placeholder="Ex: 2d4+2" class="prop-input" />
+        </div>
+      </div>
+    {{/if}}
+
+    <!-- Descrição Geral -->
+    <div class="loom-item-desc-section">
+      <label><i class="fa-solid fa-align-left"></i> Descrição & Notas</label>
+      <textarea name="sd:description" placeholder="Descreva as propriedades ou história deste item..." rows="4" class="loom-item-textarea">{{systemData.description}}</textarea>
+    </div>
+  </div>
+</div>

@@ -1,100 +1,497 @@
 <!--
   Loom Demo System — hero-sheet.hbs
-  Custom Handlebars sheet for the "hero" actor type (native pattern, same as
-  srd5e/wod6e — no Foundry-style sheet emulation).
-
-  Context available here comes from LoomDocumentSheet._prepareContext()
-  (document-sheet.ts): `document` is the actor's full data AFTER
-  prepareData() ran (main.mjs), so `document._bonus`/`document._dots` are
-  already computed — no need to redo that math in the template.
-
-  Field naming convention (read by the generic auto-save pipeline in
-  document-sheet.ts `_processFormData`, no custom JS needed for this):
-  - name="name"        -> saves to the actor's top-level `name`
-  - name="sd:<path>"   -> saves nested inside `systemData` (":" = path separator)
+  Ficha de RPG customizada para o tipo de ator "hero".
 -->
 <div class="loom-demo-sheet">
-  <header class="loom-demo-sheet-header">
-    <input type="text" name="name" value="{{document.name}}" placeholder="Hero name" />
+  <!-- ══════════════════════════════════════════════════════════
+       HERO HEADER: Retrato + Identidade + Ações Rápidas
+       ══════════════════════════════════════════════════════════ -->
+  <header class="loom-hero-header">
+    <!-- Retrato do Personagem (clicável via data-action="pick-portrait") -->
+    <div class="loom-hero-portrait-frame" data-action="pick-portrait" data-edit="avatarUrl" title="Clique para alterar o retrato">
+      {{#if document.avatarUrl}}
+        <img src="{{document.avatarUrl}}" alt="{{document.name}}" class="loom-hero-portrait-img" />
+      {{else}}
+        <div class="loom-hero-portrait-placeholder">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span class="placeholder-text">Retrato</span>
+        </div>
+      {{/if}}
+      <div class="portrait-hover-overlay">
+        <i class="fa-solid fa-camera"></i>
+        <span>Alterar</span>
+      </div>
+    </div>
+
+    <!-- Identidade e Ações -->
+    <div class="loom-hero-identity">
+      <div class="loom-hero-meta-bar">
+        <span class="loom-badge loom-badge-archetype">
+          <i class="fa-solid fa-crown"></i> Herói
+        </span>
+        <div class="loom-header-stats">
+          <div class="loom-header-stat stat-hp" title="Pontos de Vida">
+            <i class="fa-solid fa-heart"></i>
+            <span>{{document.hp.value}} / {{document.hp.max}} HP</span>
+          </div>
+          <div class="loom-header-stat stat-def" title="Defesa Base">
+            <i class="fa-solid fa-shield"></i>
+            <span>{{document.defense}} DEF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nome do Herói -->
+      <div class="loom-hero-name-row">
+        <input
+          type="text"
+          name="name"
+          value="{{document.name}}"
+          placeholder="Nome do Herói..."
+          class="loom-hero-name-input"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Ações rápidas de rolagem no cabeçalho -->
+      <div class="loom-hero-quick-actions">
+        <button type="button" class="loom-quick-btn" data-action="roll-combat" data-type="attack" title="Rolar Ataque (Might / 2)">
+          <i class="fa-solid fa-crosshairs"></i> Ataque (+{{document._bonus.attack}})
+        </button>
+        <button type="button" class="loom-quick-btn" data-action="roll-combat" data-type="dodge" title="Rolar Esquiva (Swift / 2)">
+          <i class="fa-solid fa-person-running"></i> Esquiva (+{{document._bonus.dodge}})
+        </button>
+        <button type="button" class="loom-quick-btn" data-action="roll-combat" data-type="initiative" title="Rolar Iniciativa (Swift / 2)">
+          <i class="fa-solid fa-bolt"></i> Iniciativa (+{{document._bonus.initiative}})
+        </button>
+      </div>
+    </div>
   </header>
 
-  {{! Tab bar: hand-rolled `data-action="tab-<id>"` + `.tabs`/`.tab-button`/
-      `.tab-content`/`.active` classes — same convention as the core Tabs
-      component (client/components/tabs.ts), not exposed via the SDK, so a
-      ruleset reproduces it directly instead of importing it. Handled in
-      HeroSheet.onAction() (sheets/hero-sheet.mjs). }}
-  <div class="tabs" role="tablist">
-    <button type="button" class="tab-button{{#if isAttributesTab}} active{{/if}}" data-action="tab-attributes">Attributes</button>
-    <button type="button" class="tab-button{{#if isCombatTab}} active{{/if}}" data-action="tab-combat">Combat</button>
-    <button type="button" class="tab-button{{#if isEffectsTab}} active{{/if}}" data-action="tab-effects">Effects</button>
-  </div>
+  <!-- ══════════════════════════════════════════════════════════
+       TABS DE NAVEGAÇÃO
+       ══════════════════════════════════════════════════════════ -->
+  <nav class="tabs loom-sheet-tabs" role="tablist">
+    <button type="button" class="tab-button{{#if isAttributesTab}} active{{/if}}" data-action="tab-attributes">
+      <i class="fa-solid fa-chart-simple"></i> Atributos
+    </button>
+    <button type="button" class="tab-button{{#if isCombatTab}} active{{/if}}" data-action="tab-combat">
+      <i class="fa-solid fa-shield-halved"></i> Combate & Status
+    </button>
+    <button type="button" class="tab-button{{#if isItemsTab}} active{{/if}}" data-action="tab-items">
+      <i class="fa-solid fa-box-open"></i> Itens ({{items.length}})
+    </button>
+    <button type="button" class="tab-button{{#if isEffectsTab}} active{{/if}}" data-action="tab-effects">
+      <i class="fa-solid fa-wand-magic-sparkles"></i> Efeitos ({{buffs.length}})
+    </button>
+  </nav>
 
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 1: ATRIBUTOS (Grid alinhado com layout vertical no card)
+       ══════════════════════════════════════════════════════════ -->
   <div class="tab-content{{#if isAttributesTab}} active{{/if}}" data-tab="attributes">
-    <section class="loom-demo-sheet-attributes">
-      {{! 'dot-pip' classes come from styles/system.css }}
-      <div class="attribute-row">
-        <label>Might</label>
-        <input type="number" name="sd:attributes.might" value="{{document.attributes.might}}" min="0" max="10" />
+    <div class="loom-attributes-grid">
+      <!-- MIGHT -->
+      <div class="loom-attr-card attr-might">
+        <div class="attr-card-header">
+          <div class="attr-icon-wrapper">
+            <i class="fa-solid fa-hand-fist"></i>
+          </div>
+          <div class="attr-title-group">
+            <span class="attr-name">MIGHT</span>
+            <span class="attr-subtitle">Poder Físico & Dano</span>
+          </div>
+        </div>
+
+        <div class="attr-card-center">
+          <div class="attr-score-row">
+            <div class="attr-input-wrap">
+              <input
+                type="number"
+                name="sd:attributes:might"
+                value="{{document.attributes.might}}"
+                min="0"
+                max="10"
+                class="attr-score-input"
+              />
+              <span class="attr-denom">/10</span>
+            </div>
+          </div>
+          <div class="attr-mod-tag">
+            <span class="tag-title">MODIFICADOR</span>
+            <span class="tag-bonus">+{{document._bonus.attack}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-footer">
+          <button
+            type="button"
+            class="loom-roll-btn"
+            data-action="roll-attribute"
+            data-attr="might"
+            title="Rolar Teste de Might (d20 + {{document._bonus.attack}})"
+          >
+            <i class="fa-solid fa-dice-d20"></i> Rolar Might
+          </button>
+        </div>
       </div>
-      <div class="attribute-row">
-        <label>Swift</label>
-        <input type="number" name="sd:attributes.swift" value="{{document.attributes.swift}}" min="0" max="10" />
+
+      <!-- SWIFT -->
+      <div class="loom-attr-card attr-swift">
+        <div class="attr-card-header">
+          <div class="attr-icon-wrapper">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div class="attr-title-group">
+            <span class="attr-name">SWIFT</span>
+            <span class="attr-subtitle">Agilidade & Reflexos</span>
+          </div>
+        </div>
+
+        <div class="attr-card-center">
+          <div class="attr-score-row">
+            <div class="attr-input-wrap">
+              <input
+                type="number"
+                name="sd:attributes:swift"
+                value="{{document.attributes.swift}}"
+                min="0"
+                max="10"
+                class="attr-score-input"
+              />
+              <span class="attr-denom">/10</span>
+            </div>
+          </div>
+          <div class="attr-mod-tag">
+            <span class="tag-title">MODIFICADOR</span>
+            <span class="tag-bonus">+{{document._bonus.dodge}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-footer">
+          <button
+            type="button"
+            class="loom-roll-btn"
+            data-action="roll-attribute"
+            data-attr="swift"
+            title="Rolar Teste de Swift (d20 + {{document._bonus.dodge}})"
+          >
+            <i class="fa-solid fa-dice-d20"></i> Rolar Swift
+          </button>
+        </div>
       </div>
-      <div class="attribute-row">
-        <label>Wits</label>
-        <input type="number" name="sd:attributes.wits" value="{{document.attributes.wits}}" min="0" max="10" />
+
+      <!-- WITS -->
+      <div class="loom-attr-card attr-wits">
+        <div class="attr-card-header">
+          <div class="attr-icon-wrapper">
+            <i class="fa-solid fa-brain"></i>
+          </div>
+          <div class="attr-title-group">
+            <span class="attr-name">WITS</span>
+            <span class="attr-subtitle">Astúcia & Percepção</span>
+          </div>
+        </div>
+
+        <div class="attr-card-center">
+          <div class="attr-score-row">
+            <div class="attr-input-wrap">
+              <input
+                type="number"
+                name="sd:attributes:wits"
+                value="{{document.attributes.wits}}"
+                min="0"
+                max="10"
+                class="attr-score-input"
+              />
+              <span class="attr-denom">/10</span>
+            </div>
+          </div>
+          <div class="attr-mod-tag">
+            <span class="tag-title">MODIFICADOR</span>
+            <span class="tag-bonus">+{{document._bonus.detect}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-footer">
+          <button
+            type="button"
+            class="loom-roll-btn"
+            data-action="roll-attribute"
+            data-attr="wits"
+            title="Rolar Teste de Wits (d20 + {{document._bonus.detect}})"
+          >
+            <i class="fa-solid fa-dice-d20"></i> Rolar Wits
+          </button>
+        </div>
       </div>
-    </section>
+    </div>
+
+    <!-- Resumo dos Bônus Derivados -->
+    <div class="loom-derived-panel">
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-crosshairs"></i> Bônus de Ataque</span>
+        <span class="derived-value">+{{document._bonus.attack}}</span>
+      </div>
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-person-running"></i> Bônus de Esquiva</span>
+        <span class="derived-value">+{{document._bonus.dodge}}</span>
+      </div>
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-bolt"></i> Bônus de Iniciativa</span>
+        <span class="derived-value">+{{document._bonus.initiative}}</span>
+      </div>
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-eye"></i> Detecção / Sentidos</span>
+        <span class="derived-value">+{{document._bonus.detect}}</span>
+      </div>
+    </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2: COMBATE & STATUS
+       ══════════════════════════════════════════════════════════ -->
   <div class="tab-content{{#if isCombatTab}} active{{/if}}" data-tab="combat">
-    <section class="loom-demo-sheet-combat">
-      <div class="attribute-row">
-        <label>Defense</label>
-        <input type="number" name="sd:defense" value="{{document.defense}}" />
-      </div>
-      <div class="attribute-row">
-        <label>HP</label>
-        <input type="number" name="sd:hp.value" value="{{document.hp.value}}" />
-        <span>/</span>
-        <input type="number" name="sd:hp.max" value="{{document.hp.max}}" />
+    <div class="loom-combat-vitals">
+      <!-- Card de Vida (HP) -->
+      <div class="loom-vital-card vital-hp">
+        <div class="vital-header">
+          <div class="vital-icon-title">
+            <i class="fa-solid fa-heart"></i>
+            <span>PONTOS DE VIDA</span>
+          </div>
+          <span class="vital-percent">{{hpPercent}}%</span>
+        </div>
+        <div class="vital-inputs-row">
+          <div class="vital-field">
+            <label>Atual</label>
+            <input type="number" name="sd:hp:value" value="{{document.hp.value}}" min="0" class="vital-input current" />
+          </div>
+          <span class="vital-separator">/</span>
+          <div class="vital-field">
+            <label>Máximo</label>
+            <input type="number" name="sd:hp:max" value="{{document.hp.max}}" min="1" class="vital-input max" />
+          </div>
+        </div>
+        <!-- Barra de Progresso Visual -->
+        <div class="loom-hp-progress-track">
+          <div class="loom-hp-progress-fill" style="width: {{hpPercent}}%;"></div>
+        </div>
       </div>
 
-      {{! Derived bonuses (document._bonus, from prepareData in main.mjs) are
-          read-only display — they are NEVER saved, so they have no [name]. }}
-      <div class="loom-demo-derived">
-        <span>Attack bonus: +{{document._bonus.attack}}</span>
-        <span>Dodge bonus: +{{document._bonus.dodge}}</span>
-        <span>Initiative bonus: +{{document._bonus.initiative}}</span>
+      <!-- Card de Defesa -->
+      <div class="loom-vital-card vital-defense">
+        <div class="vital-header">
+          <div class="vital-icon-title">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>DEFESA</span>
+          </div>
+          <span class="vital-tag">Classe de Armadura</span>
+        </div>
+        <div class="vital-defense-value-box">
+          <input type="number" name="sd:defense" value="{{document.defense}}" min="0" class="defense-score-input" />
+        </div>
+        <p class="vital-hint">Dificuldade para acertar o Herói em combate.</p>
       </div>
-    </section>
+    </div>
+
+    <!-- Ações e Manobras de Combate -->
+    <div class="loom-combat-actions-section">
+      <h3 class="section-title"><i class="fa-solid fa-swords"></i> Manobras de Combate</h3>
+      <div class="loom-combat-actions-grid">
+        <div class="combat-action-card">
+          <div class="action-info">
+            <span class="action-title"><i class="fa-solid fa-hand-fist"></i> Ataque Básico</span>
+            <span class="action-formula">1d20 + Might (+{{document._bonus.attack}})</span>
+          </div>
+          <button type="button" class="loom-roll-btn" data-action="roll-combat" data-type="attack">
+            <i class="fa-solid fa-dice-d20"></i> Rolar Ataque
+          </button>
+        </div>
+
+        <div class="combat-action-card">
+          <div class="action-info">
+            <span class="action-title"><i class="fa-solid fa-person-running"></i> Esquiva Rápida</span>
+            <span class="action-formula">1d20 + Swift (+{{document._bonus.dodge}})</span>
+          </div>
+          <button type="button" class="loom-roll-btn" data-action="roll-combat" data-type="dodge">
+            <i class="fa-solid fa-dice-d20"></i> Rolar Esquiva
+          </button>
+        </div>
+
+        <div class="combat-action-card">
+          <div class="action-info">
+            <span class="action-title"><i class="fa-solid fa-bolt"></i> Iniciativa de Combate</span>
+            <span class="action-formula">1d20 + Swift (+{{document._bonus.initiative}})</span>
+          </div>
+          <button type="button" class="loom-roll-btn" data-action="roll-combat" data-type="initiative">
+            <i class="fa-solid fa-dice-d20"></i> Rolar Iniciativa
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  {{! Active Effects ("Buffs") — NOT free here like it is for villain/beast's
-      declarative sheet (ActorSheetWindow owns that UI). `buffs` comes from
-      HeroSheet._prepareContext() (sheets/hero-sheet.mjs); the data-action
-      buttons below are handled by HeroSheet.onAction() in that same file. }}
-  <div class="tab-content{{#if isEffectsTab}} active{{/if}}" data-tab="effects">
-    <section class="loom-demo-sheet-effects">
-      <div class="loom-demo-effects-header">
-        <h3>Effects</h3>
-        <button type="button" class="btn btn-primary" data-action="add-effect">+ Add Effect</button>
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 3: INVENTÁRIO & ITENS (Armas, Armaduras, Poções)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-content{{#if isItemsTab}} active{{/if}}" data-tab="items">
+    <section class="loom-items-section">
+      <div class="loom-items-toolbar">
+        <div class="items-heading">
+          <h3><i class="fa-solid fa-toolbox"></i> Equipamentos & Inventário</h3>
+          <span class="items-counter">{{items.length}} item(ns) no inventário</span>
+        </div>
+        <button type="button" class="btn btn-primary loom-add-item-btn" data-action="add-item">
+          <i class="fa-solid fa-plus"></i> Novo Item
+        </button>
       </div>
-      {{#if buffs.length}}
-        <div class="loom-demo-effects-list">
-          {{#each buffs}}
-            <div class="loom-demo-effect-row">
-              <span class="loom-demo-effect-name{{#if this.disabled}} loom-demo-effect-disabled{{/if}}">{{this.name}}</span>
-              <button type="button" class="btn btn-small" data-action="toggle-effect" data-id="{{this.id}}">
-                {{#if this.disabled}}Activate{{else}}Deactivate{{/if}}
-              </button>
-              <button type="button" class="btn btn-small" data-action="edit-effect" data-id="{{this.id}}">Edit</button>
-              <button type="button" class="btn btn-small btn-danger" data-action="remove-effect" data-id="{{this.id}}">Remove</button>
+
+      {{#if items.length}}
+        <div class="loom-items-list">
+          {{#each items}}
+            <div class="loom-item-row" data-id="{{this.id}}">
+              <div class="item-icon-box" data-action="open-item" data-id="{{this.id}}" title="Abrir ficha do item">
+                {{#if this.imgUrl}}
+                  <img src="{{this.imgUrl}}" alt="{{this.name}}" class="item-thumb" />
+                {{else if this.avatarUrl}}
+                  <img src="{{this.avatarUrl}}" alt="{{this.name}}" class="item-thumb" />
+                {{else}}
+                  <i class="fa-solid fa-shield-halved item-icon-default"></i>
+                {{/if}}
+              </div>
+
+              <div class="item-info-col" data-action="open-item" data-id="{{this.id}}" title="Clique para abrir a ficha do item">
+                <span class="item-row-name">{{this.name}}</span>
+                <div class="item-row-tags">
+                  <span class="item-type-badge">{{this.type}}</span>
+                  {{#if this.systemData.damage}}
+                    <span class="item-stat-badge"><i class="fa-solid fa-hand-fist"></i> {{this.systemData.damage}}</span>
+                  {{/if}}
+                  {{#if this.systemData.defenseBonus}}
+                    <span class="item-stat-badge def"><i class="fa-solid fa-shield"></i> +{{this.systemData.defenseBonus}} DEF</span>
+                  {{/if}}
+                  {{#if this.systemData.healing}}
+                    <span class="item-stat-badge heal"><i class="fa-solid fa-heart"></i> {{this.systemData.healing}}</span>
+                  {{/if}}
+                </div>
+              </div>
+
+              <div class="item-row-actions">
+                {{#if this.systemData.damage}}
+                  <button
+                    type="button"
+                    class="btn btn-small btn-primary item-roll-btn"
+                    data-action="roll-item"
+                    data-id="{{this.id}}"
+                    title="Rolar Dano ({{this.systemData.damage}})"
+                  >
+                    <i class="fa-solid fa-dice-d20"></i> Dano
+                  </button>
+                {{/if}}
+                <button
+                  type="button"
+                  class="btn btn-small item-edit-btn"
+                  data-action="open-item"
+                  data-id="{{this.id}}"
+                  title="Abrir Detalhes do Item"
+                >
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small btn-danger item-delete-btn"
+                  data-action="delete-item"
+                  data-id="{{this.id}}"
+                  title="Excluir Item"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
             </div>
           {{/each}}
         </div>
       {{else}}
-        <p class="loom-demo-effects-empty">No effects yet.</p>
+        <div class="loom-items-empty">
+          <i class="fa-solid fa-box-open empty-icon"></i>
+          <h4>Nenhum item no inventário</h4>
+          <p>Adicione armas, escudos ou consumíveis clicando no botão "Novo Item". Você pode clicar na imagem de qualquer item para mudar o ícone dele!</p>
+          <button type="button" class="btn btn-primary btn-sm" data-action="add-item" style="margin-top: 10px;">
+            <i class="fa-solid fa-plus"></i> Adicionar Item Didático
+          </button>
+        </div>
+      {{/if}}
+    </section>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 4: EFEITOS ATIVOS (BUFFS / DEBUFFS)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-content{{#if isEffectsTab}} active{{/if}}" data-tab="effects">
+    <section class="loom-effects-section">
+      <div class="loom-effects-toolbar">
+        <div class="effects-heading">
+          <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Efeitos & Modificadores Ativos</h3>
+          <span class="effects-counter">{{buffs.length}} efeito(s) registrado(s)</span>
+        </div>
+        <button type="button" class="btn btn-primary loom-add-effect-btn" data-action="add-effect">
+          <i class="fa-solid fa-plus"></i> Novo Efeito
+        </button>
+      </div>
+
+      {{#if buffs.length}}
+        <div class="loom-effects-list">
+          {{#each buffs}}
+            <div class="loom-effect-item{{#if this.disabled}} effect-inactive{{/if}}">
+              <div class="effect-status-badge">
+                {{#if this.disabled}}
+                  <i class="fa-solid fa-circle-xmark status-off" title="Desativado"></i>
+                {{else}}
+                  <i class="fa-solid fa-circle-check status-on" title="Ativo"></i>
+                {{/if}}
+              </div>
+              <div class="effect-details">
+                <span class="effect-name">{{this.name}}</span>
+                <span class="effect-meta">{{#if this.disabled}}Inativo{{else}}Ativo{{/if}}</span>
+              </div>
+              <div class="effect-actions">
+                <button
+                  type="button"
+                  class="btn btn-small effect-btn-toggle"
+                  data-action="toggle-effect"
+                  data-id="{{this.id}}"
+                  title="{{#if this.disabled}}Ativar efeito{{else}}Desativar efeito{{/if}}"
+                >
+                  <i class="fa-solid {{#if this.disabled}}fa-play{{else}}fa-pause{{/if}}"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small effect-btn-edit"
+                  data-action="edit-effect"
+                  data-id="{{this.id}}"
+                  title="Renomear efeito"
+                >
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small btn-danger effect-btn-delete"
+                  data-action="remove-effect"
+                  data-id="{{this.id}}"
+                  title="Excluir efeito"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="loom-effects-empty">
+          <i class="fa-solid fa-feather-pointed empty-icon"></i>
+          <h4>Nenhum efeito ativo no momento</h4>
+          <p>Adicione bônus, feitiços, poções ou penalidades temporárias para o Herói.</p>
+        </div>
       {{/if}}
     </section>
   </div>

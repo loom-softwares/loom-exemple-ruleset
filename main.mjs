@@ -13,6 +13,7 @@
 
 import { SystemRegistry, defineSystem, LoomHooks, keybinds, showToast, getWraps, sheets, settings } from '/_loom/sdk/index.js';
 import { HeroSheet } from './sheets/hero-sheet.mjs';
+import { DemoItemSheet } from './sheets/item-sheet.mjs';
 import { heroDefaults } from './data/hero.mjs';
 import { villainDefaults } from './data/villain.mjs';
 import { beastDefaults } from './data/beast.mjs';
@@ -243,6 +244,9 @@ LoomHooks.on('preRoll', (ctx) => {
 // `meta.system`), replacing the default header/name block with a two-tone
 // banner, and leave the actual dice widget to the core's renderRollCard —
 // no need to reimplement dice math/formatting to have a custom look.
+// ── Custom chat card ─────────────────────────────────────────────
+// Custom roll card with standard sizing, actor portrait, high visibility,
+// and clear formula / total breakdown.
 getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   if (!msg.isRoll || !msg.roll || msg.roll.meta?.system !== 'Loom Demo') {
     return wrapped(msg, ctx);
@@ -250,19 +254,96 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
 
   const { esc, canSeeRoll } = ctx;
   const sp = msg.speaker || {};
-  // Full actor name if the roll came from a character/villain/beast sheet,
-  // falling back to the player's own name for a roll with no actor attached.
-  const actorName = sp.actorName || msg.userName;
+  const actorName = msg.roll.meta?.actorName || sp.actorName || msg.userName || 'Herói';
+  const actorAvatar = msg.roll.meta?.actorAvatar || sp.actorAvatar || sp.avatarUrl || msg.userAvatar || '';
+  const rollLabel = msg.roll.meta?.label || 'Rolagem';
 
-  const bodyHtml = canSeeRoll
-    ? getWraps().renderRollCard(msg.roll, esc)
-    : `<div class="sidebar-message-text sidebar-message-whisper"><i class="fa-solid fa-dice-d20"></i> roll</div>`;
+  if (!canSeeRoll) {
+    return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
+      <div class="loom-demo-card-header">
+        <div class="loom-card-identity">
+          <div class="loom-card-avatar">
+            ${actorAvatar ? `<img src="${esc(actorAvatar)}" class="loom-card-avatar-img" alt="" />` : `<i class="fa-solid fa-shield-halved"></i>`}
+          </div>
+          <span class="loom-demo-card-name">${esc(actorName)}</span>
+        </div>
+      </div>
+      <div class="sidebar-message-body">
+        <div class="sidebar-message-text sidebar-message-whisper"><i class="fa-solid fa-dice-d20"></i> Rolagem oculta</div>
+      </div>
+    </div>`;
+  }
+
+  const roll = msg.roll;
+  const diceTerm = roll.terms?.find((t) => t.kind === 'dice');
+  const d20Val = diceTerm?.rolls?.[0];
+  const modTerm = roll.terms?.find((t) => t.kind === 'modifier');
+  const modVal = modTerm?.value;
+
+  const isCrit20 = diceTerm?.faces === 20 && d20Val === 20;
+  const isCrit1 = diceTerm?.faces === 20 && d20Val === 1;
+  const critBadge = isCrit20
+    ? `<span class="loom-crit-badge crit-success">CRÍTICO!</span>`
+    : isCrit1
+    ? `<span class="loom-crit-badge crit-fail">FALHA!</span>`
+    : '';
 
   return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
+    <!-- Header: Avatar do Ator + Identidade + Tipo de Teste -->
     <div class="loom-demo-card-header">
-      <span class="loom-demo-card-name">${esc(actorName)}</span>
+      <div class="loom-card-identity">
+        <div class="loom-card-avatar">
+          ${actorAvatar ? `<img src="${esc(actorAvatar)}" class="loom-card-avatar-img" alt="${esc(actorName)}" />` : `<i class="fa-solid fa-shield-halved"></i>`}
+        </div>
+        <div class="loom-card-titles">
+          <span class="loom-card-actor-name">${esc(actorName)}</span>
+          <span class="loom-card-roll-tag">${esc(rollLabel)}</span>
+        </div>
+      </div>
+      <div class="loom-card-header-icon">
+        <i class="fa-solid fa-dice-d20"></i>
+      </div>
     </div>
-    <div class="sidebar-message-body">${bodyHtml}</div>
+
+    <!-- Body: Tamanho Padrão + Elementos Visíveis -->
+    <div class="loom-demo-card-body">
+      <div class="loom-card-formula-row">
+        <span class="loom-card-formula-pill">
+          <i class="fa-solid fa-dice"></i> ${esc(roll.formula)}
+        </span>
+        ${critBadge}
+      </div>
+
+      ${(() => {
+        const difficulty = msg.roll.meta?.difficulty;
+        const targetName = msg.roll.meta?.targetName;
+        if (difficulty === undefined && !targetName) return '';
+        const isSuccess = difficulty !== undefined ? (roll.total >= difficulty) : null;
+        const resultBadge = isSuccess === true
+          ? `<span class="loom-crit-badge crit-success"><i class="fa-solid fa-check"></i> SUCESSO</span>`
+          : isSuccess === false
+          ? `<span class="loom-crit-badge crit-fail"><i class="fa-solid fa-xmark"></i> FALHA</span>`
+          : '';
+
+        return `<div class="loom-card-target-row">
+          <span class="loom-card-target-chip">
+            <i class="fa-solid fa-bullseye"></i> ${targetName ? `Alvo: <strong>${esc(targetName)}</strong> (Def ${difficulty})` : `Dificuldade: <strong>DC ${difficulty}</strong>`}
+          </span>
+          ${resultBadge}
+        </div>`;
+      })()}
+
+      <div class="loom-card-result-row">
+        <div class="loom-card-breakdown">
+          ${d20Val !== undefined ? `<span class="breakdown-die"><i class="fa-solid fa-dice-d20"></i> ${d20Val}</span>` : ''}
+          ${modVal !== undefined ? `<span class="breakdown-op">${modVal >= 0 ? '+' : '-'}</span><span class="breakdown-mod">${Math.abs(modVal)}</span>` : ''}
+        </div>
+        <div class="loom-card-total-box ${isCrit20 ? 'glow-success' : ''} ${isCrit1 ? 'glow-fail' : ''}">
+          <span class="total-label">TOTAL</span>
+          <span class="total-number">${roll.total}</span>
+        </div>
+      </div>
+    </div>
   </div>`;
 });
 
@@ -292,10 +373,9 @@ settings.register('loom-demo-system', 'initiativeBonusAttr', {
 
 // ── Custom sheet registration ────────────────────────────────
 // `sheets.catalog(docType, typeName, SheetClass)` overrides the generic
-// declarative sheet (getSheetSchema, above) for this one actor type only —
-// 'villain'/'beast' keep using the declarative path untouched, so this file
-// shows both patterns side by side.
+// declarative sheet for these types.
 sheets.catalog('actor', 'hero', HeroSheet);
+sheets.catalog('item', '*', DemoItemSheet);
 
 console.log('[Loom Demo System] Loaded!');
 
