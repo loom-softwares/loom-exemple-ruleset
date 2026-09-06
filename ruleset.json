@@ -1,0 +1,47 @@
+{
+  "name": "loom-demo-system",
+  "title": "Loom Demo System",
+  "version": "0.1.0",
+  "engine": "loom",
+  "type": "ruleset",
+  "description": "Demonstration System LoomVTT",
+  "author": "LoomVTT",
+  "client": "main.mjs",
+  "active": true,
+  "actorTypes": [
+    "hero",
+    "villain",
+    "beast"
+  ],
+  "itemTypes": [
+    "weapon",
+    "armor",
+    "potion",
+    "scroll"
+  ],
+  "styles": [
+    "styles/system.css"
+  ],
+  "languages": [
+    {
+      "lang": "pt-BR",
+      "name": "Português (Brasil)",
+      "path": "lang/pt-BR.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "settings": [
+    {
+      "key": "initiativeBonusAttr",
+      "type": "string",
+      "default": "swift",
+      "label": "Initiative Attribute",
+      "hint": "Attribute used to calculate initiative bonus (might, swift, or wits)",
+      "scope": "world"
+    }
+  ]
+}

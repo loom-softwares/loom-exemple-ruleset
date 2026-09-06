@@ -1,0 +1,110 @@
+/* Loom Demo System — estilos do sistema */
+
+.loom-window .sheet-title {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* Custom roll-card header registered via Loom.wraps.renderMessage (main.mjs).
+   Two-tone banner + background instead of just a colored name — the point
+   isn't a big CSS block, it's showing that a system fully owns its card's
+   look once it takes over the wrap, not just the text color. */
+.loom-demo-card {
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-bg-surface, #1c1c1c);
+  border: 1px solid var(--color-border, #444);
+}
+
+.loom-demo-card-header {
+  padding: 6px 10px;
+  background: linear-gradient(90deg, #3a1f1f 0%, #3a1f1f 50%, var(--color-accent, #e49a42) 50%, var(--color-accent, #e49a42) 100%);
+}
+
+.loom-demo-card-name {
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Core renders attribute dots as `.dot-pip` (see sheet-schema.ts), not
+   `.dot` — this block styles those pips for the declarative getSheetSchema()
+   fields (villain/beast). The custom hero-sheet.hbs below uses plain number
+   inputs instead, deliberately, to show both approaches side by side. */
+.loom-demo-sheet .dot-pip {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-bg-surface, #2a2a2a);
+  border: 1px solid var(--color-border, #555);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.loom-demo-sheet .dot-pip.filled {
+  background: var(--color-accent, #e49a42);
+  border-color: var(--color-accent, #e49a42);
+}
+
+/* hero-sheet.hbs (custom Handlebars sheet, sheets/hero-sheet.mjs) */
+.loom-demo-sheet-header input {
+  font-size: 1.1rem;
+  font-weight: 700;
+  width: 100%;
+}
+
+.loom-demo-sheet-attributes .attribute-row,
+.loom-demo-sheet-combat .attribute-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.loom-demo-sheet-attributes .attribute-row label,
+.loom-demo-sheet-combat .attribute-row label {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.loom-demo-derived {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.5rem;
+  color: var(--color-text-muted, #999);
+  font-size: 0.85rem;
+}
+
+.loom-demo-sheet-effects {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #444);
+  padding-top: 0.5rem;
+}
+
+.loom-demo-effects-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.loom-demo-effect-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+}
+
+.loom-demo-effect-name {
+  flex: 1;
+}
+
+.loom-demo-effect-disabled {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.loom-demo-effects-empty {
+  color: var(--color-text-muted, #999);
+  font-size: 0.85rem;
+}

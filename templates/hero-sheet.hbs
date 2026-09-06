@@ -1,0 +1,101 @@
+<!--
+  Loom Demo System — hero-sheet.hbs
+  Custom Handlebars sheet for the "hero" actor type (native pattern, same as
+  srd5e/wod6e — no Foundry-style sheet emulation).
+
+  Context available here comes from LoomDocumentSheet._prepareContext()
+  (document-sheet.ts): `document` is the actor's full data AFTER
+  prepareData() ran (main.mjs), so `document._bonus`/`document._dots` are
+  already computed — no need to redo that math in the template.
+
+  Field naming convention (read by the generic auto-save pipeline in
+  document-sheet.ts `_processFormData`, no custom JS needed for this):
+  - name="name"        -> saves to the actor's top-level `name`
+  - name="sd:<path>"   -> saves nested inside `systemData` (":" = path separator)
+-->
+<div class="loom-demo-sheet">
+  <header class="loom-demo-sheet-header">
+    <input type="text" name="name" value="{{document.name}}" placeholder="Hero name" />
+  </header>
+
+  {{! Tab bar: hand-rolled `data-action="tab-<id>"` + `.tabs`/`.tab-button`/
+      `.tab-content`/`.active` classes — same convention as the core Tabs
+      component (client/components/tabs.ts), not exposed via the SDK, so a
+      ruleset reproduces it directly instead of importing it. Handled in
+      HeroSheet.onAction() (sheets/hero-sheet.mjs). }}
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab-button{{#if isAttributesTab}} active{{/if}}" data-action="tab-attributes">Attributes</button>
+    <button type="button" class="tab-button{{#if isCombatTab}} active{{/if}}" data-action="tab-combat">Combat</button>
+    <button type="button" class="tab-button{{#if isEffectsTab}} active{{/if}}" data-action="tab-effects">Effects</button>
+  </div>
+
+  <div class="tab-content{{#if isAttributesTab}} active{{/if}}" data-tab="attributes">
+    <section class="loom-demo-sheet-attributes">
+      {{! 'dot-pip' classes come from styles/system.css }}
+      <div class="attribute-row">
+        <label>Might</label>
+        <input type="number" name="sd:attributes.might" value="{{document.attributes.might}}" min="0" max="10" />
+      </div>
+      <div class="attribute-row">
+        <label>Swift</label>
+        <input type="number" name="sd:attributes.swift" value="{{document.attributes.swift}}" min="0" max="10" />
+      </div>
+      <div class="attribute-row">
+        <label>Wits</label>
+        <input type="number" name="sd:attributes.wits" value="{{document.attributes.wits}}" min="0" max="10" />
+      </div>
+    </section>
+  </div>
+
+  <div class="tab-content{{#if isCombatTab}} active{{/if}}" data-tab="combat">
+    <section class="loom-demo-sheet-combat">
+      <div class="attribute-row">
+        <label>Defense</label>
+        <input type="number" name="sd:defense" value="{{document.defense}}" />
+      </div>
+      <div class="attribute-row">
+        <label>HP</label>
+        <input type="number" name="sd:hp.value" value="{{document.hp.value}}" />
+        <span>/</span>
+        <input type="number" name="sd:hp.max" value="{{document.hp.max}}" />
+      </div>
+
+      {{! Derived bonuses (document._bonus, from prepareData in main.mjs) are
+          read-only display — they are NEVER saved, so they have no [name]. }}
+      <div class="loom-demo-derived">
+        <span>Attack bonus: +{{document._bonus.attack}}</span>
+        <span>Dodge bonus: +{{document._bonus.dodge}}</span>
+        <span>Initiative bonus: +{{document._bonus.initiative}}</span>
+      </div>
+    </section>
+  </div>
+
+  {{! Active Effects ("Buffs") — NOT free here like it is for villain/beast's
+      declarative sheet (ActorSheetWindow owns that UI). `buffs` comes from
+      HeroSheet._prepareContext() (sheets/hero-sheet.mjs); the data-action
+      buttons below are handled by HeroSheet.onAction() in that same file. }}
+  <div class="tab-content{{#if isEffectsTab}} active{{/if}}" data-tab="effects">
+    <section class="loom-demo-sheet-effects">
+      <div class="loom-demo-effects-header">
+        <h3>Effects</h3>
+        <button type="button" class="btn btn-primary" data-action="add-effect">+ Add Effect</button>
+      </div>
+      {{#if buffs.length}}
+        <div class="loom-demo-effects-list">
+          {{#each buffs}}
+            <div class="loom-demo-effect-row">
+              <span class="loom-demo-effect-name{{#if this.disabled}} loom-demo-effect-disabled{{/if}}">{{this.name}}</span>
+              <button type="button" class="btn btn-small" data-action="toggle-effect" data-id="{{this.id}}">
+                {{#if this.disabled}}Activate{{else}}Deactivate{{/if}}
+              </button>
+              <button type="button" class="btn btn-small" data-action="edit-effect" data-id="{{this.id}}">Edit</button>
+              <button type="button" class="btn btn-small btn-danger" data-action="remove-effect" data-id="{{this.id}}">Remove</button>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="loom-demo-effects-empty">No effects yet.</p>
+      {{/if}}
+    </section>
+  </div>
+</div>
