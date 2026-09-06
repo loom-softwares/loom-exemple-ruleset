@@ -244,9 +244,20 @@ LoomHooks.on('preRoll', (ctx) => {
 // `meta.system`), replacing the default header/name block with a two-tone
 // banner, and leave the actual dice widget to the core's renderRollCard —
 // no need to reimplement dice math/formatting to have a custom look.
+/**
+ * Helper to translate keys using Loom's native i18n engine (window.Loom.i18n.localize).
+ * @param {string} key - Translation key in lang/*.json
+ * @param {string} [fallback] - Fallback text if key is unresolved
+ * @returns {string}
+ */
+function localize(key, fallback = '') {
+  const text = window.Loom?.i18n?.localize?.(key);
+  return (text && text !== key) ? text : (fallback || key);
+}
+
 // ── Custom chat card ─────────────────────────────────────────────
 // Custom roll card with standard sizing, actor portrait, high visibility,
-// and clear formula / total breakdown.
+// clear formula / total breakdown, and native i18n support.
 getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   if (!msg.isRoll || !msg.roll || msg.roll.meta?.system !== 'Loom Demo') {
     return wrapped(msg, ctx);
@@ -254,9 +265,9 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
 
   const { esc, canSeeRoll } = ctx;
   const sp = msg.speaker || {};
-  const actorName = msg.roll.meta?.actorName || sp.actorName || msg.userName || 'Hero';
+  const actorName = msg.roll.meta?.actorName || sp.actorName || msg.userName || localize('loom-demo-system.hero', 'Hero');
   const actorAvatar = msg.roll.meta?.actorAvatar || sp.actorAvatar || sp.avatarUrl || msg.userAvatar || '';
-  const rollLabel = msg.roll.meta?.label || 'Roll';
+  const rollLabel = msg.roll.meta?.label || localize('loom-demo-system.actions.roll', 'Roll');
 
   if (!canSeeRoll) {
     return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
@@ -269,7 +280,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
         </div>
       </div>
       <div class="sidebar-message-body">
-        <div class="sidebar-message-text sidebar-message-whisper"><i class="fa-solid fa-dice-d20"></i> Blind roll</div>
+        <div class="sidebar-message-text sidebar-message-whisper"><i class="fa-solid fa-dice-d20"></i> ${localize('loom-demo-system.chat.blindRoll', 'Blind roll')}</div>
       </div>
     </div>`;
   }
@@ -283,9 +294,9 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   const isCrit20 = diceTerm?.faces === 20 && d20Val === 20;
   const isCrit1 = diceTerm?.faces === 20 && d20Val === 1;
   const critBadge = isCrit20
-    ? `<span class="loom-crit-badge crit-success">CRITICAL!</span>`
+    ? `<span class="loom-crit-badge crit-success">${localize('loom-demo-system.chat.critical', 'CRITICAL!')}</span>`
     : isCrit1
-    ? `<span class="loom-crit-badge crit-fail">FUMBLE!</span>`
+    ? `<span class="loom-crit-badge crit-fail">${localize('loom-demo-system.chat.fumble', 'FUMBLE!')}</span>`
     : '';
 
   // Automatically synchronize with Combat Tracker when initiative is rolled
@@ -338,9 +349,9 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
           const inCombat = msg.roll.meta?.inCombat;
           return `<div class="loom-card-initiative-row">
             <span class="loom-card-initiative-chip">
-              <i class="fa-solid fa-bolt"></i> TURN ORDER
+              <i class="fa-solid fa-bolt"></i> ${localize('loom-demo-system.chat.turnOrder', 'TURN ORDER')}
             </span>
-            ${inCombat ? `<span class="loom-initiative-status in-combat"><i class="fa-solid fa-swords"></i> Combat Tracker</span>` : ''}
+            ${inCombat ? `<span class="loom-initiative-status in-combat"><i class="fa-solid fa-swords"></i> ${localize('loom-demo-system.chat.combatTracker', 'Combat Tracker')}</span>` : ''}
           </div>`;
         }
 
@@ -349,14 +360,14 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
         if (difficulty === undefined && !targetName) return '';
         const isSuccess = difficulty !== undefined ? (roll.total >= difficulty) : null;
         const resultBadge = isSuccess === true
-          ? `<span class="loom-crit-badge crit-success"><i class="fa-solid fa-check"></i> SUCCESS</span>`
+          ? `<span class="loom-crit-badge crit-success"><i class="fa-solid fa-check"></i> ${localize('loom-demo-system.chat.success', 'SUCCESS')}</span>`
           : isSuccess === false
-          ? `<span class="loom-crit-badge crit-fail"><i class="fa-solid fa-xmark"></i> FAIL</span>`
+          ? `<span class="loom-crit-badge crit-fail"><i class="fa-solid fa-xmark"></i> ${localize('loom-demo-system.chat.fail', 'FAIL')}</span>`
           : '';
 
         return `<div class="loom-card-target-row">
           <span class="loom-card-target-chip">
-            <i class="fa-solid fa-bullseye"></i> ${targetName ? `Target: <strong>${esc(targetName)}</strong> (Def ${difficulty})` : `Difficulty: <strong>DC ${difficulty}</strong>`}
+            <i class="fa-solid fa-bullseye"></i> ${targetName ? `${localize('loom-demo-system.chat.target', 'Target')}: <strong>${esc(targetName)}</strong> (${localize('loom-demo-system.stats.defense', 'Def')} ${difficulty})` : `${localize('loom-demo-system.chat.difficulty', 'Difficulty')}: <strong>DC ${difficulty}</strong>`}
           </span>
           ${resultBadge}
         </div>`;
@@ -368,7 +379,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
           ${modVal !== undefined ? `<span class="breakdown-op">${modVal >= 0 ? '+' : '-'}</span><span class="breakdown-mod">${Math.abs(modVal)}</span>` : ''}
         </div>
         <div class="loom-card-total-box ${isCrit20 ? 'glow-success' : ''} ${isCrit1 ? 'glow-fail' : ''}">
-          <span class="total-label">${msg.roll.meta?.isInitiative ? 'INITIATIVE' : 'TOTAL'}</span>
+          <span class="total-label">${msg.roll.meta?.isInitiative ? localize('loom-demo-system.chat.initiative', 'INITIATIVE') : localize('loom-demo-system.chat.total', 'TOTAL')}</span>
           <span class="total-number">${roll.total}</span>
         </div>
       </div>

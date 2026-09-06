@@ -1,11 +1,12 @@
 <!--
   Loom Demo System — item-sheet.hbs
   Custom sheet for items (weapons, armor, potions, scrolls).
+  Demonstrates proper i18n usage using Loom's native `{{localize "KEY"}}` Handlebars helper.
 -->
 <div class="loom-item-sheet">
   <!-- Item Header: Icon + Name + Type -->
   <header class="loom-item-header">
-    <div class="loom-item-img-frame" data-action="pick-portrait" data-edit="imgUrl" title="Click to change item image">
+    <div class="loom-item-img-frame" data-action="pick-portrait" data-edit="imgUrl" title="{{localize "loom-demo-system.sheet.portrait.clickToChange"}}">
       {{#if document.imgUrl}}
         <img src="{{document.imgUrl}}" alt="{{document.name}}" class="loom-item-img" />
       {{else}}
@@ -24,18 +25,18 @@
     <div class="loom-item-identity">
       <div class="item-type-tag">
         <span class="type-badge">
-          {{#if isWeapon}}<i class="fa-solid fa-swords"></i> Weapon
-          {{else if isArmor}}<i class="fa-solid fa-shield"></i> Armor
-          {{else if isPotion}}<i class="fa-solid fa-flask"></i> Potion
-          {{else if isScroll}}<i class="fa-solid fa-scroll"></i> Scroll
-          {{else}}<i class="fa-solid fa-box"></i> Item{{/if}}
+          {{#if isWeapon}}<i class="fa-solid fa-swords"></i> {{localize "loom-demo-system.items.weapon"}}
+          {{else if isArmor}}<i class="fa-solid fa-shield"></i> {{localize "loom-demo-system.items.armor"}}
+          {{else if isPotion}}<i class="fa-solid fa-flask"></i> {{localize "loom-demo-system.items.potion"}}
+          {{else if isScroll}}<i class="fa-solid fa-scroll"></i> {{localize "loom-demo-system.items.scroll"}}
+          {{else}}<i class="fa-solid fa-box"></i> {{localize "loom-demo-system.items.newItem"}}{{/if}}
         </span>
       </div>
       <input
         type="text"
         name="name"
         value="{{document.name}}"
-        placeholder="Item Name..."
+        placeholder="{{localize "loom-demo-system.items.namePlaceholder"}}"
         class="loom-item-name-input"
         autocomplete="off"
       />
@@ -47,22 +48,22 @@
     {{#if isWeapon}}
       <div class="loom-item-props-grid">
         <div class="item-prop-card">
-          <label><i class="fa-solid fa-dice-d20"></i> Damage Formula</label>
+          <label><i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.items.damageFormula"}}</label>
           <input type="text" name="sd:damage" value="{{systemData.damage}}" placeholder="e.g. 1d8, 2d6" class="prop-input" />
         </div>
         <div class="item-prop-card">
-          <label><i class="fa-solid fa-burst"></i> Damage Type</label>
+          <label><i class="fa-solid fa-burst"></i> {{localize "loom-demo-system.items.damageType"}}</label>
           <input type="text" name="sd:damageType" value="{{systemData.damageType}}" placeholder="e.g. Slashing, Fire" class="prop-input" />
         </div>
         <div class="item-prop-card">
-          <label><i class="fa-solid fa-bullseye"></i> Range</label>
+          <label><i class="fa-solid fa-bullseye"></i> {{localize "loom-demo-system.items.range"}}</label>
           <input type="text" name="sd:range" value="{{systemData.range}}" placeholder="e.g. Melee, 30 ft" class="prop-input" />
         </div>
       </div>
 
       <div class="loom-item-action-box">
         <button type="button" class="loom-roll-btn item-roll-btn" data-action="roll-damage">
-          <i class="fa-solid fa-dice-d20"></i> Roll Weapon Damage ({{systemData.damage}})
+          <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.actions.roll"}} {{localize "loom-demo-system.items.damageFormula"}} ({{systemData.damage}})
         </button>
       </div>
     {{/if}}
@@ -70,7 +71,7 @@
     {{#if isArmor}}
       <div class="loom-item-props-grid single">
         <div class="item-prop-card">
-          <label><i class="fa-solid fa-shield"></i> Defense Bonus</label>
+          <label><i class="fa-solid fa-shield"></i> {{localize "loom-demo-system.items.defenseBonus"}}</label>
           <input type="number" name="sd:defenseBonus" value="{{systemData.defenseBonus}}" class="prop-input" />
         </div>
       </div>
@@ -79,7 +80,7 @@
     {{#if isPotion}}
       <div class="loom-item-props-grid single">
         <div class="item-prop-card">
-          <label><i class="fa-solid fa-heart-pulse"></i> Healing / Effect</label>
+          <label><i class="fa-solid fa-heart-pulse"></i> {{localize "loom-demo-system.items.healing"}}</label>
           <input type="text" name="sd:healAmount" value="{{systemData.healAmount}}" placeholder="e.g. 2d4+2" class="prop-input" />
         </div>
       </div>
@@ -87,8 +88,8 @@
 
     <!-- General Description -->
     <div class="loom-item-desc-section">
-      <label><i class="fa-solid fa-align-left"></i> Description & Notes</label>
-      <textarea name="sd:description" placeholder="Describe the properties or lore of this item..." rows="4" class="loom-item-textarea">{{systemData.description}}</textarea>
+      <label><i class="fa-solid fa-align-left"></i> {{localize "loom-demo-system.items.description"}}</label>
+      <textarea name="sd:description" placeholder="{{localize "loom-demo-system.items.descPlaceholder"}}" rows="4" class="loom-item-textarea">{{systemData.description}}</textarea>
     </div>
   </div>
 </div>

@@ -15,6 +15,18 @@ import { LoomHandlebarsMixin, LoomActorSheet, LoomDialog, api, showToast, showCo
 import { DemoItemSheet } from './item-sheet.mjs';
 
 /**
+ * Helper to translate keys using Loom's native i18n engine (window.Loom.i18n.localize).
+ * Demonstrates client-side localization for script dialogs, UI labels, and toasts.
+ * @param {string} key - Translation key in lang/*.json
+ * @param {string} [fallback] - Fallback text if key is unresolved
+ * @returns {string}
+ */
+export function localize(key, fallback = '') {
+  const text = window.Loom?.i18n?.localize?.(key);
+  return (text && text !== key) ? text : (fallback || key);
+}
+
+/**
  * Retrieves the token target currently selected by the user on the canvas.
  * If a target is selected, returns its name, avatar, and defense rating.
  * @returns {{ name: string, defense: number, avatar: string, targetId: string, actorId: string } | null}
@@ -27,7 +39,7 @@ function getActiveTarget() {
   if (target.actorId && window.Loom?.actors?.get) {
     actor = window.Loom.actors.get(target.actorId);
   }
-  const name = target.name || actor?.name || 'Target';
+  const name = target.name || actor?.name || localize('loom-demo-system.chat.target', 'Target');
   const defense = target.systemData?.defense ?? actor?.systemData?.defense ?? actor?.defense ?? 10;
   const avatar = target.imgUrl || target.avatarUrl || actor?.avatarUrl || '';
   return { name, defense, avatar, targetId: target.id, actorId: target.actorId };
@@ -124,36 +136,33 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     const attributesList = [
       {
         key: 'might',
-        label: 'Might',
-        ptLabel: 'Physical power & impact',
+        label: localize('loom-demo-system.attributes.might', 'Might'),
         icon: 'fa-solid fa-hand-fist',
         color: 'attr-might',
-        desc: 'Physical power & impact',
+        desc: localize('loom-demo-system.attributes.mightDesc', 'Physical power & impact'),
         value: attrs.might ?? 5,
         bonus: bonus.attack,
-        bonusLabel: 'Attack',
+        bonusLabel: localize('loom-demo-system.actions.attack', 'Attack'),
       },
       {
         key: 'swift',
-        label: 'Swift',
-        ptLabel: 'Reflexes & agility',
+        label: localize('loom-demo-system.attributes.swift', 'Swift'),
         icon: 'fa-solid fa-bolt',
         color: 'attr-swift',
-        desc: 'Reflexes & evasion',
+        desc: localize('loom-demo-system.attributes.swiftDesc', 'Reflexes & agility'),
         value: attrs.swift ?? 5,
         bonus: bonus.dodge,
-        bonusLabel: 'Dodge / Init',
+        bonusLabel: `${localize('loom-demo-system.actions.dodge', 'Dodge')} / ${localize('loom-demo-system.actions.initiative', 'Init')}`,
       },
       {
         key: 'wits',
-        label: 'Wits',
-        ptLabel: 'Cunning & awareness',
+        label: localize('loom-demo-system.attributes.wits', 'Wits'),
         icon: 'fa-solid fa-brain',
         color: 'attr-wits',
-        desc: 'Cunning & perception',
+        desc: localize('loom-demo-system.attributes.witsDesc', 'Cunning & awareness'),
         value: attrs.wits ?? 5,
         bonus: bonus.detect,
-        bonusLabel: 'Perception',
+        bonusLabel: localize('loom-demo-system.actions.perception', 'Perception'),
       },
     ];
 
@@ -239,16 +248,16 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
             ${target.avatar ? `<img src="${target.avatar}" alt="${target.name}" />` : `<i class="fa-solid fa-crosshairs"></i>`}
           </div>
           <div class="target-info">
-            <span class="target-tag"><i class="fa-solid fa-bullseye"></i> Target Selected</span>
+            <span class="target-tag"><i class="fa-solid fa-bullseye"></i> ${localize('loom-demo-system.dialog.targetSelected', 'Target Selected')}</span>
             <span class="target-name">${target.name}</span>
           </div>
           <div class="target-defense-pill">
-            <span class="def-title">TARGET DEFENSE</span>
+            <span class="def-title">${localize('loom-demo-system.dialog.targetDefense', 'TARGET DEFENSE')}</span>
             <span class="def-num">${target.defense}</span>
           </div>
         </div>`
       : `<div class="roll-dialog-no-target">
-          <i class="fa-solid fa-crosshairs"></i> No target selected on canvas (Default DC: 10).
+          <i class="fa-solid fa-crosshairs"></i> ${localize('loom-demo-system.dialog.noTarget', 'No target selected on canvas (Default DC: 10).')}
         </div>`;
 
     const contentHtml = `
@@ -257,49 +266,49 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
 
         <div class="roll-dialog-stats-row">
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Check / Action</span>
+            <span class="stat-label">${localize('loom-demo-system.dialog.checkAction', 'Check / Action')}</span>
             <span class="stat-val">${label}</span>
           </div>
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Base Formula</span>
+            <span class="stat-label">${localize('loom-demo-system.dialog.baseFormula', 'Base Formula')}</span>
             <span class="stat-val formula">${baseFormula}</span>
           </div>
         </div>
 
         <div class="roll-dialog-form-grid">
           <div class="roll-dialog-field">
-            <label for="roll-dc-input"><i class="fa-solid fa-shield"></i> Difficulty (DC / Defense)</label>
+            <label for="roll-dc-input"><i class="fa-solid fa-shield"></i> ${localize('loom-demo-system.dialog.difficulty', 'Difficulty (DC / Defense)')}</label>
             <input type="number" id="roll-dc-input" value="${defaultDiff}" min="0" class="dialog-input" />
-            <span class="field-hint">${target ? 'Pre-filled with target defense' : 'Set check DC'}</span>
+            <span class="field-hint">${target ? localize('loom-demo-system.dialog.targetHint', 'Pre-filled with target defense') : localize('loom-demo-system.dialog.dcHint', 'Set check DC')}</span>
           </div>
 
           <div class="roll-dialog-field">
-            <label for="roll-mod-input"><i class="fa-solid fa-plus-minus"></i> Situational Modifier</label>
+            <label for="roll-mod-input"><i class="fa-solid fa-plus-minus"></i> ${localize('loom-demo-system.dialog.modifier', 'Situational Modifier')}</label>
             <input type="number" id="roll-mod-input" value="0" class="dialog-input" />
-            <span class="field-hint">Bonus or penalty (+2, -1, etc.)</span>
+            <span class="field-hint">${localize('loom-demo-system.dialog.modifierHint', 'Bonus or penalty (+2, -1, etc.)')}</span>
           </div>
         </div>
 
         <div class="roll-dialog-field full-width">
-          <label for="roll-mode-select"><i class="fa-solid fa-dice"></i> Roll Mode</label>
+          <label for="roll-mode-select"><i class="fa-solid fa-dice"></i> ${localize('loom-demo-system.dialog.rollMode', 'Roll Mode')}</label>
           <select id="roll-mode-select" class="dialog-select">
-            <option value="normal" selected>Normal (1d20)</option>
-            <option value="advantage">Advantage (Roll 2d20, keep highest)</option>
-            <option value="disadvantage">Disadvantage (Roll 2d20, keep lowest)</option>
+            <option value="normal" selected>${localize('loom-demo-system.dialog.modeNormal', 'Normal (1d20)')}</option>
+            <option value="advantage">${localize('loom-demo-system.dialog.modeAdvantage', 'Advantage (Roll 2d20, keep highest)')}</option>
+            <option value="disadvantage">${localize('loom-demo-system.dialog.modeDisadvantage', 'Disadvantage (Roll 2d20, keep lowest)')}</option>
           </select>
         </div>
       </div>
     `;
 
     const result = await LoomDialog.wait({
-      window: { title: `Roll Dialog — ${label}` },
+      window: { title: `${localize('loom-demo-system.actions.roll', 'Roll')} — ${label}` },
       width: 440,
       classes: ['loom-roll-box-window'],
       content: contentHtml,
       buttons: [
         {
           action: 'roll',
-          label: '<i class="fa-solid fa-dice-d20"></i> Roll Dice',
+          label: `<i class="fa-solid fa-dice-d20"></i> ${localize('loom-demo-system.dialog.rollDice', 'Roll Dice')}`,
           default: true,
           variant: 'primary',
           callback: (_event, _button, dialog) => {
@@ -312,7 +321,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         },
         {
           action: 'cancel',
-          label: 'Cancel',
+          label: localize('loom-demo-system.dialog.cancel', 'Cancel'),
           variant: 'ghost',
         },
       ],
@@ -384,14 +393,14 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     const doc = this.document || {};
     const bonus = doc._bonus || {};
     let mod = 0;
-    let label = 'Combat';
+    let label = localize('loom-demo-system.title', 'Combat');
 
     if (actionType === 'attack') {
       mod = bonus.attack ?? Math.floor(((doc.attributes?.might ?? 5)) / 2);
-      label = 'Attack';
+      label = localize('loom-demo-system.actions.attack', 'Attack');
     } else if (actionType === 'dodge') {
       mod = bonus.dodge ?? Math.floor(((doc.attributes?.swift ?? 5)) / 2);
-      label = 'Dodge';
+      label = localize('loom-demo-system.actions.dodge', 'Dodge');
     }
 
     const sign = mod >= 0 ? '+' : '';
@@ -427,15 +436,15 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       ? `<div class="roll-initiative-combat-card active">
           <i class="fa-solid fa-swords"></i>
           <div>
-            <strong>Active in Combat!</strong>
-            <p>The result will be sent directly to the <strong>Combat Tracker</strong> to order your turn.</p>
+            <strong>${localize('loom-demo-system.dialog.activeInCombat', 'Active in Combat!')}</strong>
+            <p>${localize('loom-demo-system.dialog.activeInCombatDesc', 'The result will be sent directly to the Combat Tracker to order your turn.')}</p>
           </div>
         </div>`
       : `<div class="roll-initiative-combat-card">
           <i class="fa-solid fa-bolt"></i>
           <div>
-            <strong>Turn Order</strong>
-            <p>Rolls character swiftness to determine initiative position for the round.</p>
+            <strong>${localize('loom-demo-system.dialog.turnOrder', 'Turn Order')}</strong>
+            <p>${localize('loom-demo-system.dialog.turnOrderDesc', 'Rolls character swiftness to determine initiative position for the round.')}</p>
           </div>
         </div>`;
 
@@ -445,28 +454,28 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
 
         <div class="roll-dialog-stats-row">
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Character</span>
-            <span class="stat-val">${doc.name || 'Hero'}</span>
+            <span class="stat-label">${localize('loom-demo-system.dialog.character', 'Character')}</span>
+            <span class="stat-val">${doc.name || localize('loom-demo-system.hero', 'Hero')}</span>
           </div>
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Base Formula (Swift)</span>
+            <span class="stat-label">${localize('loom-demo-system.dialog.baseFormula', 'Base Formula')} (${localize('loom-demo-system.attributes.swift', 'Swift')})</span>
             <span class="stat-val formula">${baseFormula}</span>
           </div>
         </div>
 
         <div class="roll-dialog-form-grid">
           <div class="roll-dialog-field full-width">
-            <label for="init-mod-input"><i class="fa-solid fa-plus-minus"></i> Situational Modifier</label>
+            <label for="init-mod-input"><i class="fa-solid fa-plus-minus"></i> ${localize('loom-demo-system.dialog.modifier', 'Situational Modifier')}</label>
             <input type="number" id="init-mod-input" value="0" class="dialog-input" />
-            <span class="field-hint">Temporary bonus or penalty (+2, -1, etc.)</span>
+            <span class="field-hint">${localize('loom-demo-system.dialog.modifierHint', 'Bonus or penalty (+2, -1, etc.)')}</span>
           </div>
 
           <div class="roll-dialog-field full-width">
-            <label for="init-mode-select"><i class="fa-solid fa-dice"></i> Roll Mode</label>
+            <label for="init-mode-select"><i class="fa-solid fa-dice"></i> ${localize('loom-demo-system.dialog.rollMode', 'Roll Mode')}</label>
             <select id="init-mode-select" class="dialog-select">
-              <option value="normal" selected>Normal (1d20)</option>
-              <option value="advantage">Advantage (Roll 2d20, keep highest)</option>
-              <option value="disadvantage">Disadvantage (Roll 2d20, keep lowest)</option>
+              <option value="normal" selected>${localize('loom-demo-system.dialog.modeNormal', 'Normal (1d20)')}</option>
+              <option value="advantage">${localize('loom-demo-system.dialog.modeAdvantage', 'Advantage (Roll 2d20, keep highest)')}</option>
+              <option value="disadvantage">${localize('loom-demo-system.dialog.modeDisadvantage', 'Disadvantage (Roll 2d20, keep lowest)')}</option>
             </select>
           </div>
         </div>
@@ -474,14 +483,14 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     `;
 
     const result = await LoomDialog.wait({
-      window: { title: `Initiative — ${doc.name || 'Hero'}` },
+      window: { title: `${localize('loom-demo-system.actions.initiative', 'Initiative')} — ${doc.name || localize('loom-demo-system.hero', 'Hero')}` },
       width: 420,
       classes: ['loom-roll-box-window', 'loom-initiative-window'],
       content: contentHtml,
       buttons: [
         {
           action: 'roll',
-          label: '<i class="fa-solid fa-bolt"></i> Roll Initiative',
+          label: `<i class="fa-solid fa-bolt"></i> ${localize('loom-demo-system.dialog.rollInitiative', 'Roll Initiative')}`,
           default: true,
           variant: 'primary',
           callback: (_event, _button, dialog) => {
@@ -493,7 +502,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         },
         {
           action: 'cancel',
-          label: 'Cancel',
+          label: localize('loom-demo-system.dialog.cancel', 'Cancel'),
           variant: 'ghost',
         },
       ],
@@ -515,16 +524,16 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         actorId: this.actorId,
         meta: {
           system: 'Loom Demo',
-          label: 'Initiative',
+          label: localize('loom-demo-system.actions.initiative', 'Initiative'),
           isInitiative: true,
           actorId: this.actorId,
           inCombat: !!combatant,
           actorAvatar: doc.avatarUrl || '',
-          actorName: doc.name || 'Hero',
+          actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
         },
       });
     } else {
-      showToast(`⚡ Initiative: ${formula}`, 'info');
+      showToast(`⚡ ${localize('loom-demo-system.actions.initiative', 'Initiative')}: ${formula}`, 'info');
     }
   }
 
@@ -553,9 +562,9 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         actorId: this.actorId,
         meta: {
           system: 'Loom Demo',
-          label: `${item.name} (Damage)`,
+          label: `${item.name} (${localize('loom-demo-system.actions.damage', 'Damage')})`,
           actorAvatar: doc.avatarUrl || '',
-          actorName: doc.name || 'Hero',
+          actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
         },
       });
     }
@@ -569,16 +578,16 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       await api.post('/items', {
         worldId: this.document?.worldId,
         actorId: this.actorId,
-        name: 'New Sword',
+        name: localize('loom-demo-system.items.defaultWeaponName', 'New Sword'),
         type: 'weapon',
         systemData: {
           damage: '1d8+2',
-          damageType: 'Slashing',
-          range: 'Melee',
+          damageType: localize('loom-demo-system.items.defaultSlashing', 'Slashing'),
+          range: localize('loom-demo-system.items.defaultMelee', 'Melee'),
         },
       });
       await this._reloadDocument();
-      showToast('Item created!', 'success');
+      showToast(localize('loom-demo-system.items.created', 'Item created!'), 'success');
     } catch (e) {
       showToast(e?.message || 'Error creating item', 'error');
     }
@@ -588,12 +597,15 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    * Deletes an item owned by this actor after user confirmation.
    */
   async deleteItem(itemId) {
-    const confirmed = await showConfirm('Delete Item', 'Are you sure you want to delete this item?');
+    const confirmed = await showConfirm(
+      localize('loom-demo-system.items.delete', 'Delete Item'),
+      localize('loom-demo-system.items.confirmDelete', 'Are you sure you want to delete this item?')
+    );
     if (!confirmed) return;
     try {
       await api.delete(`/items/${itemId}`);
       await this._reloadDocument();
-      showToast('Item deleted', 'info');
+      showToast(localize('loom-demo-system.items.deleted', 'Item deleted'), 'info');
     } catch (e) {
       showToast(e?.message || 'Error deleting item', 'error');
     }
@@ -662,11 +674,15 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    * @returns {Promise<void>}
    */
   async removeEffect(buffId) {
-    const confirmed = await showConfirm('Remove Effect', 'Remove this effect?');
+    const confirmed = await showConfirm(
+      localize('loom-demo-system.effects.delete', 'Remove Effect'),
+      localize('loom-demo-system.effects.confirmDelete', 'Remove this effect?')
+    );
     if (!confirmed) return;
     try {
       await api.delete(`/buffs/${buffId}`);
       await this.loadBuffs();
+      showToast('Effect removed', 'info');
     } catch (e) {
       showToast(e?.message || 'Failed to remove effect', 'error');
     }

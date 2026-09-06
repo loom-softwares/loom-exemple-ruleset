@@ -241,6 +241,46 @@ Demonstrates standalone item documents and sheets:
 
 ---
 
+## 🌐 Localization & i18n (`lang/*.json`)
+
+LoomVTT features a native internationalization engine so that systems never need to hardcode UI strings.
+
+### 1. Declaring Languages in `ruleset.json`
+Declare translation bundles in the static manifest. Loom automatically loads and merges them into the active language registry:
+
+```json
+"languages": [
+  { "lang": "en", "name": "English", "path": "lang/en.json" },
+  { "lang": "pt-BR", "name": "Português (Brasil)", "path": "lang/pt-BR.json" }
+]
+```
+
+### 2. Using `{{localize}}` in Handlebars Templates
+In `.hbs` templates, translate labels, placeholders, and tooltips using the built-in `{{localize}}` helper:
+
+```handlebars
+<!-- Translate labels, tooltips, and placeholders -->
+<label>{{localize "loom-demo-system.attributes.might"}}</label>
+<input placeholder="{{localize "loom-demo-system.sheet.hero.namePlaceholder"}}" />
+<button title="{{localize "loom-demo-system.actions.attack"}}">
+  {{localize "loom-demo-system.actions.attack"}}
+</button>
+```
+
+### 3. Using `window.Loom.i18n.localize()` in JavaScript
+For script-driven UI elements (e.g. `LoomDialog.wait`, `showToast`, chat cards):
+
+```javascript
+export function localize(key, fallback = '') {
+  const text = window.Loom?.i18n?.localize?.(key);
+  return (text && text !== key) ? text : (fallback || key);
+}
+
+const title = localize('loom-demo-system.actions.attack', 'Attack');
+```
+
+---
+
 ## 💬 Custom Chat Cards (`renderMessage.wrap`)
 
 LoomVTT provides `getWraps()` to intercept UI components without altering the engine core:

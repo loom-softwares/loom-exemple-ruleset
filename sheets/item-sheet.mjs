@@ -60,13 +60,15 @@ export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
       const formula = sd.damage || '1d6';
 
       if (window.Loom?.dispatchRoll) {
+        const damageWord = window.Loom?.i18n?.localize?.('loom-demo-system.actions.damage') || 'Damage';
+        const itemWord = window.Loom?.i18n?.localize?.('loom-demo-system.items.newItem') || 'Item';
         window.Loom.dispatchRoll({
           formula,
           meta: {
             system: 'Loom Demo',
-            label: `${doc.name || 'Item'} (Damage)`,
+            label: `${doc.name || itemWord} (${damageWord})`,
             actorAvatar: doc.imgUrl || '',
-            actorName: doc.name || 'Item',
+            actorName: doc.name || itemWord,
           },
         });
       }
