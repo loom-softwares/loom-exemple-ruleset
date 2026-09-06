@@ -18,6 +18,15 @@ import { heroDefaults } from './data/hero.mjs';
 import { villainDefaults } from './data/villain.mjs';
 import { beastDefaults } from './data/beast.mjs';
 import { prepareData } from './data/prepare-data.mjs';
+import { enBundle, ptBundle } from './data/locales.mjs';
+
+// ── Eagerly register language bundles into Loom's central i18n engine ─
+// Ensures all {{localize "key"}} helpers in templates and scripts work immediately
+if (window.Loom?.i18n?.registerLang) {
+  window.Loom.i18n.registerLang('en', enBundle);
+  window.Loom.i18n.registerLang('pt-BR', ptBundle);
+  window.Loom.i18n.registerLang('pt', ptBundle);
+}
 
 SystemRegistry.register(defineSystem({
   id: 'loom-demo-system',
@@ -402,6 +411,28 @@ keybinds.register({
 // ── Settings registration ────────────────────────────────────
 // Registers settings programmatically with Loom's central settings registry.
 // Settings declared in ruleset.json also appear in Setup Hub / Module Settings.
+settings.register('loom-demo-system', 'language', {
+  name: 'Language / Idioma',
+  hint: 'System language for sheets, roll dialogs, and chat cards',
+  scope: 'client',
+  config: true,
+  type: String,
+  choices: {
+    'pt-BR': 'Português (Brasil)',
+    'en': 'English',
+  },
+  default: 'pt-BR',
+  onChange: (val) => {
+    if (document.documentElement) {
+      document.documentElement.lang = val;
+    }
+    // Rerender open windows to reflect language change
+    window.Loom?.windows?.getAll?.()?.forEach((win) => {
+      win.rerenderBody?.();
+    });
+  },
+});
+
 settings.register('loom-demo-system', 'initiativeBonusAttr', {
   name: 'Initiative Attribute',
   hint: 'Attribute used to calculate the initiative bonus (might, swift, or wits)',

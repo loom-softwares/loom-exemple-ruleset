@@ -38,6 +38,18 @@
   ],
   "settings": [
     {
+      "key": "language",
+      "type": "string",
+      "default": "pt-BR",
+      "label": "Idioma do Sistema / Language",
+      "hint": "Idioma padrão para fichas e rolagens / Default language for sheets and rolls",
+      "scope": "client",
+      "choices": {
+        "pt-BR": "Português (Brasil)",
+        "en": "English"
+      }
+    },
+    {
       "key": "initiativeBonusAttr",
       "type": "string",
       "default": "swift",

@@ -11,8 +11,9 @@
 // `LoomHandlebarsMixin(LoomActorSheet)` is the exact mechanism native
 // systems use for a hand-written template (mirrors srd5e/wod6e — this is
 // NOT Foundry sheet emulation, it's LoomVTT's own native equivalent).
-import { LoomHandlebarsMixin, LoomActorSheet, LoomDialog, api, showToast, showConfirm, showPrompt, windowManager } from '/_loom/sdk/index.js';
+import { LoomHandlebarsMixin, LoomActorSheet, LoomDialog, api, showToast, showConfirm, showPrompt, windowManager, settings } from '/_loom/sdk/index.js';
 import { DemoItemSheet } from './item-sheet.mjs';
+import { enBundle, ptBundle } from '../data/locales.mjs';
 
 /**
  * Helper to translate keys using Loom's native i18n engine (window.Loom.i18n.localize).
@@ -23,7 +24,15 @@ import { DemoItemSheet } from './item-sheet.mjs';
  */
 export function localize(key, fallback = '') {
   const text = window.Loom?.i18n?.localize?.(key);
-  return (text && text !== key) ? text : (fallback || key);
+  if (text && text !== key) return text;
+
+  // Fallback to configured language bundle
+  const chosenLang = settings.get('loom-demo-system', 'language') || document.documentElement?.lang || 'pt-BR';
+  const bundle = chosenLang.startsWith('en') ? enBundle : ptBundle;
+  const resolved = key.split('.').reduce((o, k) => o?.[k], bundle) || bundle[key];
+  if (resolved) return resolved;
+
+  return fallback || key;
 }
 
 /**

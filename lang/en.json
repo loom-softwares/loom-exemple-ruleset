@@ -1,33 +1,173 @@
 {
+  "loom-demo-system": {
+    "title": "Loom Demo System",
+    "hero": "Hero",
+    "villain": "Villain",
+    "beast": "Beast",
+    "tabs": {
+      "attributes": "Attributes",
+      "combat": "Combat & Status",
+      "items": "Items",
+      "effects": "Effects"
+    },
+    "sheet": {
+      "portrait": {
+        "clickToChange": "Click to change portrait",
+        "title": "Portrait",
+        "change": "Change"
+      },
+      "hero": {
+        "namePlaceholder": "Hero Name..."
+      }
+    },
+    "stats": {
+      "hp": "Hit Points",
+      "defense": "Defense",
+      "armorClass": "Armor Class",
+      "current": "Current",
+      "max": "Max",
+      "defenseHint": "Difficulty to hit the Hero in combat."
+    },
+    "actions": {
+      "attack": "Attack",
+      "dodge": "Dodge",
+      "initiative": "Initiative",
+      "perception": "Perception",
+      "roll": "Roll",
+      "damage": "Damage"
+    },
+    "attributes": {
+      "might": "Might",
+      "mightSubtitle": "Physical Power & Impact",
+      "mightDesc": "Physical power & impact",
+      "swift": "Swift",
+      "swiftSubtitle": "Agility & Reflexes",
+      "swiftDesc": "Reflexes & agility",
+      "wits": "Wits",
+      "witsSubtitle": "Cunning & Perception",
+      "witsDesc": "Cunning & awareness",
+      "modifier": "MODIFIER",
+      "rollMight": "Roll Might",
+      "rollSwift": "Roll Swift",
+      "rollWits": "Roll Wits"
+    },
+    "derived": {
+      "attackBonus": "Attack Bonus",
+      "dodgeBonus": "Dodge Bonus",
+      "initBonus": "Initiative Bonus",
+      "detectBonus": "Perception / Senses"
+    },
+    "combat": {
+      "maneuvers": "Combat Maneuvers",
+      "basicAttack": "Basic Attack",
+      "quickDodge": "Quick Dodge",
+      "combatInitiative": "Combat Initiative"
+    },
+    "items": {
+      "title": "Equipment & Inventory",
+      "counter": "item(s) in inventory",
+      "newItem": "New Item",
+      "emptyTitle": "No items in inventory",
+      "emptyDesc": "Add weapons, armor, or consumables by clicking 'New Item'. You can click on any item's icon to change its artwork!",
+      "addDemo": "Add Demo Item",
+      "openSheet": "Open item sheet",
+      "openDetails": "Open Item Details",
+      "delete": "Delete Item",
+      "weapon": "Weapon",
+      "armor": "Armor",
+      "potion": "Potion",
+      "scroll": "Scroll",
+      "damageFormula": "Damage Formula",
+      "damageType": "Damage Type",
+      "range": "Range",
+      "defenseBonus": "Defense Bonus",
+      "healing": "Healing / Effect",
+      "description": "Description & Notes",
+      "namePlaceholder": "Item Name...",
+      "descPlaceholder": "Describe the properties or lore of this item...",
+      "created": "Item created!",
+      "deleted": "Item deleted",
+      "confirmDelete": "Are you sure you want to delete this item?",
+      "defaultWeaponName": "New Sword",
+      "defaultSlashing": "Slashing",
+      "defaultMelee": "Melee"
+    },
+    "effects": {
+      "title": "Active Effects & Modifiers",
+      "counter": "effect(s) registered",
+      "newEffect": "New Effect",
+      "emptyTitle": "No active effects",
+      "emptyDesc": "Add temporary buffs, spells, potions, or penalties for this Hero.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "enable": "Enable effect",
+      "disable": "Disable effect",
+      "rename": "Rename effect",
+      "delete": "Remove effect",
+      "confirmDelete": "Remove this effect?"
+    },
+    "dialog": {
+      "targetSelected": "Target Selected",
+      "targetDefense": "TARGET DEFENSE",
+      "noTarget": "No target selected on canvas (Default DC: 10).",
+      "checkAction": "Check / Action",
+      "baseFormula": "Base Formula",
+      "difficulty": "Difficulty (DC / Defense)",
+      "targetHint": "Pre-filled with target defense",
+      "dcHint": "Set check DC",
+      "modifier": "Situational Modifier",
+      "modifierHint": "Bonus or penalty (+2, -1, etc.)",
+      "rollMode": "Roll Mode",
+      "modeNormal": "Normal (1d20)",
+      "modeAdvantage": "Advantage (Roll 2d20, keep highest)",
+      "modeDisadvantage": "Disadvantage (Roll 2d20, keep lowest)",
+      "rollDice": "Roll Dice",
+      "cancel": "Cancel",
+      "activeInCombat": "Active in Combat!",
+      "activeInCombatDesc": "The result will be sent directly to the Combat Tracker to order your turn.",
+      "turnOrder": "Turn Order",
+      "turnOrderDesc": "Rolls character swiftness to determine initiative position for the round.",
+      "character": "Character",
+      "rollInitiative": "Roll Initiative"
+    },
+    "chat": {
+      "blindRoll": "Blind roll",
+      "critical": "CRITICAL!",
+      "fumble": "FUMBLE!",
+      "turnOrder": "TURN ORDER",
+      "combatTracker": "Combat Tracker",
+      "success": "SUCCESS",
+      "fail": "FAIL",
+      "target": "Target",
+      "difficulty": "Difficulty",
+      "total": "TOTAL",
+      "initiative": "INITIATIVE"
+    }
+  },
   "loom-demo-system.title": "Loom Demo System",
   "loom-demo-system.hero": "Hero",
   "loom-demo-system.villain": "Villain",
   "loom-demo-system.beast": "Beast",
-
   "loom-demo-system.tabs.attributes": "Attributes",
   "loom-demo-system.tabs.combat": "Combat & Status",
   "loom-demo-system.tabs.items": "Items",
   "loom-demo-system.tabs.effects": "Effects",
-
   "loom-demo-system.sheet.portrait.clickToChange": "Click to change portrait",
   "loom-demo-system.sheet.portrait.title": "Portrait",
   "loom-demo-system.sheet.portrait.change": "Change",
   "loom-demo-system.sheet.hero.namePlaceholder": "Hero Name...",
-
   "loom-demo-system.stats.hp": "Hit Points",
   "loom-demo-system.stats.defense": "Defense",
   "loom-demo-system.stats.armorClass": "Armor Class",
   "loom-demo-system.stats.current": "Current",
   "loom-demo-system.stats.max": "Max",
   "loom-demo-system.stats.defenseHint": "Difficulty to hit the Hero in combat.",
-
   "loom-demo-system.actions.attack": "Attack",
   "loom-demo-system.actions.dodge": "Dodge",
   "loom-demo-system.actions.initiative": "Initiative",
   "loom-demo-system.actions.perception": "Perception",
   "loom-demo-system.actions.roll": "Roll",
   "loom-demo-system.actions.damage": "Damage",
-
   "loom-demo-system.attributes.might": "Might",
   "loom-demo-system.attributes.mightSubtitle": "Physical Power & Impact",
   "loom-demo-system.attributes.mightDesc": "Physical power & impact",
@@ -41,17 +181,14 @@
   "loom-demo-system.attributes.rollMight": "Roll Might",
   "loom-demo-system.attributes.rollSwift": "Roll Swift",
   "loom-demo-system.attributes.rollWits": "Roll Wits",
-
   "loom-demo-system.derived.attackBonus": "Attack Bonus",
   "loom-demo-system.derived.dodgeBonus": "Dodge Bonus",
   "loom-demo-system.derived.initBonus": "Initiative Bonus",
   "loom-demo-system.derived.detectBonus": "Perception / Senses",
-
   "loom-demo-system.combat.maneuvers": "Combat Maneuvers",
   "loom-demo-system.combat.basicAttack": "Basic Attack",
   "loom-demo-system.combat.quickDodge": "Quick Dodge",
   "loom-demo-system.combat.combatInitiative": "Combat Initiative",
-
   "loom-demo-system.items.title": "Equipment & Inventory",
   "loom-demo-system.items.counter": "item(s) in inventory",
   "loom-demo-system.items.newItem": "New Item",
@@ -79,7 +216,6 @@
   "loom-demo-system.items.defaultWeaponName": "New Sword",
   "loom-demo-system.items.defaultSlashing": "Slashing",
   "loom-demo-system.items.defaultMelee": "Melee",
-
   "loom-demo-system.effects.title": "Active Effects & Modifiers",
   "loom-demo-system.effects.counter": "effect(s) registered",
   "loom-demo-system.effects.newEffect": "New Effect",
@@ -92,7 +228,6 @@
   "loom-demo-system.effects.rename": "Rename effect",
   "loom-demo-system.effects.delete": "Remove effect",
   "loom-demo-system.effects.confirmDelete": "Remove this effect?",
-
   "loom-demo-system.dialog.targetSelected": "Target Selected",
   "loom-demo-system.dialog.targetDefense": "TARGET DEFENSE",
   "loom-demo-system.dialog.noTarget": "No target selected on canvas (Default DC: 10).",
@@ -115,7 +250,6 @@
   "loom-demo-system.dialog.turnOrderDesc": "Rolls character swiftness to determine initiative position for the round.",
   "loom-demo-system.dialog.character": "Character",
   "loom-demo-system.dialog.rollInitiative": "Roll Initiative",
-
   "loom-demo-system.chat.blindRoll": "Blind roll",
   "loom-demo-system.chat.critical": "CRITICAL!",
   "loom-demo-system.chat.fumble": "FUMBLE!",
