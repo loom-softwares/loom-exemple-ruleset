@@ -183,7 +183,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     };
 
     const hpPercent = Math.max(0, Math.min(100, Math.round((hpVal / effectiveMaxHp) * 100)));
-
+    const attrs = effectiveAttrs;
     const attributesList = [
       {
         key: 'might',
