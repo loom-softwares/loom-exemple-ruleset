@@ -7,6 +7,8 @@
   "description": "Demonstration System LoomVTT",
   "author": "LoomVTT",
   "client": "main.mjs",
+  "backgroundUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
+  "coverUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
   "active": true,
   "actorTypes": [
     "hero",

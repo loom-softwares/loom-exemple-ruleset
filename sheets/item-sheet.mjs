@@ -2,12 +2,12 @@
 // Loom Demo System — sheets/item-sheet.mjs
 // ══════════════════════════════════════════════════════════════
 //
-// Ficha customizada Handlebars para itens do sistema (LoomItemSheet).
-// Demonstra de forma didática:
-// - Herança de LoomHandlebarsMixin(LoomItemSheet)
-// - Edição de imagem/ícone via pickDocumentImage (data-action="pick-portrait")
-// - Campos dinâmicos conforme o tipo de item (arma, armadura, poção)
-// - Botão de ação direta para rolar o dano do item
+// Custom Handlebars sheet for system items (LoomItemSheet).
+// Demonstrates as an educational reference:
+// - Inheritance from LoomHandlebarsMixin(LoomItemSheet)
+// - Native image/icon picking via data-action="pick-portrait"
+// - Contextual properties by item type (weapon, armor, potion, scroll)
+// - Direct action button to roll weapon damage
 
 import { LoomHandlebarsMixin, LoomItemSheet } from '/_loom/sdk/index.js';
 
@@ -28,7 +28,8 @@ export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
   }
 
   /**
-   * Prepara o contexto para o template Handlebars com flags de tipo
+   * Prepares template context with item type flags and systemData shortcuts.
+   * @returns {Promise<Record<string, any>>}
    */
   async _prepareContext() {
     const base = await super._prepareContext();
@@ -47,7 +48,10 @@ export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
   }
 
   /**
-   * Trata ações de clique da ficha de item (ex: rolar dano)
+   * Action dispatcher for item sheet UI buttons (e.g. roll damage).
+   * @param {string} action - Action key.
+   * @param {string} [id] - Optional ID.
+   * @param {HTMLElement} [target] - Target element.
    */
   async onAction(action, id, target) {
     if (action === 'roll-damage') {
@@ -60,7 +64,7 @@ export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
           formula,
           meta: {
             system: 'Loom Demo',
-            label: `${doc.name || 'Item'} (Dano)`,
+            label: `${doc.name || 'Item'} (Damage)`,
             actorAvatar: doc.imgUrl || '',
             actorName: doc.name || 'Item',
           },
@@ -69,7 +73,7 @@ export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
       return;
     }
 
-    // Delega pick-portrait / editImage para a classe base
+    // Delegate pick-portrait / image selection to base class
     super.onAction?.(action, id, target);
   }
 }

@@ -1,9 +1,9 @@
 /* ══════════════════════════════════════════════════════════════
    Loom Demo System — styles/system.css
-   Estilo visual completo para a ficha de RPG do Loom
+   Complete visual styling for the Loom Demo System character and item sheets
    ══════════════════════════════════════════════════════════════ */
 
-/* Tamanho mínimo e ajustes para a janela da ficha no Loom */
+/* Minimum dimensions and layout adjustments for the sheet window in Loom */
 .loom-window:has(.loom-demo-sheet),
 .loom-window.sheet.actor.hero {
   min-width: 660px !important;
@@ -16,7 +16,7 @@
   padding: 0.65rem 0.85rem !important;
 }
 
-/* Título da janela do sistema */
+/* System window title */
 .loom-window .sheet-title {
   color: var(--color-accent, #e5a93c);
   font-weight: 700;
@@ -35,7 +35,7 @@
   box-sizing: border-box;
 }
 
-/* Header do Card no Chat com Avatar do Ator */
+/* Chat card header with actor avatar */
 .loom-demo-card-header {
   padding: 6px 10px;
   background: linear-gradient(135deg, #2b1414 0%, #441e14 45%, #92400e 85%, #d97706 100%);
@@ -112,7 +112,7 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
-/* Corpo Padronizado do Card no Chat */
+/* Standardized chat card body */
 .loom-demo-card-body {
   padding: 10px 12px;
   display: flex;
@@ -168,7 +168,7 @@
   border: 1px solid #ef4444;
 }
 
-/* Linha de Alvo e Dificuldade no Card */
+/* Target and difficulty row in card */
 .loom-card-target-row {
   display: flex;
   align-items: center;
@@ -196,7 +196,7 @@
   color: #fff;
 }
 
-/* Linha de Iniciativa / Ordem de Turno no Card */
+/* Initiative / turn order row in card */
 .loom-card-initiative-row {
   display: flex;
   align-items: center;
@@ -338,7 +338,7 @@
   gap: 6px;
 }
 
-/* ── Core Dot Pips (usado por villain/beast na getSheetSchema) ─ */
+/* ── Core Dot Pips (used by villain/beast in getSheetSchema) ─ */
 .loom-demo-sheet .dot-pip {
   width: 16px;
   height: 16px;
@@ -382,7 +382,7 @@
   box-sizing: border-box;
 }
 
-/* ── 1. HEADER DO HERÓI (Retrato + Identidade) ───────────────── */
+/* ── 1. HERO HEADER (Portrait + Identity) ───────────────── */
 .loom-hero-header {
   display: flex;
   gap: 1rem;
@@ -407,7 +407,7 @@
   opacity: 0.85;
 }
 
-/* Moldura do Retrato */
+/* Portrait Frame */
 .loom-hero-portrait-frame {
   width: 96px;
   height: 96px;
@@ -491,7 +491,7 @@
   opacity: 1;
 }
 
-/* Bloco de Identidade do Herói */
+/* Hero Identity Block */
 .loom-hero-identity {
   flex: 1;
   display: flex;
@@ -551,7 +551,7 @@
   color: #60a5fa;
 }
 
-/* Input do Nome do Herói */
+/* Hero Name Input */
 .loom-hero-name-row {
   width: 100%;
 }
@@ -584,7 +584,7 @@
   font-weight: 600;
 }
 
-/* Ações Rápidas no Header */
+/* Quick Actions in Header */
 .loom-hero-quick-actions {
   display: flex;
   gap: 0.4rem;
@@ -618,7 +618,7 @@
   transform: translateY(0);
 }
 
-/* ── 2. TABS NAVEGAÇÃO ───────────────────────────────────────── */
+/* ── 2. NAVIGATION TABS ───────────────────────────────────────── */
 .loom-sheet-tabs {
   display: flex;
   gap: 0.3rem;
@@ -654,7 +654,7 @@
   background: rgba(229, 169, 60, 0.08);
 }
 
-/* ── 3. TAB 1: GRID DE ATRIBUTOS ALINHADOS ───────────────────── */
+/* ── 3. TAB 1: ATTRIBUTES GRID ───────────────────── */
 .loom-attributes-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -662,7 +662,7 @@
   margin-top: 0.4rem;
 }
 
-/* Card Individual de Atributo */
+/* Individual Attribute Card */
 .loom-attr-card {
   background: linear-gradient(160deg, #20222a 0%, #171820 100%);
   border: 1px solid var(--rpg-border);
@@ -683,7 +683,7 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 
-/* Auras específicas por atributo */
+/* Attribute-specific glows and accents */
 .loom-attr-card.attr-might {
   border-top: 3px solid #dc2626;
 }
@@ -720,7 +720,7 @@
   border-color: rgba(37, 99, 235, 0.5);
 }
 
-/* Cabeçalho do Card */
+/* Card Header */
 .attr-card-header {
   display: flex;
   align-items: center;
@@ -760,7 +760,7 @@
   text-overflow: ellipsis;
 }
 
-/* Centro do Card (Alinhado Verticalmente sem colisão) */
+/* Card Center (Vertically aligned) */
 .attr-card-center {
   display: flex;
   flex-direction: column;
@@ -839,7 +839,7 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-/* Botão de Rolagem do Atributo */
+/* Attribute Roll Button */
 .attr-card-footer {
   width: 100%;
 }
@@ -884,7 +884,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-/* Painel de Bônus Derivados */
+/* Derived Bonuses Panel */
 .loom-derived-panel {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -923,7 +923,7 @@
   color: #fff;
 }
 
-/* ── 4. TAB 2: COMBATE & STATUS ──────────────────────────────── */
+/* ── 4. TAB 2: COMBAT & STATUS ──────────────────────────────── */
 .loom-combat-vitals {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -1030,7 +1030,7 @@
   font-weight: 700;
 }
 
-/* Barra de Vida */
+/* Hit Points Bar */
 .loom-hp-progress-track {
   width: 100%;
   height: 8px;
@@ -1049,7 +1049,7 @@
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
 }
 
-/* Defesa */
+/* Defense */
 .vital-defense-value-box {
   display: flex;
   align-items: center;
@@ -1083,7 +1083,7 @@
   margin: 0;
 }
 
-/* Seção de Ações de Combate */
+/* Combat Actions Section */
 .loom-combat-actions-section {
   margin-top: 0.85rem;
 }
@@ -1145,7 +1145,7 @@
   color: var(--rpg-text-muted);
 }
 
-/* ── 5. TAB 3: EFEITOS ATIVOS ────────────────────────────────── */
+/* ── 5. TAB 3: ACTIVE EFFECTS ────────────────────────────────── */
 .loom-effects-section {
   margin-top: 0.4rem;
 }
@@ -1318,7 +1318,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   CAIXA DE ROLAGEM (ROLL BOX / DIALOG)
+   ROLL BOX / DIALOG
    ══════════════════════════════════════════════════════════ */
 .loom-roll-box-window .loom-window-body {
   padding: 1rem 1.15rem !important;
@@ -1332,7 +1332,7 @@
   color: #e5e7eb;
 }
 
-/* Alvo Selecionado no Dialog */
+/* Target Selected in Dialog */
 .roll-dialog-target-card {
   display: flex;
   align-items: center;
@@ -1410,7 +1410,7 @@
   color: #fff;
 }
 
-/* Sem Alvo */
+/* No Target */
 .roll-dialog-no-target {
   font-size: 0.75rem;
   color: var(--rpg-text-muted);
@@ -1423,7 +1423,7 @@
   gap: 0.5rem;
 }
 
-/* Card de Status de Combate no Dialog de Iniciativa */
+/* Combat status card in initiative dialog */
 .roll-initiative-combat-card {
   display: flex;
   align-items: center;
@@ -1466,7 +1466,7 @@
   line-height: 1.3;
 }
 
-/* Estatísticas Rápidas da Ação no Dialog */
+/* Quick action stats in dialog */
 .roll-dialog-stats-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1501,7 +1501,7 @@
   font-family: monospace;
 }
 
-/* Campos do Formulário do Dialog */
+/* Dialog form fields */
 .roll-dialog-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1557,7 +1557,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   INVENTÁRIO & ITENS (HERO SHEET TAB)
+   INVENTORY & ITEMS (HERO SHEET TAB)
    ══════════════════════════════════════════════════════════ */
 .loom-items-section {
   display: flex;
@@ -1763,7 +1763,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   FICHA DE ITEM (DEMO ITEM SHEET)
+   ITEM SHEET (DEMO ITEM SHEET)
    ══════════════════════════════════════════════════════════ */
 .loom-item-sheet {
   padding: 0.75rem;

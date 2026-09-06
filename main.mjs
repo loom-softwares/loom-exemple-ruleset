@@ -254,9 +254,9 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
 
   const { esc, canSeeRoll } = ctx;
   const sp = msg.speaker || {};
-  const actorName = msg.roll.meta?.actorName || sp.actorName || msg.userName || 'Herói';
+  const actorName = msg.roll.meta?.actorName || sp.actorName || msg.userName || 'Hero';
   const actorAvatar = msg.roll.meta?.actorAvatar || sp.actorAvatar || sp.avatarUrl || msg.userAvatar || '';
-  const rollLabel = msg.roll.meta?.label || 'Rolagem';
+  const rollLabel = msg.roll.meta?.label || 'Roll';
 
   if (!canSeeRoll) {
     return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
@@ -269,7 +269,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
         </div>
       </div>
       <div class="sidebar-message-body">
-        <div class="sidebar-message-text sidebar-message-whisper"><i class="fa-solid fa-dice-d20"></i> Rolagem oculta</div>
+        <div class="sidebar-message-text sidebar-message-whisper"><i class="fa-solid fa-dice-d20"></i> Blind roll</div>
       </div>
     </div>`;
   }
@@ -283,12 +283,12 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   const isCrit20 = diceTerm?.faces === 20 && d20Val === 20;
   const isCrit1 = diceTerm?.faces === 20 && d20Val === 1;
   const critBadge = isCrit20
-    ? `<span class="loom-crit-badge crit-success">CRÍTICO!</span>`
+    ? `<span class="loom-crit-badge crit-success">CRITICAL!</span>`
     : isCrit1
-    ? `<span class="loom-crit-badge crit-fail">FALHA!</span>`
+    ? `<span class="loom-crit-badge crit-fail">FUMBLE!</span>`
     : '';
 
-  // Sincronização automática com o Combat Tracker quando a iniciativa for rolada
+  // Automatically synchronize with Combat Tracker when initiative is rolled
   if (msg.roll?.meta?.isInitiative && msg.roll.meta?.actorId) {
     const activeCombat = window.Loom?.combat || window.Loom?.combats?.active;
     const worldId = window.Loom?.world?.id;
@@ -308,7 +308,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   }
 
   return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
-    <!-- Header: Avatar do Ator + Identidade + Tipo de Teste -->
+    <!-- Header: Actor Avatar + Identity + Roll Type -->
     <div class="loom-demo-card-header">
       <div class="loom-card-identity">
         <div class="loom-card-avatar">
@@ -324,7 +324,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
       </div>
     </div>
 
-    <!-- Body: Tamanho Padrão + Elementos Visíveis -->
+    <!-- Body: Standard Sizing + Visible Roll Breakdown -->
     <div class="loom-demo-card-body">
       <div class="loom-card-formula-row">
         <span class="loom-card-formula-pill">
@@ -338,7 +338,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
           const inCombat = msg.roll.meta?.inCombat;
           return `<div class="loom-card-initiative-row">
             <span class="loom-card-initiative-chip">
-              <i class="fa-solid fa-bolt"></i> ORDEM DE TURNO
+              <i class="fa-solid fa-bolt"></i> TURN ORDER
             </span>
             ${inCombat ? `<span class="loom-initiative-status in-combat"><i class="fa-solid fa-swords"></i> Combat Tracker</span>` : ''}
           </div>`;
@@ -349,14 +349,14 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
         if (difficulty === undefined && !targetName) return '';
         const isSuccess = difficulty !== undefined ? (roll.total >= difficulty) : null;
         const resultBadge = isSuccess === true
-          ? `<span class="loom-crit-badge crit-success"><i class="fa-solid fa-check"></i> SUCESSO</span>`
+          ? `<span class="loom-crit-badge crit-success"><i class="fa-solid fa-check"></i> SUCCESS</span>`
           : isSuccess === false
-          ? `<span class="loom-crit-badge crit-fail"><i class="fa-solid fa-xmark"></i> FALHA</span>`
+          ? `<span class="loom-crit-badge crit-fail"><i class="fa-solid fa-xmark"></i> FAIL</span>`
           : '';
 
         return `<div class="loom-card-target-row">
           <span class="loom-card-target-chip">
-            <i class="fa-solid fa-bullseye"></i> ${targetName ? `Alvo: <strong>${esc(targetName)}</strong> (Def ${difficulty})` : `Dificuldade: <strong>DC ${difficulty}</strong>`}
+            <i class="fa-solid fa-bullseye"></i> ${targetName ? `Target: <strong>${esc(targetName)}</strong> (Def ${difficulty})` : `Difficulty: <strong>DC ${difficulty}</strong>`}
           </span>
           ${resultBadge}
         </div>`;
@@ -368,7 +368,7 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
           ${modVal !== undefined ? `<span class="breakdown-op">${modVal >= 0 ? '+' : '-'}</span><span class="breakdown-mod">${Math.abs(modVal)}</span>` : ''}
         </div>
         <div class="loom-card-total-box ${isCrit20 ? 'glow-success' : ''} ${isCrit1 ? 'glow-fail' : ''}">
-          <span class="total-label">${msg.roll.meta?.isInitiative ? 'INICIATIVA' : 'TOTAL'}</span>
+          <span class="total-label">${msg.roll.meta?.isInitiative ? 'INITIATIVE' : 'TOTAL'}</span>
           <span class="total-number">${roll.total}</span>
         </div>
       </div>

@@ -15,8 +15,9 @@ import { LoomHandlebarsMixin, LoomActorSheet, LoomDialog, api, showToast, showCo
 import { DemoItemSheet } from './item-sheet.mjs';
 
 /**
- * Obtém o alvo (token) atualmente selecionado pelo usuário na mesa (canvas).
- * Se houver um alvo selecionado, retorna o nome, avatar e a Defesa dele.
+ * Retrieves the token target currently selected by the user on the canvas.
+ * If a target is selected, returns its name, avatar, and defense rating.
+ * @returns {{ name: string, defense: number, avatar: string, targetId: string, actorId: string } | null}
  */
 function getActiveTarget() {
   const targets = window.Loom?.user?.targets || [];
@@ -26,7 +27,7 @@ function getActiveTarget() {
   if (target.actorId && window.Loom?.actors?.get) {
     actor = window.Loom.actors.get(target.actorId);
   }
-  const name = target.name || actor?.name || 'Alvo';
+  const name = target.name || actor?.name || 'Target';
   const defense = target.systemData?.defense ?? actor?.systemData?.defense ?? actor?.defense ?? 10;
   const avatar = target.imgUrl || target.avatarUrl || actor?.avatarUrl || '';
   return { name, defense, avatar, targetId: target.id, actorId: target.actorId };
@@ -124,35 +125,35 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       {
         key: 'might',
         label: 'Might',
-        ptLabel: 'Força / Might',
+        ptLabel: 'Physical power & impact',
         icon: 'fa-solid fa-hand-fist',
         color: 'attr-might',
-        desc: 'Poder físico & impacto',
+        desc: 'Physical power & impact',
         value: attrs.might ?? 5,
         bonus: bonus.attack,
-        bonusLabel: 'Ataque',
+        bonusLabel: 'Attack',
       },
       {
         key: 'swift',
         label: 'Swift',
-        ptLabel: 'Agilidade / Swift',
+        ptLabel: 'Reflexes & agility',
         icon: 'fa-solid fa-bolt',
         color: 'attr-swift',
-        desc: 'Reflexos & esquiva',
+        desc: 'Reflexes & evasion',
         value: attrs.swift ?? 5,
         bonus: bonus.dodge,
-        bonusLabel: 'Esquiva / Ini',
+        bonusLabel: 'Dodge / Init',
       },
       {
         key: 'wits',
         label: 'Wits',
-        ptLabel: 'Astúcia / Wits',
+        ptLabel: 'Cunning & awareness',
         icon: 'fa-solid fa-brain',
         color: 'attr-wits',
-        desc: 'Astúcia & percepção',
+        desc: 'Cunning & perception',
         value: attrs.wits ?? 5,
         bonus: bonus.detect,
-        bonusLabel: 'Percepção',
+        bonusLabel: 'Perception',
       },
     ];
 
@@ -223,9 +224,9 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   }
 
   /**
-   * Caixa de Rolagem interativa (Roll Dialog):
-   * Exibe a fórmula base, detecta se há um alvo selecionado na mesa (puxando a Defesa dele como DC),
-   * permite configurar modificador situacional e vantagem/desvantagem antes de enviar para o chat.
+   * Interactive Roll Dialog:
+   * Displays the base formula, checks if a canvas target is selected (pre-filling target defense as DC),
+   * and allows configuring situational modifiers and advantage/disadvantage before dispatching to chat.
    */
   async promptRollDialog({ label, baseFormula, bonus, actionType, attrKey }) {
     const doc = this.document || {};
@@ -238,16 +239,16 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
             ${target.avatar ? `<img src="${target.avatar}" alt="${target.name}" />` : `<i class="fa-solid fa-crosshairs"></i>`}
           </div>
           <div class="target-info">
-            <span class="target-tag"><i class="fa-solid fa-bullseye"></i> Alvo Selecionado</span>
+            <span class="target-tag"><i class="fa-solid fa-bullseye"></i> Target Selected</span>
             <span class="target-name">${target.name}</span>
           </div>
           <div class="target-defense-pill">
-            <span class="def-title">DEFESA DO ALVO</span>
+            <span class="def-title">TARGET DEFENSE</span>
             <span class="def-num">${target.defense}</span>
           </div>
         </div>`
       : `<div class="roll-dialog-no-target">
-          <i class="fa-solid fa-crosshairs"></i> Nenhum alvo selecionado na mesa (DC padrão: 10).
+          <i class="fa-solid fa-crosshairs"></i> No target selected on canvas (Default DC: 10).
         </div>`;
 
     const contentHtml = `
@@ -256,49 +257,49 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
 
         <div class="roll-dialog-stats-row">
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Teste / Ação</span>
+            <span class="stat-label">Check / Action</span>
             <span class="stat-val">${label}</span>
           </div>
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Fórmula Base</span>
+            <span class="stat-label">Base Formula</span>
             <span class="stat-val formula">${baseFormula}</span>
           </div>
         </div>
 
         <div class="roll-dialog-form-grid">
           <div class="roll-dialog-field">
-            <label for="roll-dc-input"><i class="fa-solid fa-shield"></i> Dificuldade (DC / Defesa)</label>
+            <label for="roll-dc-input"><i class="fa-solid fa-shield"></i> Difficulty (DC / Defense)</label>
             <input type="number" id="roll-dc-input" value="${defaultDiff}" min="0" class="dialog-input" />
-            <span class="field-hint">${target ? 'Pré-preenchido com a Defesa do alvo' : 'Defina a DC do teste'}</span>
+            <span class="field-hint">${target ? 'Pre-filled with target defense' : 'Set check DC'}</span>
           </div>
 
           <div class="roll-dialog-field">
-            <label for="roll-mod-input"><i class="fa-solid fa-plus-minus"></i> Modificador Situacional</label>
+            <label for="roll-mod-input"><i class="fa-solid fa-plus-minus"></i> Situational Modifier</label>
             <input type="number" id="roll-mod-input" value="0" class="dialog-input" />
-            <span class="field-hint">Bônus ou penalidade (+2, -1, etc.)</span>
+            <span class="field-hint">Bonus or penalty (+2, -1, etc.)</span>
           </div>
         </div>
 
         <div class="roll-dialog-field full-width">
-          <label for="roll-mode-select"><i class="fa-solid fa-dice"></i> Tipo de Rolagem</label>
+          <label for="roll-mode-select"><i class="fa-solid fa-dice"></i> Roll Mode</label>
           <select id="roll-mode-select" class="dialog-select">
             <option value="normal" selected>Normal (1d20)</option>
-            <option value="advantage">Vantagem (Rola 2d20, pega o Maior)</option>
-            <option value="disadvantage">Desvantagem (Rola 2d20, pega o Menor)</option>
+            <option value="advantage">Advantage (Roll 2d20, keep highest)</option>
+            <option value="disadvantage">Disadvantage (Roll 2d20, keep lowest)</option>
           </select>
         </div>
       </div>
     `;
 
     const result = await LoomDialog.wait({
-      window: { title: `Caixa de Rolagem — ${label}` },
+      window: { title: `Roll Dialog — ${label}` },
       width: 440,
       classes: ['loom-roll-box-window'],
       content: contentHtml,
       buttons: [
         {
           action: 'roll',
-          label: '<i class="fa-solid fa-dice-d20"></i> Rolar Dados',
+          label: '<i class="fa-solid fa-dice-d20"></i> Roll Dice',
           default: true,
           variant: 'primary',
           callback: (_event, _button, dialog) => {
@@ -311,7 +312,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         },
         {
           action: 'cancel',
-          label: 'Cancelar',
+          label: 'Cancel',
           variant: 'ghost',
         },
       ],
@@ -319,7 +320,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
 
     if (!result || !result.confirmed) return;
 
-    // Constrói a fórmula com vantagem/desvantagem e modificadores
+    // Build formula with roll mode and modifiers
     let dice = '1d20';
     if (result.mode === 'advantage') dice = '2d20kh1';
     if (result.mode === 'disadvantage') dice = '2d20kl1';
@@ -339,7 +340,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
           targetName: target?.name || null,
           targetAvatar: target?.avatar || null,
           actorAvatar: doc.avatarUrl || '',
-          actorName: doc.name || 'Herói',
+          actorName: doc.name || 'Hero',
           attr: attrKey,
           action: actionType,
         },
@@ -350,7 +351,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   }
 
   /**
-   * Abre a Caixa de Rolagem para teste de atributo.
+   * Opens the roll dialog for an attribute check.
    * @param {string} attrKey - 'might', 'swift', or 'wits'
    */
   async rollAttribute(attrKey) {
@@ -372,7 +373,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   }
 
   /**
-   * Abre a Caixa de Rolagem para manobras de combate.
+   * Opens the Roll Dialog for combat maneuvers.
    * @param {'attack' | 'dodge' | 'initiative'} actionType
    */
   async rollCombat(actionType) {
@@ -383,14 +384,14 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     const doc = this.document || {};
     const bonus = doc._bonus || {};
     let mod = 0;
-    let label = 'Combate';
+    let label = 'Combat';
 
     if (actionType === 'attack') {
       mod = bonus.attack ?? Math.floor(((doc.attributes?.might ?? 5)) / 2);
-      label = 'Ataque';
+      label = 'Attack';
     } else if (actionType === 'dodge') {
       mod = bonus.dodge ?? Math.floor(((doc.attributes?.swift ?? 5)) / 2);
-      label = 'Esquiva';
+      label = 'Dodge';
     }
 
     const sign = mod >= 0 ? '+' : '';
@@ -405,10 +406,10 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   }
 
   /**
-   * Rolagem especializada de Iniciativa:
-   * - Não passa pela caixa de DC / Defesa do alvo.
-   * - Sem badges de Sucesso ou Falha.
-   * - Conecta-se diretamente com o Loom.combat para atualizar a ordem de turno no Combat Tracker!
+   * Dedicated Initiative roll:
+   * - Bypasses DC / target defense check.
+   * - No Success or Failure badges in chat.
+   * - Directly integrates with Loom.combat to update turn order in the Combat Tracker!
    */
   async rollInitiative() {
     const doc = this.document || {};
@@ -426,15 +427,15 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       ? `<div class="roll-initiative-combat-card active">
           <i class="fa-solid fa-swords"></i>
           <div>
-            <strong>Em Combate Ativo!</strong>
-            <p>O resultado será enviado diretamente ao <strong>Combat Tracker</strong> para ordenar seu turno.</p>
+            <strong>Active in Combat!</strong>
+            <p>The result will be sent directly to the <strong>Combat Tracker</strong> to order your turn.</p>
           </div>
         </div>`
       : `<div class="roll-initiative-combat-card">
           <i class="fa-solid fa-bolt"></i>
           <div>
-            <strong>Ordem de Turno</strong>
-            <p>Rola a rapidez do personagem para definir sua posição de ação na rodada.</p>
+            <strong>Turn Order</strong>
+            <p>Rolls character swiftness to determine initiative position for the round.</p>
           </div>
         </div>`;
 
@@ -444,28 +445,28 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
 
         <div class="roll-dialog-stats-row">
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Personagem</span>
-            <span class="stat-val">${doc.name || 'Herói'}</span>
+            <span class="stat-label">Character</span>
+            <span class="stat-val">${doc.name || 'Hero'}</span>
           </div>
           <div class="roll-dialog-stat-item">
-            <span class="stat-label">Fórmula Base (Swift)</span>
+            <span class="stat-label">Base Formula (Swift)</span>
             <span class="stat-val formula">${baseFormula}</span>
           </div>
         </div>
 
         <div class="roll-dialog-form-grid">
           <div class="roll-dialog-field full-width">
-            <label for="init-mod-input"><i class="fa-solid fa-plus-minus"></i> Modificador Situacional</label>
+            <label for="init-mod-input"><i class="fa-solid fa-plus-minus"></i> Situational Modifier</label>
             <input type="number" id="init-mod-input" value="0" class="dialog-input" />
-            <span class="field-hint">Bônus ou penalidade temporária (+2, -1, etc.)</span>
+            <span class="field-hint">Temporary bonus or penalty (+2, -1, etc.)</span>
           </div>
 
           <div class="roll-dialog-field full-width">
-            <label for="init-mode-select"><i class="fa-solid fa-dice"></i> Tipo de Rolagem</label>
+            <label for="init-mode-select"><i class="fa-solid fa-dice"></i> Roll Mode</label>
             <select id="init-mode-select" class="dialog-select">
               <option value="normal" selected>Normal (1d20)</option>
-              <option value="advantage">Vantagem (Rola 2d20, pega o Maior)</option>
-              <option value="disadvantage">Desvantagem (Rola 2d20, pega o Menor)</option>
+              <option value="advantage">Advantage (Roll 2d20, keep highest)</option>
+              <option value="disadvantage">Disadvantage (Roll 2d20, keep lowest)</option>
             </select>
           </div>
         </div>
@@ -473,14 +474,14 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     `;
 
     const result = await LoomDialog.wait({
-      window: { title: `Iniciativa — ${doc.name || 'Herói'}` },
+      window: { title: `Initiative — ${doc.name || 'Hero'}` },
       width: 420,
       classes: ['loom-roll-box-window', 'loom-initiative-window'],
       content: contentHtml,
       buttons: [
         {
           action: 'roll',
-          label: '<i class="fa-solid fa-bolt"></i> Rolar Iniciativa',
+          label: '<i class="fa-solid fa-bolt"></i> Roll Initiative',
           default: true,
           variant: 'primary',
           callback: (_event, _button, dialog) => {
@@ -492,7 +493,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         },
         {
           action: 'cancel',
-          label: 'Cancelar',
+          label: 'Cancel',
           variant: 'ghost',
         },
       ],
@@ -514,21 +515,21 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         actorId: this.actorId,
         meta: {
           system: 'Loom Demo',
-          label: 'Iniciativa',
+          label: 'Initiative',
           isInitiative: true,
           actorId: this.actorId,
           inCombat: !!combatant,
           actorAvatar: doc.avatarUrl || '',
-          actorName: doc.name || 'Herói',
+          actorName: doc.name || 'Hero',
         },
       });
     } else {
-      showToast(`⚡ Iniciativa: ${formula}`, 'info');
+      showToast(`⚡ Initiative: ${formula}`, 'info');
     }
   }
 
   /**
-   * Abre a janela customizada de Item (DemoItemSheet).
+   * Opens the custom Item sheet (DemoItemSheet).
    * @param {string} itemId
    */
   openItemSheet(itemId) {
@@ -536,7 +537,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   }
 
   /**
-   * Rola dano de um item pertencente ao ator.
+   * Rolls damage for an item owned by this actor.
    * @param {string} itemId
    */
   rollItem(itemId) {
@@ -552,49 +553,49 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         actorId: this.actorId,
         meta: {
           system: 'Loom Demo',
-          label: `${item.name} (Dano)`,
+          label: `${item.name} (Damage)`,
           actorAvatar: doc.avatarUrl || '',
-          actorName: doc.name || 'Herói',
+          actorName: doc.name || 'Hero',
         },
       });
     }
   }
 
   /**
-   * Cria um novo item associado a este ator.
+   * Creates a new item associated with this actor.
    */
   async createItem() {
     try {
       await api.post('/items', {
         worldId: this.document?.worldId,
         actorId: this.actorId,
-        name: 'Nova Espada',
+        name: 'New Sword',
         type: 'weapon',
         systemData: {
           damage: '1d8+2',
-          damageType: 'Cortante',
-          range: 'Corpo a corpo',
+          damageType: 'Slashing',
+          range: 'Melee',
         },
       });
       await this._reloadDocument();
-      showToast('Item criado!', 'success');
+      showToast('Item created!', 'success');
     } catch (e) {
-      showToast(e?.message || 'Erro ao criar item', 'error');
+      showToast(e?.message || 'Error creating item', 'error');
     }
   }
 
   /**
-   * Exclui um item pertencente ao ator após confirmação.
+   * Deletes an item owned by this actor after user confirmation.
    */
   async deleteItem(itemId) {
-    const confirmed = await showConfirm('Excluir Item', 'Tem certeza que deseja excluir este item?');
+    const confirmed = await showConfirm('Delete Item', 'Are you sure you want to delete this item?');
     if (!confirmed) return;
     try {
       await api.delete(`/items/${itemId}`);
       await this._reloadDocument();
-      showToast('Item excluído', 'info');
+      showToast('Item deleted', 'info');
     } catch (e) {
-      showToast(e?.message || 'Erro ao excluir item', 'error');
+      showToast(e?.message || 'Error deleting item', 'error');
     }
   }
 

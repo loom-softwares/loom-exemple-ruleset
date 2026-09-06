@@ -1,71 +1,73 @@
-# 🎲 Loom Demo System — Guia & Template Oficial de Desenvolvimento
+# 🎲 Loom Demo System — Official Reference & Developer Guide
 
-O **Loom Demo System** (`loom-demo-system`) é o sistema de referência oficial e modelo pedagógico para o **LoomVTT**. Ele foi projetado para servir como um **guia prático e código-base inicial (boilerplate)** para desenvolvedores que desejam aprender a criar ou customizar seus próprios sistemas de RPG dentro do LoomVTT.
+The **Loom Demo System** (`loom-demo-system`) is the official demonstration and educational boilerplate ruleset for **LoomVTT**. It is designed as a living reference and starting template for developers learning how to build, customize, and publish their own tabletop RPG systems within LoomVTT.
 
-Distribuído sob a **[Licença MIT](./LICENSE)**: você tem total liberdade para clonar, modificar, renomear, distribuir e comercializar qualquer sistema criado a partir deste código.
-
----
-
-## 🧭 Índice do Guia
-
-1. [Visão Geral e Arquitetura](#-visão-geral-e-arquitetura)
-2. [Estrutura de Pastas e Arquivos](#-estrutura-de-pastas-e-arquivos)
-3. [Regra de Ouro: O Manifesto `ruleset.json` e Segurança](#-regra-de-ouro-o-manifesto-rulesetjson-e-segurança)
-4. [As Duas Formas de Criar Fichas no Loom](#-as-duas-formas-de-criar-fichas-no-loom)
-   - [A. Ficha Declarativa (Schema-based)](#a-ficha-declarativa-schema-based-rápida-e-automática)
-   - [B. Ficha Customizada (Handlebars `.hbs`)](#b-ficha-customizada-handlebars-hbs--mixin)
-5. [Sincronização de Dados e Auto-Save (`sd:`)](#-sincronização-de-dados-e-auto-save-sd)
-6. [Derivação de Dados (`prepare-data.mjs`)](#-derivação-de-dados-prepare-datamjs)
-7. [Caixa de Rolagem & Detecção Contextual de Alvo (Target)](#-caixa-de-rolagem--detecção-contextual-de-alvo-target)
-8. [Iniciativa & Sincronização com o Combat Tracker (`Loom.combat`)](#-iniciativa--sincronização-com-o-combat-tracker-loomcombat)
-9. [Ficha de Itens (`DemoItemSheet`) e Inventário](#-ficha-de-itens-demoitemsheet-e-inventário)
-10. [Customização dos Cards de Chat (`renderMessage.wrap`)](#-customização-dos-cards-de-chat-rendermessagewrap)
-11. [Passo a Passo: Como Criar o Seu Próprio Sistema](#-passo-a-passo-como-criar-o-seu-próprio-sistema)
-12. [Validação de Código e Sintaxe](#-validação-de-código-e-sintaxe)
-13. [Licença](#-licença)
+Distributed under the **[MIT License](./LICENSE)**: you have complete freedom to fork, modify, rename, distribute, and monetize any system built upon this codebase.
 
 ---
 
-## 🌟 Visão Geral e Arquitetura
+## 🧭 Guide Table of Contents
 
-O LoomVTT adota o padrão **Web Nativo**:
-- **100% Client-Side:** Sistemas rodam diretamente no navegador do jogador e do mestre. O servidor do LoomVTT **nunca executa código de sistema**, garantindo segurança e desempenho extremos.
-- **Zero Build Tools:** Não é necessário Webpack, Vite, React ou Babel. Apenas JavaScript puro (ES Modules `.mjs`), templates Handlebars (`.hbs`) e CSS puro (`.css`).
-- **Dois Modelos Lado a Lado:** Mostra intencionalmente uma ficha declarativa simples (`villain`, `beast`) e uma ficha rica em Handlebars (`hero`) para você comparar diretamente a complexidade de cada uma.
+1. [Overview & Architecture](#-overview--architecture)
+2. [Directory Structure](#-directory-structure)
+3. [The Golden Rule: The `ruleset.json` Manifest & Security](#-the-golden-rule-the-rulesetjson-manifest--security)
+4. [The Two Sheet Architectures in LoomVTT](#-the-two-sheet-architectures-in-loomvtt)
+   - [A. Declarative Sheet (Schema-based)](#a-declarative-sheet-schema-based--fast--automatic)
+   - [B. Custom Sheet (Handlebars `.hbs` + Mixin)](#b-custom-sheet-handlebars-hbs--mixin)
+5. [Form Synchronization & Auto-Save (`sd:`)](#-form-synchronization--auto-save-sd)
+6. [Data Derivation (`prepare-data.mjs`)](#-data-derivation-prepare-datamjs)
+7. [Roll Dialog & Contextual Target Detection](#-roll-dialog--contextual-target-detection)
+8. [Initiative & Combat Tracker Synchronization (`Loom.combat`)](#-initiative--combat-tracker-synchronization-loomcombat)
+9. [Item Sheets (`DemoItemSheet`) & Inventory Management](#-item-sheets-demoitemsheet--inventory-management)
+10. [Custom Chat Cards (`renderMessage.wrap`)](#-custom-chat-cards-rendermessagewrap)
+11. [Step-by-Step: How to Build Your Own RPG System](#-step-by-step-how-to-build-your-own-rpg-system)
+12. [Code Validation & Syntax Checks](#-code-validation--syntax-checks)
+13. [License](#-license)
 
 ---
 
-## 📂 Estrutura de Pastas e Arquivos
+## 🌟 Overview & Architecture
+
+LoomVTT follows a **Native Web** philosophy:
+- **100% Client-Side:** Systems run directly in the player and GM browsers. The LoomVTT server **never executes system code**, ensuring robust host security and high performance.
+- **Zero Build Tools:** No Webpack, Vite, React, or Babel required. The system runs pure JavaScript (ES Modules `.mjs`), Handlebars templates (`.hbs`), and vanilla CSS (`.css`).
+- **Two Paradigms Side-by-Side:** Demonstrates both a declarative schema sheet (`villain`, `beast`) and a rich Handlebars custom sheet (`hero`), allowing you to compare development complexity directly.
+
+---
+
+## 📂 Directory Structure
 
 ```
 loom-demo-system/
-├── LICENSE                  # Licença MIT permissiva para desenvolvedores
-├── README.md                # Este guia didático
-├── ruleset.json             # Manifesto estático lido pelo servidor (tipos, estilos, i18n)
-├── main.mjs                  # Entry point do cliente: defineSystem, hooks, wraps e registro
+├── LICENSE                  # Permissive MIT License for developers
+├── README.md                # This developer guide
+├── ruleset.json             # Static manifest read by the server (types, styles, background, i18n)
+├── main.mjs                  # Client entry point: defineSystem, hooks, wraps, and sheet catalog
+├── assets/
+│   └── BG.jpg               # System background/cover artwork
 ├── data/
-│   ├── hero.mjs              # Valores padrão (defaults) do tipo de ator "hero"
-│   ├── villain.mjs           # Valores padrão do "villain"
-│   ├── beast.mjs             # Valores padrão do "beast"
-│   └── prepare-data.mjs      # Funções de cálculo de bônus derivados, defesas e atributos
+│   ├── hero.mjs              # Default data for "hero" actor type
+│   ├── villain.mjs           # Default data for "villain"
+│   ├── beast.mjs             # Default data for "beast"
+│   └── prepare-data.mjs      # Derived data calculation (attack/dodge/initiative bonuses, defenses)
 ├── sheets/
-│   ├── hero-sheet.mjs        # Classe da ficha do Herói estendendo LoomHandlebarsMixin(LoomActorSheet)
-│   └── item-sheet.mjs        # Classe da ficha de Itens estendendo LoomHandlebarsMixin(LoomItemSheet)
+│   ├── hero-sheet.mjs        # HeroSheet extending LoomHandlebarsMixin(LoomActorSheet)
+│   └── item-sheet.mjs        # DemoItemSheet extending LoomHandlebarsMixin(LoomItemSheet)
 ├── templates/
-│   ├── hero-sheet.hbs        # Template visual em HTML/Handlebars da ficha do Herói
-│   └── item-sheet.hbs        # Template visual em HTML/Handlebars da ficha de Itens
+│   ├── hero-sheet.hbs        # Handlebars template for the Hero actor sheet
+│   └── item-sheet.hbs        # Handlebars template for the Item sheet
 ├── styles/
-│   └── system.css            # Folha de estilo completa (fichas, caixas de rolagem, chat cards)
+│   └── system.css            # System stylesheet (sheets, roll dialogs, custom chat cards)
 └── lang/
-    ├── pt-BR.json            # Traduções para Português do Brasil
-    └── en.json               # Traduções para Inglês
+    ├── pt-BR.json            # Brazilian Portuguese localization
+    └── en.json               # English localization
 ```
 
 ---
 
-## 🔒 Regra de Ouro: O Manifesto `ruleset.json` e Segurança
+## 🔒 The Golden Rule: The `ruleset.json` Manifest & Security
 
-Como o servidor do LoomVTT nunca executa seu arquivo JavaScript, ele consulta o arquivo estático `ruleset.json` para saber quais dados são válidos no banco de dados.
+Because the LoomVTT server never executes `main.mjs`, it inspects the static `ruleset.json` manifest to validate requests and payload schemas.
 
 ```json
 {
@@ -75,6 +77,8 @@ Como o servidor do LoomVTT nunca executa seu arquivo JavaScript, ele consulta o 
   "engine": "loom",
   "type": "ruleset",
   "client": "main.mjs",
+  "backgroundUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
+  "coverUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
   "actorTypes": ["hero", "villain", "beast"],
   "itemTypes": ["weapon", "armor", "potion", "scroll"],
   "styles": ["styles/system.css"],
@@ -86,15 +90,16 @@ Como o servidor do LoomVTT nunca executa seu arquivo JavaScript, ele consulta o 
 ```
 
 > [!IMPORTANT]
-> 1. **`actorTypes` e `itemTypes`:** As rotas de API `/api/actors` e `/api/items` validam o tipo de documento contra essas listas. Se você criar um novo tipo no código sem colocá-lo no manifesto, o servidor recusará a criação do ator/item!
-> 2. **`styles`:** O Loom só injetará seu CSS na página se o arquivo estiver explicitamente declarado no array `"styles"`.
+> 1. **`actorTypes` & `itemTypes`:** The REST API endpoints (`/api/actors` and `/api/items`) strictly validate document payloads against these arrays. If a new type is used in code without being declared in the manifest, the server will reject document creation!
+> 2. **`styles`:** Loom only injects CSS files into the DOM if they are explicitly listed in the `"styles"` array.
+> 3. **`backgroundUrl` / `coverUrl`:** Defines the official system cover and wallpaper, displayed in the **Setup Hub** card grid and used as the default login screen wallpaper for worlds powered by this system.
 
 ---
 
-## 📑 As Duas Formas de Criar Fichas no Loom
+## 📑 The Two Sheet Architectures in LoomVTT
 
-### A. Ficha Declarativa (Schema-based) — Rápida e Automática
-Usada para monstros, PdMs ou sistemas minimalistas. Não precisa de template `.hbs`. Definida diretamente no método `getSheetSchema(actorType)` em `main.mjs`:
+### A. Declarative Sheet (Schema-based) — Fast & Automatic
+Recommended for monsters, NPCs, or streamlined systems. Requires no `.hbs` template files. Defined directly in `getSheetSchema(actorType)` in `main.mjs`:
 
 ```javascript
 getSheetSchema(actorType) {
@@ -112,14 +117,14 @@ getSheetSchema(actorType) {
   };
 }
 ```
-**Vantagens:** O LoomVTT cria a janela, abas, inputs e a aba nativa de Active Effects (Buffs) automaticamente.
+**Benefits:** LoomVTT automatically renders the window, tab navigation, input fields, and native Active Effects (Buffs) management out-of-the-box.
 
 ---
 
-### B. Ficha Customizada (Handlebars `.hbs` + Mixin)
-Usada para fichas ricas com design próprio (como o nosso `hero` e `item`).
+### B. Custom Sheet (Handlebars `.hbs` + Mixin)
+Recommended for flagship character sheets requiring custom bespoke art, layout widgets, and custom interactions (such as the `hero` sheet in this repository).
 
-1. **Defina a classe da ficha:**
+1. **Define the sheet class:**
 ```javascript
 import { LoomHandlebarsMixin, LoomActorSheet } from '/_loom/sdk/index.js';
 
@@ -132,17 +137,18 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     super({
       ...props,
       id: props.id || `actor-sheet-${props.actorId}`,
-      documentId: props.actorId, // CRUCIAL: Sem isso o Loom não sabe qual documento carregar!
+      documentId: props.actorId, // ESSENTIAL: Without documentId, loadDocument() will not fetch data!
     });
     this.actorId = props.actorId;
   }
 }
 ```
 
-2. **Registre a ficha no catálogo em `main.mjs`:**
+2. **Register the sheet in `main.mjs`:**
 ```javascript
 import { sheets } from '/_loom/sdk/index.js';
 import { HeroSheet } from './sheets/hero-sheet.mjs';
+import { DemoItemSheet } from './sheets/item-sheet.mjs';
 
 sheets.catalog('actor', 'hero', HeroSheet);
 sheets.catalog('item', '*', DemoItemSheet);
@@ -150,129 +156,129 @@ sheets.catalog('item', '*', DemoItemSheet);
 
 ---
 
-## ⚡ Sincronização de Dados e Auto-Save (`sd:`)
+## ⚡ Form Synchronization & Auto-Save (`sd:`)
 
-O LoomVTT possui um sistema automático de sincronização bidirecional de formulários chamado `LoomFormData`. Você **não precisa** escrever eventos de `onChange` ou `onInput` para cada campo!
+LoomVTT includes `LoomFormData`, a two-way form synchronization engine that automatically persists input changes to database documents without requiring manual `input` or `change` event listeners.
 
-Use a convenção de atributos `name`:
-- `name="name"` ➔ Salva na propriedade raiz do documento (`actor.name`).
-- `name="sd:defense"` ➔ Salva dentro de `actor.systemData.defense`.
-- `name="sd:attributes:might"` (ou `sd:attributes.might`) ➔ Salva em `actor.systemData.attributes.might`.
+Follow the input `name` attribute convention:
+- `name="name"` ➔ Persists to top-level `actor.name`.
+- `name="sd:defense"` ➔ Persists to `actor.systemData.defense`.
+- `name="sd:attributes:might"` (or `sd:attributes.might`) ➔ Persists to `actor.systemData.attributes.might`.
 
 ---
 
-## 🧮 Derivação de Dados (`prepare-data.mjs`)
+## 🧮 Data Derivation (`prepare-data.mjs`)
 
-Em qualquer RPG, existem dados salvos no banco (ex: pontuação de atributo 8) e dados derivados calculados em tempo real (ex: bônus de ataque +4, HP máximo, etc.).
+Every tabletop RPG distinguishes between base persisted stats (e.g. Strength score `8`) and dynamically derived values (e.g. Attack bonus `+4`, max HP, armor rating).
 
-No Loom, a função `prepareData(actor)` roda no cliente toda vez que o ator é carregado ou editado:
+In LoomVTT, `prepareData(actor)` executes on the client whenever an actor is loaded or modified:
 
 ```javascript
 export function prepareHero(actor) {
   const attrs = actor.systemData?.attributes || { might: 5, swift: 5, wits: 5 };
   
-  // Calcula bônus derivados
+  // Calculate derived bonuses
   actor._bonus = {
     attack: Math.floor((attrs.might ?? 5) / 2),
     dodge: Math.floor((attrs.swift ?? 5) / 2),
     initiative: Math.floor((attrs.swift ?? 5) / 2),
   };
 
-  // Garante defesa calculada
+  // Derive total defense rating
   actor.defense = actor.systemData?.defense ?? (10 + actor._bonus.dodge);
 }
 ```
 
 ---
 
-## 🎯 Caixa de Rolagem & Detecção Contextual de Alvo (Target)
+## 🎯 Roll Dialog & Contextual Target Detection
 
-Ao clicar em ações ou atributos, o `HeroSheet` abre a Caixa de Rolagem usando `LoomDialog.wait()`:
+Clicking rollable attributes or combat actions on the `HeroSheet` opens an interactive roll prompt powered by `LoomDialog.wait()`:
 
 ```javascript
-// Detecta se o jogador tem um alvo selecionado na mesa (canvas)
+// Detect active player targets on the canvas
 const targets = window.Loom?.user?.targets || [];
-const target = targets[0]; // Retorna { name, defense, avatar, ... }
+const target = targets[0]; // Returns { name, defense, avatar, ... }
 
-// Se houver alvo, preenche a Dificuldade padrão com a Defesa dele!
+// Pre-fill target defense as the default Difficulty (DC)
 const defaultDC = target ? target.defense : 10;
 ```
 
-A caixa permite:
-1. Ver o card com nome e avatar do alvo marcado.
-2. Ajustar a DC do teste ou modificador situacional (+/-).
-3. Selecionar modo de rolagem: **Normal** (`1d20`), **Vantagem** (`2d20kh1`) ou **Desvantagem** (`2d20kl1`).
-4. Disparar a rolagem com `window.Loom.dispatchRoll({ formula, actorId, meta: { ... } })`.
+Features:
+1. Displays the selected target card with avatar, name, and defense.
+2. Allows fine-tuning situational modifiers (+/-) and DC.
+3. Supports roll modes: **Normal** (`1d20`), **Advantage** (`2d20kh1`), or **Disadvantage** (`2d20kl1`).
+4. Dispatches the roll to chat via `window.Loom.dispatchRoll({ formula, actorId, meta: { ... } })`.
 
 ---
 
-## ⚔️ Iniciativa & Sincronização com o Combat Tracker (`Loom.combat`)
+## ⚔️ Initiative & Combat Tracker Synchronization (`Loom.combat`)
 
-A iniciativa funciona de forma única e especializada:
-1. **Sem Alvo nem DC:** Diferente de um ataque, iniciativa é uma rolagem de ordenação. Por isso, a janela de iniciativa não exibe alvos nem campos de dificuldade/defesa.
-2. **Integração com `Loom.combat`:**
-   Ao rolar a iniciativa, o sistema verifica se há um combate ativo no mundo e localiza o combatente do ator:
+Initiative rolls operate with dedicated game logic:
+1. **No Target or Difficulty (DC):** Unlike attacks, initiative is an ordering roll. The initiative prompt intentionally omits targets, DC fields, and success/failure checks.
+2. **Combat Tracker Integration:**
+   When rolling initiative, the system checks for an active encounter via `window.Loom.combat`:
    ```javascript
    const activeCombat = window.Loom?.combat;
    const combatant = activeCombat?.combatants?.find(c => c.actorId === this.actorId);
    ```
-3. **Atualização Automática dos Turnos:**
-   O resultado do dado é enviado ao chat e atualiza o combatente no Combat Tracker:
+3. **Automatic Turn Reordering:**
+   The total result updates the combatant directly in the Combat Tracker:
    ```javascript
    window.Loom.combats.updateCombatant(worldId, combatant.castId, { initiative: totalRoll });
    ```
-   A barra lateral de combate reordena a rodada instantaneamente!
+   The combat sidebar tab reorders combatant turns instantly.
 
 ---
 
-## 🎒 Ficha de Itens (`DemoItemSheet`) e Inventário
+## 🎒 Item Sheets (`DemoItemSheet`) & Inventory Management
 
-O sistema demonstra como criar itens manipuláveis com janelas próprias:
-- **Herança de `LoomItemSheet`:** Classe `DemoItemSheet` em `sheets/item-sheet.mjs`.
-- **Troca de Ícone Nativa:** Elementos com `data-action="pick-portrait"` e `data-edit="imgUrl"` abrem automaticamente o modal de escolha de arquivos do LoomVTT.
-- **Campos Específicos por Tipo:** O template `templates/item-sheet.hbs` exibe campos de Dano para armas, Defesa para armaduras e Cura para poções.
-- **Rolagem de Dano:** Botão "Rolar Dano" integrado que lê a fórmula do item (ex: `1d8+2`) e joga no chat.
+Demonstrates standalone item documents and sheets:
+- **Extends `LoomItemSheet`:** Implemented in `sheets/item-sheet.mjs`.
+- **Native Portrait/Image Picker:** Attributes with `data-action="pick-portrait"` and `data-edit="imgUrl"` open LoomVTT's built-in asset selector modal.
+- **Contextual Fields by Type:** `templates/item-sheet.hbs` conditionally renders Damage formula for weapons, Defense bonuses for armor, and Healing values for potions.
+- **Damage Rolling:** Built-in "Roll Damage" action evaluates item formulas (e.g. `1d8+2`) and renders chat cards.
 
 ---
 
-## 💬 Customização dos Cards de Chat (`renderMessage.wrap`)
+## 💬 Custom Chat Cards (`renderMessage.wrap`)
 
-O LoomVTT oferece o sistema de interceptação `getWraps()` para modificar componentes da interface sem alterar o core:
+LoomVTT provides `getWraps()` to intercept UI components without altering the engine core:
 
 ```javascript
 getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   if (!msg.isRoll || msg.roll?.meta?.system !== 'Loom Demo') {
-    return wrapped(msg, ctx); // Deixa outras mensagens intactas
+    return wrapped(msg, ctx); // Leave other system messages intact
   }
 
-  // Renderiza nosso card temático com avatar do ator, breakdown dos dados
-  // e badges de SUCESSO ou FALHA comparados contra a DC
+  // Render standardized card with actor avatar, dice breakdown,
+  // and clear SUCCESS or FAIL badges compared against DC
   return `<div class="loom-demo-card">...</div>`;
 });
 ```
 
 ---
 
-## 🛠️ Passo a Passo: Como Criar o Seu Próprio Sistema
+## 🛠️ Step-by-Step: How to Build Your Own RPG System
 
-Para transformar este demo no seu próprio RPG:
+To transform this demonstration into your own custom RPG:
 
-1. **Renomeie o manifesto:**
-   Abra `ruleset.json`, altere `"name"`, `"title"` e adicione os tipos de atores e itens que seu RPG usa.
-2. **Adapte os dados padrão em `data/`:**
-   Crie arquivos para seus tipos de ator (ex: `warrior.mjs`, `monster.mjs`) definindo atributos próprios (ex: Força, Destreza, Vontade, Mana).
-3. **Atualize o cálculo derivado em `data/prepare-data.mjs`:**
-   Implemente a matemática das suas regras (cálculo de bônus, limiar de ferimentos, defesas).
-4. **Modifique o template visual em `templates/hero-sheet.hbs`:**
-   Ajuste os nomes dos inputs para refletir seus atributos (sempre usando o prefixo `name="sd:meuAtributo"`).
-5. **Estilize em `styles/system.css`:**
-   Altere as variáveis de cores (`--rpg-gold`, paletas de fundo e fontes) para dar a identidade visual que o seu jogo merece.
+1. **Update `ruleset.json`:**
+   Change `"name"` and `"title"`, and declare all actor and item types your game requires.
+2. **Configure Default Data in `data/`:**
+   Create files for your actor types (e.g. `warrior.mjs`, `monster.mjs`) defining your stats (e.g. Strength, Dexterity, Willpower, Mana).
+3. **Implement Calculations in `data/prepare-data.mjs`:**
+   Code your game's rules (wound thresholds, attack bonuses, derived armor values).
+4. **Design the Template in `templates/hero-sheet.hbs`:**
+   Update field bindings to match your stats (always using the `name="sd:myAttribute"` convention).
+5. **Theme with `styles/system.css`:**
+   Customize color tokens (`--rpg-gold`, background shades, typography) to craft the unique atmosphere your game deserves.
 
 ---
 
-## 🧪 Validação de Código e Sintaxe
+## 🧪 Code Validation & Syntax Checks
 
-Sempre valide a integridade dos seus scripts ES Modules antes de subir atualizações:
+Always verify module syntax before shipping updates:
 
 ```bash
 node --check main.mjs
@@ -283,8 +289,8 @@ node --check data/prepare-data.mjs
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Este projeto está licenciado sob a **Licença MIT** — consulte o arquivo [LICENSE](./LICENSE) para mais detalhes.
+This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
 
-Você é livre para usar, estudar, clonar, modificar e criar seus próprios sistemas de RPG para o LoomVTT a partir deste projeto sem restrições. Divirta-se criando mundos incríveis! 🚀
+You are free to use, study, fork, modify, and build your own tabletop RPG systems for LoomVTT without restriction. Have fun building incredible worlds! 🚀
