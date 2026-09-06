@@ -110,12 +110,15 @@
               <input
                 type="number"
                 name="sd:attributes:might"
-                value="{{document.attributes.might}}"
+                value="{{document.rawAttributes.might}}"
                 min="0"
                 max="10"
                 class="attr-score-input"
               />
               <span class="attr-denom">/10</span>
+              {{#if document._itemAttrsBonus.might}}
+                <span class="attr-item-bonus" title="Item Bonus">+{{document._itemAttrsBonus.might}}</span>
+              {{/if}}
             </div>
           </div>
           <div class="attr-mod-tag">
@@ -155,12 +158,15 @@
               <input
                 type="number"
                 name="sd:attributes:swift"
-                value="{{document.attributes.swift}}"
+                value="{{document.rawAttributes.swift}}"
                 min="0"
                 max="10"
                 class="attr-score-input"
               />
               <span class="attr-denom">/10</span>
+              {{#if document._itemAttrsBonus.swift}}
+                <span class="attr-item-bonus" title="Item Bonus">+{{document._itemAttrsBonus.swift}}</span>
+              {{/if}}
             </div>
           </div>
           <div class="attr-mod-tag">
@@ -200,12 +206,15 @@
               <input
                 type="number"
                 name="sd:attributes:wits"
-                value="{{document.attributes.wits}}"
+                value="{{document.rawAttributes.wits}}"
                 min="0"
                 max="10"
                 class="attr-score-input"
               />
               <span class="attr-denom">/10</span>
+              {{#if document._itemAttrsBonus.wits}}
+                <span class="attr-item-bonus" title="Item Bonus">+{{document._itemAttrsBonus.wits}}</span>
+              {{/if}}
             </div>
           </div>
           <div class="attr-mod-tag">
@@ -290,7 +299,10 @@
           <span class="vital-tag">{{localize "loom-demo-system.stats.armorClass"}}</span>
         </div>
         <div class="vital-defense-value-box">
-          <input type="number" name="sd:defense" value="{{document.defense}}" min="0" class="defense-score-input" />
+          <input type="number" name="sd:defense" value="{{document.baseDefense}}" min="0" class="defense-score-input" />
+          {{#if document._itemDefenseBonus}}
+            <span class="defense-bonus-pill" title="{{localize "loom-demo-system.items.defenseBonus"}}">+{{document._itemDefenseBonus}} (Total: {{document.defense}})</span>
+          {{/if}}
         </div>
         <p class="vital-hint">{{localize "loom-demo-system.stats.defenseHint"}}</p>
       </div>
@@ -369,11 +381,32 @@
                   {{#if this.systemData.damage}}
                     <span class="item-stat-badge"><i class="fa-solid fa-hand-fist"></i> {{this.systemData.damage}}</span>
                   {{/if}}
+                  {{#if this.systemData.attackBonus}}
+                    <span class="item-stat-badge atk"><i class="fa-solid fa-crosshairs"></i> +{{this.systemData.attackBonus}} ATK</span>
+                  {{/if}}
+                  {{#if this.systemData.damageBonus}}
+                    <span class="item-stat-badge dmg"><i class="fa-solid fa-burst"></i> +{{this.systemData.damageBonus}} DMG</span>
+                  {{/if}}
                   {{#if this.systemData.defenseBonus}}
                     <span class="item-stat-badge def"><i class="fa-solid fa-shield"></i> +{{this.systemData.defenseBonus}} DEF</span>
                   {{/if}}
-                  {{#if this.systemData.healing}}
-                    <span class="item-stat-badge heal"><i class="fa-solid fa-heart"></i> {{this.systemData.healing}}</span>
+                  {{#if this.systemData.hpBonus}}
+                    <span class="item-stat-badge hp"><i class="fa-solid fa-heart"></i> +{{this.systemData.hpBonus}} PV</span>
+                  {{/if}}
+                  {{#if this.systemData.mightBonus}}
+                    <span class="item-stat-badge attr"><i class="fa-solid fa-hand-fist"></i> +{{this.systemData.mightBonus}} FOR</span>
+                  {{/if}}
+                  {{#if this.systemData.swiftBonus}}
+                    <span class="item-stat-badge attr"><i class="fa-solid fa-person-running"></i> +{{this.systemData.swiftBonus}} AGI</span>
+                  {{/if}}
+                  {{#if this.systemData.witsBonus}}
+                    <span class="item-stat-badge attr"><i class="fa-solid fa-brain"></i> +{{this.systemData.witsBonus}} AST</span>
+                  {{/if}}
+                  {{#if this.systemData.healAmount}}
+                    <span class="item-stat-badge heal"><i class="fa-solid fa-heart"></i> {{this.systemData.healAmount}}</span>
+                  {{/if}}
+                  {{#if this.systemData.effect}}
+                    <span class="item-stat-badge effect"><i class="fa-solid fa-wand-magic-sparkles"></i> {{this.systemData.effect}}</span>
                   {{/if}}
                 </div>
               </div>
@@ -383,11 +416,31 @@
                   <button
                     type="button"
                     class="btn btn-small btn-primary item-roll-btn"
-                    data-action="roll-item"
+                    data-action="roll-item-attack"
+                    data-id="{{this.id}}"
+                    title="{{localize "loom-demo-system.actions.attack"}}"
+                  >
+                    <i class="fa-solid fa-crosshairs"></i> {{localize "loom-demo-system.actions.attack"}}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-small item-damage-btn"
+                    data-action="roll-item-damage"
                     data-id="{{this.id}}"
                     title="{{localize "loom-demo-system.actions.damage"}} ({{this.systemData.damage}})"
                   >
                     <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.actions.damage"}}
+                  </button>
+                {{/if}}
+                {{#if this.systemData.healAmount}}
+                  <button
+                    type="button"
+                    class="btn btn-small btn-success item-use-btn"
+                    data-action="use-item"
+                    data-id="{{this.id}}"
+                    title="{{localize "loom-demo-system.items.healing"}}"
+                  >
+                    <i class="fa-solid fa-heart"></i> {{localize "loom-demo-system.items.healing"}}
                   </button>
                 {{/if}}
                 <button

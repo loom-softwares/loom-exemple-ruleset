@@ -1,7 +1,7 @@
 <!--
   Loom Demo System — item-sheet.hbs
   Custom sheet for items (weapons, armor, potions, scrolls).
-  Demonstrates proper i18n usage using Loom's native `{{localize "KEY"}}` Handlebars helper.
+  Items define properties and bonuses; rolls are performed by the character on their sheet.
 -->
 <div class="loom-item-sheet">
   <!-- Item Header: Icon + Name + Type -->
@@ -43,7 +43,7 @@
     </div>
   </header>
 
-  <!-- Item Body with Type-Specific Properties -->
+  <!-- Item Body with Type-Specific Properties & Bonuses -->
   <div class="loom-item-body">
     {{#if isWeapon}}
       <div class="loom-item-props-grid">
@@ -59,20 +59,26 @@
           <label><i class="fa-solid fa-bullseye"></i> {{localize "loom-demo-system.items.range"}}</label>
           <input type="text" name="sd:range" value="{{systemData.range}}" placeholder="e.g. Melee, 30 ft" class="prop-input" />
         </div>
-      </div>
-
-      <div class="loom-item-action-box">
-        <button type="button" class="loom-roll-btn item-roll-btn" data-action="roll-damage">
-          <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.actions.roll"}} {{localize "loom-demo-system.items.damageFormula"}} ({{systemData.damage}})
-        </button>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-crosshairs"></i> {{localize "loom-demo-system.items.attackBonus"}}</label>
+          <input type="number" name="sd:attackBonus" value="{{systemData.attackBonus}}" placeholder="0" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-burst"></i> {{localize "loom-demo-system.items.damageBonus"}}</label>
+          <input type="number" name="sd:damageBonus" value="{{systemData.damageBonus}}" placeholder="0" class="prop-input" />
+        </div>
       </div>
     {{/if}}
 
     {{#if isArmor}}
-      <div class="loom-item-props-grid single">
+      <div class="loom-item-props-grid">
         <div class="item-prop-card">
           <label><i class="fa-solid fa-shield"></i> {{localize "loom-demo-system.items.defenseBonus"}}</label>
-          <input type="number" name="sd:defenseBonus" value="{{systemData.defenseBonus}}" class="prop-input" />
+          <input type="number" name="sd:defenseBonus" value="{{systemData.defenseBonus}}" placeholder="0" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-heart"></i> {{localize "loom-demo-system.items.hpBonus"}}</label>
+          <input type="number" name="sd:hpBonus" value="{{systemData.hpBonus}}" placeholder="0" class="prop-input" />
         </div>
       </div>
     {{/if}}
@@ -82,6 +88,27 @@
         <div class="item-prop-card">
           <label><i class="fa-solid fa-heart-pulse"></i> {{localize "loom-demo-system.items.healing"}}</label>
           <input type="text" name="sd:healAmount" value="{{systemData.healAmount}}" placeholder="e.g. 2d4+2" class="prop-input" />
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if isScroll}}
+      <div class="loom-item-props-grid">
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-wand-magic-sparkles"></i> {{localize "loom-demo-system.items.effect"}}</label>
+          <input type="text" name="sd:effect" value="{{systemData.effect}}" placeholder="e.g. +2 Swift" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-hand-fist"></i> {{localize "loom-demo-system.items.mightBonus"}}</label>
+          <input type="number" name="sd:mightBonus" value="{{systemData.mightBonus}}" placeholder="0" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-person-running"></i> {{localize "loom-demo-system.items.swiftBonus"}}</label>
+          <input type="number" name="sd:swiftBonus" value="{{systemData.swiftBonus}}" placeholder="0" class="prop-input" />
+        </div>
+        <div class="item-prop-card">
+          <label><i class="fa-solid fa-brain"></i> {{localize "loom-demo-system.items.witsBonus"}}</label>
+          <input type="number" name="sd:witsBonus" value="{{systemData.witsBonus}}" placeholder="0" class="prop-input" />
         </div>
       </div>
     {{/if}}

@@ -120,27 +120,69 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     const base = await super._prepareContext();
     const doc = this.document || {};
     const sd = doc.systemData || doc.system || {};
-    const attrs = doc.attributes || sd.attributes || { might: 5, swift: 5, wits: 5 };
-    const hp = doc.hp || sd.hp || { value: 20, max: 20 };
-    const defense = doc.defense ?? sd.defense ?? 10;
+    const rawAttrs = sd.attributes || doc.attributes || { might: 5, swift: 5, wits: 5 };
+    const rawHp = sd.hp || doc.hp || { value: 20, max: 20 };
+    const baseDefense = Number(sd.defense ?? doc.defense ?? 10);
+
+    const items = Array.isArray(doc.items) ? doc.items : [];
+    let itemDefenseBonus = 0;
+    let itemAttackBonus = 0;
+    let itemDamageBonus = 0;
+    let itemHpBonus = 0;
+    let itemMightBonus = 0;
+    let itemSwiftBonus = 0;
+    let itemWitsBonus = 0;
+
+    for (const item of items) {
+      const isd = item.systemData || item.data || {};
+      if (isd.defenseBonus) itemDefenseBonus += Number(isd.defenseBonus) || 0;
+      if (isd.attackBonus) itemAttackBonus += Number(isd.attackBonus) || 0;
+      if (isd.damageBonus) itemDamageBonus += Number(isd.damageBonus) || 0;
+      if (isd.hpBonus) itemHpBonus += Number(isd.hpBonus) || 0;
+      if (isd.mightBonus) itemMightBonus += Number(isd.mightBonus) || 0;
+      if (isd.swiftBonus) itemSwiftBonus += Number(isd.swiftBonus) || 0;
+      if (isd.witsBonus) itemWitsBonus += Number(isd.witsBonus) || 0;
+    }
+
+    const effectiveAttrs = {
+      might: Number(rawAttrs.might || 0) + itemMightBonus,
+      swift: Number(rawAttrs.swift || 0) + itemSwiftBonus,
+      wits: Number(rawAttrs.wits || 0) + itemWitsBonus,
+    };
 
     const bonus = {
-      attack: Math.floor(((attrs.might ?? 5)) / 2),
-      dodge: Math.floor(((attrs.swift ?? 5)) / 2),
-      initiative: Math.floor(((attrs.swift ?? 5)) / 2),
-      detect: Math.floor(((attrs.wits ?? 5)) / 2),
+      attack: Math.floor((effectiveAttrs.might || 0) / 2) + itemAttackBonus,
+      dodge: Math.floor((effectiveAttrs.swift || 0) / 2),
+      initiative: Math.floor((effectiveAttrs.swift || 0) / 2),
+      detect: Math.floor((effectiveAttrs.wits || 0) / 2),
       ...(doc._bonus || {}),
     };
 
-    // Ensure document properties are directly reachable by template
-    doc.attributes = attrs;
-    doc.hp = hp;
-    doc.defense = defense;
-    doc._bonus = bonus;
+    const effectiveMaxHp = Math.max(1, Number(rawHp.max || 20) + itemHpBonus);
+    const hpVal = Number(rawHp.value ?? effectiveMaxHp);
+    const effectiveHp = {
+      value: hpVal,
+      max: effectiveMaxHp,
+    };
 
-    const maxHp = hp.max || 1;
-    const hpVal = hp.value ?? maxHp;
-    const hpPercent = Math.max(0, Math.min(100, Math.round((hpVal / maxHp) * 100)));
+    // Ensure document properties are directly reachable by template
+    doc.rawAttributes = rawAttrs;
+    doc.attributes = effectiveAttrs;
+    doc.hp = effectiveHp;
+    doc.defense = baseDefense + itemDefenseBonus;
+    doc.baseDefense = baseDefense;
+    doc._bonus = bonus;
+    doc._itemDefenseBonus = itemDefenseBonus;
+    doc._itemAttackBonus = itemAttackBonus;
+    doc._itemDamageBonus = itemDamageBonus;
+    doc._itemHpBonus = itemHpBonus;
+    doc._itemAttrsBonus = {
+      might: itemMightBonus,
+      swift: itemSwiftBonus,
+      wits: itemWitsBonus,
+    };
+
+    const hpPercent = Math.max(0, Math.min(100, Math.round((hpVal / effectiveMaxHp) * 100)));
 
     const attributesList = [
       {
@@ -174,8 +216,6 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         bonusLabel: localize('loom-demo-system.actions.perception', 'Perception'),
       },
     ];
-
-    const items = Array.isArray(doc.items) ? doc.items : [];
 
     return {
       ...base,
@@ -220,8 +260,16 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       return this.openItemSheet(id);
     }
 
-    if (action === 'roll-item' && id) {
-      return this.rollItem(id);
+    if (action === 'roll-item-attack' && id) {
+      return this.rollItemAttack(id);
+    }
+
+    if ((action === 'roll-item-damage' || action === 'roll-item') && id) {
+      return this.rollItemDamage(id);
+    }
+
+    if (action === 'use-item' && id) {
+      return this.useItem(id);
     }
 
     if (action === 'add-item') {
@@ -558,13 +606,50 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    * Rolls damage for an item owned by this actor.
    * @param {string} itemId
    */
-  rollItem(itemId) {
+  /**
+   * Rolls attack with a character-owned weapon, adding Might and weapon attack bonus.
+   * @param {string} itemId
+   */
+  async rollItemAttack(itemId) {
     const doc = this.document || {};
     const items = doc.items || [];
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
-    const damage = item.systemData?.damage || item.data?.damage || '1d6';
+    const attrs = doc.attributes || doc.systemData?.attributes || {};
+    const mightBonus = Math.floor((attrs.might ?? 5) / 2);
+    const itemAtkBonus = Number(item.systemData?.attackBonus || item.data?.attackBonus || 0);
+    const totalBonus = mightBonus + itemAtkBonus;
+    const sign = totalBonus >= 0 ? '+' : '';
+    const baseFormula = `1d20 ${sign} ${totalBonus}`;
+    const label = `${item.name} (${localize('loom-demo-system.actions.attack', 'Attack')})`;
+
+    await this.promptRollDialog({
+      label,
+      baseFormula,
+      bonus: totalBonus,
+      actionType: 'attack',
+    });
+  }
+
+  /**
+   * Rolls damage for an item owned by this actor.
+   * @param {string} itemId
+   */
+  rollItemDamage(itemId) {
+    const doc = this.document || {};
+    const items = doc.items || [];
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    const isd = item.systemData || item.data || {};
+    let damage = isd.damage || '1d6';
+    const dmgBonus = Number(isd.damageBonus || 0);
+    if (dmgBonus !== 0) {
+      const sign = dmgBonus > 0 ? '+' : '';
+      damage = `${damage}${sign}${dmgBonus}`;
+    }
+
     if (window.Loom?.dispatchRoll) {
       window.Loom.dispatchRoll({
         formula: damage,
@@ -576,6 +661,42 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
           actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
         },
       });
+    } else {
+      showToast(`🎲 ${item.name}: ${damage}`, 'info');
+    }
+  }
+
+  /**
+   * Backward compatibility alias for rollItem.
+   */
+  rollItem(itemId) {
+    return this.rollItemDamage(itemId);
+  }
+
+  /**
+   * Uses a consumable item (e.g. potion), rolling its healing formula.
+   * @param {string} itemId
+   */
+  async useItem(itemId) {
+    const doc = this.document || {};
+    const items = doc.items || [];
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    const healFormula = item.systemData?.healAmount || item.data?.healAmount || '2d4+2';
+    if (window.Loom?.dispatchRoll) {
+      window.Loom.dispatchRoll({
+        formula: healFormula,
+        actorId: this.actorId,
+        meta: {
+          system: 'Loom Demo',
+          label: `${item.name} (${localize('loom-demo-system.items.healing', 'Healing')})`,
+          actorAvatar: doc.avatarUrl || '',
+          actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
+        },
+      });
+    } else {
+      showToast(`❤️ ${item.name}: ${healFormula}`, 'success');
     }
   }
 

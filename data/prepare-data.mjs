@@ -29,16 +29,66 @@ function computeBonuses(attrs) {
  */
 function baseDerive(actor) {
   const sd = actor.systemData || actor.system || {};
-  const attrs = sd.attributes || actor.attributes || { might: 5, swift: 5, wits: 5 };
-  const hp = sd.hp || actor.hp || { value: 20, max: 20 };
-  const defense = sd.defense ?? actor.defense ?? 10;
+  const rawAttrs = sd.attributes || actor.attributes || { might: 5, swift: 5, wits: 5 };
+  const rawHp = sd.hp || actor.hp || { value: 20, max: 20 };
+  const baseDefense = Number(sd.defense ?? actor.defense ?? 10);
 
-  actor.attributes = attrs;
-  actor.hp = hp;
-  actor.defense = defense;
-  actor._dots = { might: attrs.might || 0, swift: attrs.swift || 0, wits: attrs.wits || 0 };
-  actor._bonus = computeBonuses(attrs);
-  actor._maxHp = hp.max || 20;
+  // Aggregate bonuses from owned items (weapons, armor, accessories, scrolls)
+  const items = Array.isArray(actor.items) ? actor.items : [];
+  let itemDefenseBonus = 0;
+  let itemAttackBonus = 0;
+  let itemDamageBonus = 0;
+  let itemHpBonus = 0;
+  let itemMightBonus = 0;
+  let itemSwiftBonus = 0;
+  let itemWitsBonus = 0;
+
+  for (const item of items) {
+    const isd = item.systemData || item.data || {};
+    if (isd.defenseBonus) itemDefenseBonus += Number(isd.defenseBonus) || 0;
+    if (isd.attackBonus) itemAttackBonus += Number(isd.attackBonus) || 0;
+    if (isd.damageBonus) itemDamageBonus += Number(isd.damageBonus) || 0;
+    if (isd.hpBonus) itemHpBonus += Number(isd.hpBonus) || 0;
+    if (isd.mightBonus) itemMightBonus += Number(isd.mightBonus) || 0;
+    if (isd.swiftBonus) itemSwiftBonus += Number(isd.swiftBonus) || 0;
+    if (isd.witsBonus) itemWitsBonus += Number(isd.witsBonus) || 0;
+  }
+
+  const effectiveAttrs = {
+    might: Number(rawAttrs.might || 0) + itemMightBonus,
+    swift: Number(rawAttrs.swift || 0) + itemSwiftBonus,
+    wits: Number(rawAttrs.wits || 0) + itemWitsBonus,
+  };
+
+  const baseBonus = computeBonuses(effectiveAttrs);
+  const totalBonus = {
+    ...baseBonus,
+    attack: baseBonus.attack + itemAttackBonus,
+  };
+
+  const effectiveMaxHp = Math.max(1, Number(rawHp.max || 20) + itemHpBonus);
+  const effectiveHp = {
+    value: Number(rawHp.value ?? effectiveMaxHp),
+    max: effectiveMaxHp,
+  };
+
+  actor.rawAttributes = rawAttrs;
+  actor.attributes = effectiveAttrs;
+  actor.hp = effectiveHp;
+  actor.defense = baseDefense + itemDefenseBonus;
+  actor.baseDefense = baseDefense;
+  actor._itemDefenseBonus = itemDefenseBonus;
+  actor._itemAttackBonus = itemAttackBonus;
+  actor._itemDamageBonus = itemDamageBonus;
+  actor._itemHpBonus = itemHpBonus;
+  actor._itemAttrsBonus = {
+    might: itemMightBonus,
+    swift: itemSwiftBonus,
+    wits: itemWitsBonus,
+  };
+  actor._dots = { might: effectiveAttrs.might || 0, swift: effectiveAttrs.swift || 0, wits: effectiveAttrs.wits || 0 };
+  actor._bonus = totalBonus;
+  actor._maxHp = effectiveMaxHp;
   return actor;
 }
 
