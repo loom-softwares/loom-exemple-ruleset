@@ -1662,9 +1662,24 @@
   transition: all 0.15s ease;
 }
 
+.loom-item-row[draggable="true"] {
+  cursor: grab;
+}
+
+.loom-item-row[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .loom-item-row:hover {
   background: #20222e;
   border-color: rgba(229, 169, 60, 0.45);
+}
+
+/* Drag and Drop visual feedback on sheet */
+.loom-sheet-dragover {
+  outline: 2px dashed var(--rpg-gold, #e5a93c) !important;
+  outline-offset: -4px;
+  box-shadow: inset 0 0 20px rgba(229, 169, 60, 0.15) !important;
 }
 
 .item-icon-box {

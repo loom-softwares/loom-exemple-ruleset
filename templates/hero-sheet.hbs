@@ -360,7 +360,7 @@
       {{#if items.length}}
         <div class="loom-items-list">
           {{#each items}}
-            <div class="loom-item-row" data-id="{{this.id}}">
+            <div class="loom-item-row" data-id="{{this.id}}" draggable="true">
               <div class="item-icon-box" data-action="open-item" data-id="{{this.id}}" title="{{localize "loom-demo-system.items.openSheet"}}">
                 {{#if this.imgUrl}}
                   <img src="{{this.imgUrl}}" alt="{{this.name}}" class="item-thumb" />

@@ -76,6 +76,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       documentId: props.actorId,
       width: props.width || 660,
       height: props.height || 620,
+      dragDrop: [{ dropSelector: null }],
     });
     this.actorId = props.actorId;
   }
@@ -105,6 +106,50 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   async _onFirstRender() {
     await this.loadBuffs();
+    this._attachDropZone();
+  }
+
+  /**
+   * Binds drag & drop listeners directly to this.element.
+   * Ensures 100% reliable drop handling for items from sidebar, compendium, or other sheets.
+   */
+  _attachDropZone() {
+    if (!this.element) return;
+
+    this.element.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      this.element.classList.add('loom-sheet-dragover');
+    });
+
+    this.element.addEventListener('dragleave', (e) => {
+      if (!this.element.contains(e.relatedTarget)) {
+        this.element.classList.remove('loom-sheet-dragover');
+      }
+    });
+
+    this.element.addEventListener('drop', (e) => {
+      this.element.classList.remove('loom-sheet-dragover');
+      void this._onDrop(e);
+    });
+
+    // Outbound item dragging from character sheet
+    this.element.addEventListener('dragstart', (e) => {
+      const row = e.target.closest('.loom-item-row');
+      if (!row || !e.dataTransfer) return;
+      const itemId = row.dataset.id;
+      const item = this.document?.items?.find((i) => i.id === itemId);
+      if (!item) return;
+
+      const payload = {
+        type: 'Item',
+        id: item.id,
+        uuid: `Item.${item.id}`,
+        data: item,
+      };
+      e.dataTransfer.setData('text/plain', JSON.stringify(payload));
+      e.dataTransfer.effectAllowed = 'copyMove';
+    });
   }
 
   /**
@@ -824,6 +869,118 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       showToast('Effect removed', 'info');
     } catch (e) {
       showToast(e?.message || 'Failed to remove effect', 'error');
+    }
+  }
+
+  /**
+   * Handles drop events on the sheet (items from sidebar, compendium, etc.).
+   * @param {DragEvent} event
+   */
+  async _onDrop(event) {
+    event.preventDefault();
+    if (!event.dataTransfer) return;
+
+    let data;
+    const dataText = event.dataTransfer.getData('text/plain');
+    if (!dataText) return;
+
+    try {
+      data = JSON.parse(dataText);
+    } catch {
+      // Handle raw UUID strings if any
+      if (dataText.startsWith('Item.') || dataText.startsWith('Compendium.')) {
+        data = { type: 'Item', uuid: dataText };
+      }
+    }
+
+    if (!data) return;
+
+    if (data.type === 'Item' || data.type === 'item' || data.uuid?.startsWith('Item.') || data.packType === 'item') {
+      await this._onDropItem(event, data);
+    } else if (super._onDrop) {
+      super._onDrop(event);
+    }
+  }
+
+  /**
+   * Handles dropping an Item document onto this Actor sheet.
+   * Resolves the item data from:
+   * 1. Embedded payload (e.g. Compendium entry: data.data)
+   * 2. Compendium API endpoint (/compendium/:packId/entries/:entryId)
+   * 3. Items collection or API endpoint (/items/:id)
+   * Then creates a clone under the current actor via POST /actors/:actorId/items.
+   * @param {DragEvent} event
+   * @param {Record<string, any>} data
+   */
+  async _onDropItem(event, data) {
+    if (!this.actorId || !this.isEditable) return;
+
+    let itemPayload = null;
+
+    // 1. Embedded entry data (common from CompendiumPackWindow)
+    if (data.data && typeof data.data === 'object' && (data.data.name || data.data.type)) {
+      itemPayload = data.data;
+    }
+    // 2. Compendium entry by UUID (Compendium.<packId>.<entryId>)
+    else if (data.uuid?.startsWith('Compendium.')) {
+      const parts = data.uuid.split('.');
+      const packId = parts[1];
+      const entryId = parts[parts.length - 1];
+      if (packId && entryId) {
+        try {
+          const entry = await api.get(`/compendium/${packId}/entries/${entryId}`);
+          itemPayload = entry?.data || entry;
+        } catch (err) {
+          console.warn('HeroSheet | Could not fetch compendium entry:', err);
+        }
+      }
+    }
+
+    // 3. Item from Sidebar or World collection by ID
+    if (!itemPayload && (data.id || data.uuid)) {
+      const itemId = data.id || (data.uuid?.startsWith('Item.') ? data.uuid.slice(5) : data.uuid);
+      if (itemId) {
+        if (window.Loom?.items?.get) {
+          itemPayload = window.Loom.items.get(itemId);
+        }
+        if (!itemPayload) {
+          try {
+            itemPayload = await api.get(`/items/${itemId}`);
+          } catch (err) {
+            console.warn('HeroSheet | Could not fetch item by ID:', err);
+          }
+        }
+      }
+    }
+
+    if (!itemPayload) {
+      console.warn('HeroSheet | No valid item payload found in dropped data:', data);
+      return;
+    }
+
+    try {
+      const name = itemPayload.name || localize('loom-demo-system.items.newItem', 'New Item');
+      const type = itemPayload.type || 'weapon';
+      const itemData = itemPayload.systemData || itemPayload.data || {};
+      const imgUrl = itemPayload.imgUrl || itemPayload.img || '';
+
+      await api.post(`/actors/${this.actorId}/items`, {
+        name,
+        type,
+        data: itemData,
+        imgUrl,
+      });
+
+      // Switch to items tab and reload document
+      this.activeTab = 'items';
+      await this._reloadDocument();
+      showToast(
+        localize('loom-demo-system.items.addedToInventory', `Item "${name}" adicionado ao inventário!`),
+        'success'
+      );
+    } catch (err) {
+      console.error('HeroSheet | Error attaching dropped item:', err);
+      showToast(err?.message || 'Erro ao anexar item', 'error');
     }
   }
 }
