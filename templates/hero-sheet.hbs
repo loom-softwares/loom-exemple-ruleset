@@ -10,14 +10,11 @@
   <header class="loom-hero-header">
     <!-- Character Portrait (clickable via data-action="pick-portrait") -->
     <div class="loom-hero-portrait-frame" data-action="pick-portrait" data-edit="avatarUrl" title="{{localize "loom-demo-system.sheet.portrait.clickToChange"}}">
-      {{#if document.avatarUrl}}
-        <img src="{{document.avatarUrl}}" alt="{{document.name}}" class="loom-hero-portrait-img" />
-      {{else}}
-        <div class="loom-hero-portrait-placeholder">
-          <i class="fa-solid fa-shield-halved"></i>
-          <span class="placeholder-text">{{localize "loom-demo-system.sheet.portrait.title"}}</span>
-        </div>
-      {{/if}}
+      <img
+        src="{{portraitUrl}}"
+        alt="{{document.name}}"
+        class="loom-hero-portrait-img{{#unless hasCustomPortrait}} is-default{{/unless}}"
+      />
       <div class="portrait-hover-overlay">
         <i class="fa-solid fa-camera"></i>
         <span>{{localize "loom-demo-system.sheet.portrait.change"}}</span>

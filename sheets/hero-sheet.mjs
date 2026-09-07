@@ -217,9 +217,15 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       },
     ];
 
+    const defaultPortrait = '/icons/svg/adventurer.svg';
+    const portraitUrl = doc.avatarUrl || doc.imgUrl || doc.img || defaultPortrait;
+    const hasCustomPortrait = Boolean(doc.avatarUrl || doc.imgUrl || doc.img);
+
     return {
       ...base,
       document: doc,
+      portraitUrl,
+      hasCustomPortrait,
       buffs: this.buffs,
       items,
       hpPercent,

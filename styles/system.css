@@ -484,6 +484,13 @@
   display: block;
 }
 
+.loom-hero-portrait-img.is-default {
+  object-fit: contain;
+  padding: 12px;
+  opacity: 0.85;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
+}
+
 .loom-hero-portrait-placeholder {
   display: flex;
   flex-direction: column;
