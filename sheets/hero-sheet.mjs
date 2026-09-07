@@ -76,7 +76,6 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       documentId: props.actorId,
       width: props.width || 660,
       height: props.height || 620,
-      dragDrop: [{ dropSelector: null }],
     });
     this.actorId = props.actorId;
   }
@@ -85,6 +84,8 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   activeTab = 'attributes';
 
   buffs = [];
+  items = [];
+  _isDropping = false;
 
   /**
    * Loads the active buffs/effects list for this actor and triggers a re-render of the body.
@@ -101,23 +102,64 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
   }
 
   /**
+   * Loads items owned by this actor directly from the API.
+   * Ensures persistence and immediate visibility across sheet opens.
+   * @param {boolean} [rerender=false]
+   * @returns {Promise<void>}
+   */
+  async loadItems(rerender = false) {
+    if (!this.actorId) return;
+    try {
+      const items = await api.get(`/actors/${this.actorId}/items`);
+      this.items = Array.isArray(items) ? items : [];
+      if (this.document) {
+        try {
+          this.document.items = this.items;
+        } catch {
+          Object.defineProperty(this.document, 'items', {
+            value: this.items,
+            writable: true,
+            configurable: true,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('HeroSheet | Failed to load items:', e);
+      this.items = [];
+    }
+    if (rerender) {
+      this.rerenderBody();
+    }
+  }
+
+  /**
+   * Overrides loadDocument to ensure actor's owned items are loaded before initial mount/render.
+   * @returns {Promise<void>}
+   */
+  async loadDocument() {
+    await super.loadDocument();
+    await this.loadItems(false);
+  }
+
+  /**
    * Runs once, right after the first successful render.
    * @returns {Promise<void>}
    */
   async _onFirstRender() {
-    await this.loadBuffs();
+    await Promise.all([this.loadBuffs(), this.loadItems(false)]);
     this._attachDropZone();
+    this.rerenderBody();
   }
 
   /**
-   * Binds drag & drop listeners directly to this.element.
-   * Ensures 100% reliable drop handling for items from sidebar, compendium, or other sheets.
+   * Binds visual drag & drop cues and outbound drag to this.element.
    */
   _attachDropZone() {
     if (!this.element) return;
 
     this.element.addEventListener('dragover', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
       this.element.classList.add('loom-sheet-dragover');
     });
@@ -129,8 +171,13 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     });
 
     this.element.addEventListener('drop', (e) => {
+      e.stopPropagation();
       this.element.classList.remove('loom-sheet-dragover');
-      void this._onDrop(e);
+      // If dropped outside the .loom-window-body (e.g. window header), handle here
+      const insideBody = Boolean(e.target?.closest?.('.loom-window-body'));
+      if (!insideBody) {
+        void this._onDrop(e);
+      }
     });
 
     // Outbound item dragging from character sheet
@@ -138,7 +185,8 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       const row = e.target.closest('.loom-item-row');
       if (!row || !e.dataTransfer) return;
       const itemId = row.dataset.id;
-      const item = this.document?.items?.find((i) => i.id === itemId);
+      const items = Array.isArray(this.items) ? this.items : (this.document?.items || []);
+      const item = items.find((i) => i.id === itemId);
       if (!item) return;
 
       const payload = {
@@ -169,7 +217,19 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     const rawHp = sd.hp || doc.hp || { value: 20, max: 20 };
     const baseDefense = Number(sd.defense ?? doc.defense ?? 10);
 
-    const items = Array.isArray(doc.items) ? doc.items : [];
+    const docItems = Array.isArray(doc.items)
+      ? doc.items
+      : (Array.isArray(doc.items?.contents) ? doc.items.contents : []);
+    const items = Array.isArray(this.items) ? this.items : docItems;
+    try {
+      doc.items = items;
+    } catch {
+      Object.defineProperty(doc, 'items', {
+        value: items,
+        writable: true,
+        configurable: true,
+      });
+    }
     let itemDefenseBonus = 0;
     let itemAttackBonus = 0;
     let itemDamageBonus = 0;
@@ -662,7 +722,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   async rollItemAttack(itemId) {
     const doc = this.document || {};
-    const items = doc.items || [];
+    const items = Array.isArray(this.items) ? this.items : (doc.items || []);
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
@@ -688,7 +748,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   rollItemDamage(itemId) {
     const doc = this.document || {};
-    const items = doc.items || [];
+    const items = Array.isArray(this.items) ? this.items : (doc.items || []);
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
@@ -731,7 +791,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   async useItem(itemId) {
     const doc = this.document || {};
-    const items = doc.items || [];
+    const items = Array.isArray(this.items) ? this.items : (doc.items || []);
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
@@ -759,18 +819,16 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   async createItem() {
     try {
-      await api.post('/items', {
-        worldId: this.document?.worldId,
-        actorId: this.actorId,
+      await api.post(`/actors/${this.actorId}/items`, {
         name: localize('loom-demo-system.items.defaultWeaponName', 'New Sword'),
         type: 'weapon',
-        systemData: {
+        data: {
           damage: '1d8+2',
           damageType: localize('loom-demo-system.items.defaultSlashing', 'Slashing'),
           range: localize('loom-demo-system.items.defaultMelee', 'Melee'),
         },
       });
-      await this._reloadDocument();
+      await this.loadItems(true);
       showToast(localize('loom-demo-system.items.created', 'Item created!'), 'success');
     } catch (e) {
       showToast(e?.message || 'Error creating item', 'error');
@@ -787,11 +845,17 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     );
     if (!confirmed) return;
     try {
-      await api.delete(`/items/${itemId}`);
-      await this._reloadDocument();
+      await api.delete(`/actors/${this.actorId}/items/${itemId}`);
+      await this.loadItems(true);
       showToast(localize('loom-demo-system.items.deleted', 'Item deleted'), 'info');
     } catch (e) {
-      showToast(e?.message || 'Error deleting item', 'error');
+      try {
+        await api.delete(`/items/${itemId}`);
+        await this.loadItems(true);
+        showToast(localize('loom-demo-system.items.deleted', 'Item deleted'), 'info');
+      } catch (err) {
+        showToast(err?.message || 'Error deleting item', 'error');
+      }
     }
   }
 
@@ -878,6 +942,7 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   async _onDrop(event) {
     event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
     if (!event.dataTransfer) return;
 
     let data;
@@ -914,51 +979,53 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
    */
   async _onDropItem(event, data) {
     if (!this.actorId || !this.isEditable) return;
+    if (this._isDropping) return;
+    this._isDropping = true;
 
-    let itemPayload = null;
+    try {
+      let itemPayload = null;
 
-    // 1. Embedded entry data (common from CompendiumPackWindow)
-    if (data.data && typeof data.data === 'object' && (data.data.name || data.data.type)) {
-      itemPayload = data.data;
-    }
-    // 2. Compendium entry by UUID (Compendium.<packId>.<entryId>)
-    else if (data.uuid?.startsWith('Compendium.')) {
-      const parts = data.uuid.split('.');
-      const packId = parts[1];
-      const entryId = parts[parts.length - 1];
-      if (packId && entryId) {
-        try {
-          const entry = await api.get(`/compendium/${packId}/entries/${entryId}`);
-          itemPayload = entry?.data || entry;
-        } catch (err) {
-          console.warn('HeroSheet | Could not fetch compendium entry:', err);
-        }
+      // 1. Embedded entry data (common from CompendiumPackWindow)
+      if (data.data && typeof data.data === 'object' && (data.data.name || data.data.type)) {
+        itemPayload = data.data;
       }
-    }
-
-    // 3. Item from Sidebar or World collection by ID
-    if (!itemPayload && (data.id || data.uuid)) {
-      const itemId = data.id || (data.uuid?.startsWith('Item.') ? data.uuid.slice(5) : data.uuid);
-      if (itemId) {
-        if (window.Loom?.items?.get) {
-          itemPayload = window.Loom.items.get(itemId);
-        }
-        if (!itemPayload) {
+      // 2. Compendium entry by UUID (Compendium.<packId>.<entryId>)
+      else if (data.uuid?.startsWith('Compendium.')) {
+        const parts = data.uuid.split('.');
+        const packId = parts[1];
+        const entryId = parts[parts.length - 1];
+        if (packId && entryId) {
           try {
-            itemPayload = await api.get(`/items/${itemId}`);
+            const entry = await api.get(`/compendium/${packId}/entries/${entryId}`);
+            itemPayload = entry?.data || entry;
           } catch (err) {
-            console.warn('HeroSheet | Could not fetch item by ID:', err);
+            console.warn('HeroSheet | Could not fetch compendium entry:', err);
           }
         }
       }
-    }
 
-    if (!itemPayload) {
-      console.warn('HeroSheet | No valid item payload found in dropped data:', data);
-      return;
-    }
+      // 3. Item from Sidebar or World collection by ID
+      if (!itemPayload && (data.id || data.uuid)) {
+        const itemId = data.id || (data.uuid?.startsWith('Item.') ? data.uuid.slice(5) : data.uuid);
+        if (itemId) {
+          if (window.Loom?.items?.get) {
+            itemPayload = window.Loom.items.get(itemId);
+          }
+          if (!itemPayload) {
+            try {
+              itemPayload = await api.get(`/items/${itemId}`);
+            } catch (err) {
+              console.warn('HeroSheet | Could not fetch item by ID:', err);
+            }
+          }
+        }
+      }
 
-    try {
+      if (!itemPayload) {
+        console.warn('HeroSheet | No valid item payload found in dropped data:', data);
+        return;
+      }
+
       const name = itemPayload.name || localize('loom-demo-system.items.newItem', 'New Item');
       const type = itemPayload.type || 'weapon';
       const itemData = itemPayload.systemData || itemPayload.data || {};
@@ -971,9 +1038,9 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         imgUrl,
       });
 
-      // Switch to items tab and reload document
+      // Switch to items tab and reload items
       this.activeTab = 'items';
-      await this._reloadDocument();
+      await this.loadItems(true);
       showToast(
         localize('loom-demo-system.items.addedToInventory', `Item "${name}" adicionado ao inventário!`),
         'success'
@@ -981,6 +1048,8 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     } catch (err) {
       console.error('HeroSheet | Error attaching dropped item:', err);
       showToast(err?.message || 'Erro ao anexar item', 'error');
+    } finally {
+      this._isDropping = false;
     }
   }
 }
