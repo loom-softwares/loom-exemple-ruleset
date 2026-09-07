@@ -309,47 +309,37 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
 
   // 1. Extract the exact native avatar from core defaultHtml (guarantees 100% parity with standard messages)
   let avatarHtml = '';
-  const avatarMatch = defaultHtml.match(/<div[^>]*class="[^"]*sidebar-message-avatar[^"]*"[^>]*>[\s\S]*?<\/div>/i)
-    || defaultHtml.match(/<div[^>]*class="[^"]*avatar[^"]*"[^>]*>[\s\S]*?<\/div>/i);
+  const avatarMatch = defaultHtml.match(/<div[^>]*class="[^"]*(?:chat-avatar|sidebar-message-avatar|avatar)[^"]*"[^>]*>[\s\S]*?<\/div>/i);
 
   if (avatarMatch) {
     avatarHtml = avatarMatch[0];
-  } else if (actorAvatar) {
-    avatarHtml = `<div class="sidebar-message-avatar"><img src="${esc(actorAvatar)}" alt="${esc(actorName)}" /></div>`;
   } else {
-    avatarHtml = `<div class="sidebar-message-avatar"><svg viewBox="0 0 24 24" width="22" height="22" fill="#ffffff"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>`;
+    const avatarSrc = actorAvatar || msg.userAvatar || '/icons/svg/adventurer.svg';
+    avatarHtml = `<div class="chat-avatar"><img class="chat-avatar-img" src="${esc(avatarSrc)}" alt="${esc(actorName)}" /></div>`;
   }
 
   // Delete message support (GM or author)
   const isGM = Boolean(window.Loom?.user?.isGM || window.Loom?.user?.role === 'gm' || window.Loom?.user?.role === 'admin');
   const currentUserId = window.Loom?.user?.id;
   const isOwner = Boolean(currentUserId && (msg.userId === currentUserId || msg.author === currentUserId));
-  const canDelete = isGM || isOwner;
+  const canDelete = ctx.canDelete ?? (isGM || isOwner);
 
+  const msgId = msg.id || msg._id || msg.messageId || '';
   let deleteBtnHtml = '';
   if (canDelete) {
-    const msgId = msg.id || '';
-    const worldId = window.Loom?.world?.id || '';
-    const query = worldId ? `?worldId=${encodeURIComponent(worldId)}` : '';
-    // Note: window.Loom.api paths already have the /api prefix added by the SDK client, so use /chat-messages/
-    const deleteCall = `const el = this.closest('.sidebar-message'); if (el) el.remove(); if (window.Loom?.api?.delete) { window.Loom.api.delete('/chat-messages/${esc(msgId)}' + '${query}').catch(e => console.warn('Delete chat message:', e)); } else if (window.Loom?.messages?.delete) { window.Loom.messages.delete('${esc(msgId)}'); }`;
-
-    const match = defaultHtml.match(/<button[^>]*class="[^"]*(?:delete|trash)[^"]*"[^>]*>[\s\S]*?<\/button>/i)
-      || defaultHtml.match(/<button[^>]*data-action="[^"]*delete[^"]*"[^>]*>[\s\S]*?<\/button>/i)
-      || defaultHtml.match(/<button[^>]*>[\s\S]*?(?:fa-trash|lucide-trash)[\s\S]*?<\/button>/i);
+    const match = defaultHtml.match(/<button[^>]*data-action="delete-message"[^>]*>[\s\S]*?<\/button>/i)
+      || defaultHtml.match(/<button[^>]*class="[^"]*(?:chat-message-delete|sidebar-message-delete|delete|trash)[^"]*"[^>]*>[\s\S]*?<\/button>/i);
 
     if (match) {
-      deleteBtnHtml = match[0].replace('<button', `<button onclick="${deleteCall}"`);
+      // Use native core button directly — Loom's Sidebar natively handles data-action="delete-message"
+      deleteBtnHtml = match[0];
     } else {
       deleteBtnHtml = `<button
         type="button"
-        class="sidebar-message-delete loom-card-delete-btn"
-        data-action="delete"
-        data-action-target="message"
-        data-message-id="${esc(msgId)}"
+        class="chat-message-delete loom-card-delete-btn"
+        data-action="delete-message"
         data-id="${esc(msgId)}"
         title="${localize('loom-demo-system.chat.deleteMessage', 'Delete Message')}"
-        onclick="${deleteCall}"
       >
         <i class="fa-solid fa-trash"></i>
       </button>`;
@@ -357,11 +347,11 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   }
 
   if (!canSeeRoll) {
-    return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
-      <div class="loom-demo-card-header">
+    return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msgId)}" data-id="${esc(msgId)}" id="message-${esc(msgId)}">
+      <div class="sidebar-message-header loom-demo-card-header">
         <div class="loom-card-identity">
           ${avatarHtml}
-          <span class="loom-demo-card-name">${esc(actorName)}</span>
+          <span class="sidebar-message-author loom-demo-card-name">${esc(actorName)}</span>
         </div>
         <div class="loom-card-header-actions">
           ${deleteBtnHtml}
@@ -406,13 +396,13 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
     }
   }
 
-  return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
+  return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msgId)}" data-id="${esc(msgId)}" id="message-${esc(msgId)}">
     <!-- Header: Actor Avatar + Identity + Actions -->
-    <div class="loom-demo-card-header">
+    <div class="sidebar-message-header loom-demo-card-header">
       <div class="loom-card-identity">
         ${avatarHtml}
         <div class="loom-card-titles">
-          <span class="loom-card-actor-name">${esc(actorName)}</span>
+          <span class="sidebar-message-author loom-card-actor-name">${esc(actorName)}</span>
           <span class="loom-card-roll-tag">${esc(rollLabel)}</span>
         </div>
       </div>

@@ -54,13 +54,14 @@
   flex: 1;
 }
 
+.loom-demo-card .chat-avatar,
 .loom-demo-card .sidebar-message-avatar,
 .loom-card-avatar {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   border-radius: 50%;
-  background: #181920;
+  background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.12);
   overflow: hidden;
   display: flex;
@@ -71,6 +72,8 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
+.loom-demo-card .chat-avatar img,
+.loom-demo-card .chat-avatar-img,
 .loom-demo-card .sidebar-message-avatar img,
 .loom-card-avatar-img {
   width: 100%;
@@ -80,9 +83,10 @@
   display: block;
 }
 
+.loom-demo-card .chat-avatar svg,
 .loom-demo-card .sidebar-message-avatar svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   fill: #ffffff;
   display: block;
 }
@@ -130,6 +134,7 @@
 }
 
 .loom-card-delete-btn,
+.loom-demo-card .chat-message-delete,
 .loom-demo-card .sidebar-message-delete {
   background: transparent;
   border: none;
@@ -146,6 +151,7 @@
 }
 
 .loom-card-delete-btn:hover,
+.loom-demo-card .chat-message-delete:hover,
 .loom-demo-card .sidebar-message-delete:hover {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.2);
