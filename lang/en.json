@@ -148,7 +148,8 @@
       "target": "Target",
       "difficulty": "Difficulty",
       "total": "TOTAL",
-      "initiative": "INITIATIVE"
+      "initiative": "INITIATIVE",
+      "deleteMessage": "Delete Message"
     }
   },
   "loom-demo-system.title": "Loom Demo System",
@@ -274,5 +275,6 @@
   "loom-demo-system.chat.target": "Target",
   "loom-demo-system.chat.difficulty": "Difficulty",
   "loom-demo-system.chat.total": "TOTAL",
-  "loom-demo-system.chat.initiative": "INITIATIVE"
+  "loom-demo-system.chat.initiative": "INITIATIVE",
+  "loom-demo-system.chat.deleteMessage": "Delete Message"
 }

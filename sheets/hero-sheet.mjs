@@ -405,8 +405,10 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
           difficulty: result.dc,
           targetName: target?.name || null,
           targetAvatar: target?.avatar || null,
-          actorAvatar: doc.avatarUrl || '',
-          actorName: doc.name || 'Hero',
+          actorId: this.actorId,
+          actorAvatar: doc.avatarUrl || doc.imgUrl || doc.img || doc.portrait || '',
+          actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
+          actorType: doc.type || 'hero',
           attr: attrKey,
           action: actionType,
         },
@@ -585,8 +587,9 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
           isInitiative: true,
           actorId: this.actorId,
           inCombat: !!combatant,
-          actorAvatar: doc.avatarUrl || '',
+          actorAvatar: doc.avatarUrl || doc.imgUrl || doc.img || doc.portrait || '',
           actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
+          actorType: doc.type || 'hero',
         },
       });
     } else {
@@ -602,10 +605,6 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
     windowManager.open(`item-sheet-${itemId}`, DemoItemSheet, { itemId });
   }
 
-  /**
-   * Rolls damage for an item owned by this actor.
-   * @param {string} itemId
-   */
   /**
    * Rolls attack with a character-owned weapon, adding Might and weapon attack bonus.
    * @param {string} itemId
@@ -657,8 +656,10 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         meta: {
           system: 'Loom Demo',
           label: `${item.name} (${localize('loom-demo-system.actions.damage', 'Damage')})`,
-          actorAvatar: doc.avatarUrl || '',
+          actorId: this.actorId,
+          actorAvatar: doc.avatarUrl || doc.imgUrl || doc.img || doc.portrait || '',
           actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
+          actorType: doc.type || 'hero',
         },
       });
     } else {
@@ -691,8 +692,10 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
         meta: {
           system: 'Loom Demo',
           label: `${item.name} (${localize('loom-demo-system.items.healing', 'Healing')})`,
-          actorAvatar: doc.avatarUrl || '',
+          actorId: this.actorId,
+          actorAvatar: doc.avatarUrl || doc.imgUrl || doc.img || doc.portrait || '',
           actorName: doc.name || localize('loom-demo-system.hero', 'Hero'),
+          actorType: doc.type || 'hero',
         },
       });
     } else {

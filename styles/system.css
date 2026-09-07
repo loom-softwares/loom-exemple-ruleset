@@ -55,18 +55,18 @@
 }
 
 .loom-card-avatar {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  border-radius: 6px;
-  border: 1.5px solid #e5a93c;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--rpg-gold, #e5a93c);
   background: #0f1014;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fef08a;
-  font-size: 0.95rem;
+  color: var(--rpg-gold, #e5a93c);
+  font-size: 1rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   flex-shrink: 0;
 }
@@ -74,6 +74,7 @@
 .loom-card-avatar-img {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
@@ -105,11 +106,42 @@
   line-height: 1.1;
 }
 
+.loom-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .loom-card-header-icon {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: #fef08a;
   opacity: 0.85;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  display: inline-flex;
+  align-items: center;
+}
+
+.loom-card-delete-btn,
+.loom-demo-card .sidebar-message-delete {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.loom-card-delete-btn:hover,
+.loom-demo-card .sidebar-message-delete:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.1);
 }
 
 /* Standardized chat card body */

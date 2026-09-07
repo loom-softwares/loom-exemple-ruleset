@@ -149,7 +149,8 @@ export const enBundle = {
       "target": "Target",
       "difficulty": "Difficulty",
       "total": "TOTAL",
-      "initiative": "INITIATIVE"
+      "initiative": "INITIATIVE",
+      "deleteMessage": "Delete Message"
     }
   },
   "loom-demo-system.title": "Loom Demo System",
@@ -275,7 +276,8 @@ export const enBundle = {
   "loom-demo-system.chat.target": "Target",
   "loom-demo-system.chat.difficulty": "Difficulty",
   "loom-demo-system.chat.total": "TOTAL",
-  "loom-demo-system.chat.initiative": "INITIATIVE"
+  "loom-demo-system.chat.initiative": "INITIATIVE",
+  "loom-demo-system.chat.deleteMessage": "Delete Message"
 };
 
 export const ptBundle = {
@@ -428,7 +430,8 @@ export const ptBundle = {
       "target": "Alvo",
       "difficulty": "Dificuldade",
       "total": "TOTAL",
-      "initiative": "INICIATIVA"
+      "initiative": "INICIATIVA",
+      "deleteMessage": "Excluir mensagem"
     }
   },
   "loom-demo-system.title": "Loom Demo System",
@@ -554,5 +557,6 @@ export const ptBundle = {
   "loom-demo-system.chat.target": "Alvo",
   "loom-demo-system.chat.difficulty": "Dificuldade",
   "loom-demo-system.chat.total": "TOTAL",
-  "loom-demo-system.chat.initiative": "INICIATIVA"
+  "loom-demo-system.chat.initiative": "INICIATIVA",
+  "loom-demo-system.chat.deleteMessage": "Excluir mensagem"
 };

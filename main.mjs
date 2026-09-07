@@ -274,18 +274,82 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
 
   const { esc, canSeeRoll } = ctx;
   const sp = msg.speaker || {};
-  const actorName = msg.roll.meta?.actorName || sp.actorName || msg.userName || localize('loom-demo-system.hero', 'Hero');
-  const actorAvatar = msg.roll.meta?.actorAvatar || sp.actorAvatar || sp.avatarUrl || msg.userAvatar || '';
-  const rollLabel = msg.roll.meta?.label || localize('loom-demo-system.actions.roll', 'Roll');
+  const meta = msg.roll.meta || {};
+  const actorId = meta.actorId || sp.actorId || msg.actorId;
+
+  // Resolve live actor from Loom if available
+  let liveActor = null;
+  if (actorId && window.Loom?.actors) {
+    liveActor = window.Loom.actors.get?.(actorId)
+      || window.Loom.actors.find?.((a) => a.id === actorId || a._id === actorId)
+      || (typeof window.Loom.actors === 'object' && !Array.isArray(window.Loom.actors) ? window.Loom.actors[actorId] : null);
+  }
+
+  // Resolve canvas token / cast if available
+  let liveToken = null;
+  if (actorId && window.Loom?.cast) {
+    liveToken = window.Loom.cast.get?.(actorId)
+      || window.Loom.cast.find?.((c) => c.actorId === actorId || c.id === actorId);
+  }
+
+  // Priority: live actor name > meta.actorName > speaker > user name
+  const actorName = liveActor?.name || meta.actorName || sp.actorName || msg.userName || localize('loom-demo-system.hero', 'Hero');
+
+  // Priority: live actor avatar > live token image > meta.actorAvatar > speaker avatar > user avatar
+  const actorAvatar = liveActor?.avatarUrl || liveActor?.imgUrl || liveActor?.img || liveToken?.imgUrl || liveToken?.avatarUrl || meta.actorAvatar || sp.actorAvatar || sp.avatarUrl || msg.userAvatar || '';
+
+  // Consistent portrait placeholder icon matching actor type (hero = user, villain = skull, beast = paw)
+  const actorType = liveActor?.type || meta.actorType || 'hero';
+  const actorIcon = actorType === 'villain' ? 'fa-skull' : actorType === 'beast' ? 'fa-paw' : 'fa-user';
+
+  const rollLabel = meta.label || localize('loom-demo-system.actions.roll', 'Roll');
+
+  // Delete message support (GM or author)
+  const defaultHtml = wrapped(msg, ctx) || '';
+  const isGM = Boolean(window.Loom?.user?.isGM || window.Loom?.user?.role === 'gm' || window.Loom?.user?.role === 'admin');
+  const currentUserId = window.Loom?.user?.id;
+  const isOwner = Boolean(currentUserId && (msg.userId === currentUserId || msg.author === currentUserId));
+  const canDelete = isGM || isOwner;
+
+  let deleteBtnHtml = '';
+  if (canDelete) {
+    const msgId = msg.id || '';
+    const worldId = window.Loom?.world?.id || '';
+    const deleteCall = `event.stopPropagation(); if (window.Loom?.api?.delete) { window.Loom.api.delete('/api/chat-messages/${esc(msgId)}' + ('${worldId}' ? '?worldId=${encodeURIComponent(worldId)}' : '')); } else if (window.Loom?.messages?.delete) { window.Loom.messages.delete('${esc(msgId)}'); }`;
+
+    const match = defaultHtml.match(/<button[^>]*class="[^"]*(?:delete|trash)[^"]*"[^>]*>[\s\S]*?<\/button>/i)
+      || defaultHtml.match(/<button[^>]*data-action="[^"]*delete[^"]*"[^>]*>[\s\S]*?<\/button>/i)
+      || defaultHtml.match(/<button[^>]*>[\s\S]*?(?:fa-trash|lucide-trash)[\s\S]*?<\/button>/i);
+
+    if (match) {
+      deleteBtnHtml = match[0].replace('<button', `<button onclick="${deleteCall}"`);
+    } else {
+      deleteBtnHtml = `<button
+        type="button"
+        class="sidebar-message-delete loom-card-delete-btn"
+        data-action="delete"
+        data-action-target="message"
+        data-message-id="${esc(msgId)}"
+        data-id="${esc(msgId)}"
+        title="${localize('loom-demo-system.chat.deleteMessage', 'Delete Message')}"
+        onclick="${deleteCall}"
+      >
+        <i class="fa-solid fa-trash"></i>
+      </button>`;
+    }
+  }
 
   if (!canSeeRoll) {
     return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
       <div class="loom-demo-card-header">
         <div class="loom-card-identity">
           <div class="loom-card-avatar">
-            ${actorAvatar ? `<img src="${esc(actorAvatar)}" class="loom-card-avatar-img" alt="" />` : `<i class="fa-solid fa-shield-halved"></i>`}
+            ${actorAvatar ? `<img src="${esc(actorAvatar)}" class="loom-card-avatar-img" alt="" />` : `<i class="fa-solid ${actorIcon}"></i>`}
           </div>
           <span class="loom-demo-card-name">${esc(actorName)}</span>
+        </div>
+        <div class="loom-card-header-actions">
+          ${deleteBtnHtml}
         </div>
       </div>
       <div class="sidebar-message-body">
@@ -328,19 +392,22 @@ getWraps().renderMessage.wrap((wrapped, msg, ctx) => {
   }
 
   return `<div class="sidebar-message loom-demo-card" data-message-id="${esc(msg.id || '')}">
-    <!-- Header: Actor Avatar + Identity + Roll Type -->
+    <!-- Header: Actor Avatar + Identity + Actions -->
     <div class="loom-demo-card-header">
       <div class="loom-card-identity">
         <div class="loom-card-avatar">
-          ${actorAvatar ? `<img src="${esc(actorAvatar)}" class="loom-card-avatar-img" alt="${esc(actorName)}" />` : `<i class="fa-solid fa-shield-halved"></i>`}
+          ${actorAvatar ? `<img src="${esc(actorAvatar)}" class="loom-card-avatar-img" alt="${esc(actorName)}" />` : `<i class="fa-solid ${actorIcon}"></i>`}
         </div>
         <div class="loom-card-titles">
           <span class="loom-card-actor-name">${esc(actorName)}</span>
           <span class="loom-card-roll-tag">${esc(rollLabel)}</span>
         </div>
       </div>
-      <div class="loom-card-header-icon">
-        <i class="fa-solid ${msg.roll.meta?.isInitiative ? 'fa-bolt' : 'fa-dice-d20'}"></i>
+      <div class="loom-card-header-actions">
+        <span class="loom-card-header-icon" title="${esc(rollLabel)}">
+          <i class="fa-solid ${msg.roll.meta?.isInitiative ? 'fa-bolt' : 'fa-dice-d20'}"></i>
+        </span>
+        ${deleteBtnHtml}
       </div>
     </div>
 
