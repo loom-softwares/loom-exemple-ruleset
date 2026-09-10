@@ -49,7 +49,8 @@ loom-demo-system/
 │   ├── hero.mjs              # Default data for "hero" actor type
 │   ├── villain.mjs           # Default data for "villain"
 │   ├── beast.mjs             # Default data for "beast"
-│   └── prepare-data.mjs      # Derived data calculation (attack/dodge/initiative bonuses, defenses)
+│   ├── prepare-data.mjs      # Derived data calculation (attack/dodge/initiative bonuses, defenses)
+│   └── locales.mjs           # Language bundles (enBundle/ptBundle) imported by main.mjs
 ├── sheets/
 │   ├── hero-sheet.mjs        # HeroSheet extending LoomHandlebarsMixin(LoomActorSheet)
 │   └── item-sheet.mjs        # DemoItemSheet extending LoomHandlebarsMixin(LoomItemSheet)
