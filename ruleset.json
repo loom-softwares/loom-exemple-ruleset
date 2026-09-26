@@ -1,61 +1,63 @@
-{
-  "name": "loom-demo-system",
-  "title": "Loom Demo System",
-  "version": "0.1.0",
-  "engine": "loom",
-  "type": "ruleset",
-  "description": "Demonstration System LoomVTT",
-  "author": "LoomVTT",
-  "client": "main.mjs",
-  "backgroundUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
-  "coverUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
-  "active": true,
-  "actorTypes": [
-    "hero",
-    "villain",
-    "beast"
-  ],
-  "itemTypes": [
-    "weapon",
-    "armor",
-    "potion",
-    "scroll"
-  ],
-  "styles": [
-    "styles/system.css"
-  ],
-  "languages": [
-    {
-      "lang": "pt-BR",
-      "name": "Português (Brasil)",
-      "path": "lang/pt-BR.json"
-    },
-    {
-      "lang": "en",
-      "name": "English",
-      "path": "lang/en.json"
-    }
-  ],
-  "settings": [
-    {
-      "key": "language",
-      "type": "string",
-      "default": "pt-BR",
-      "label": "Idioma do Sistema / Language",
-      "hint": "Idioma padrão para fichas e rolagens / Default language for sheets and rolls",
-      "scope": "client",
-      "choices": {
-        "pt-BR": "Português (Brasil)",
-        "en": "English"
-      }
-    },
-    {
-      "key": "initiativeBonusAttr",
-      "type": "string",
-      "default": "swift",
-      "label": "Initiative Attribute",
-      "hint": "Attribute used to calculate initiative bonus (might, swift, or wits)",
-      "scope": "world"
-    }
-  ]
+﻿{
+    "name":  "loom-demo-system",
+    "title":  "Loom Demo System",
+    "version":  "0.1.0",
+    "engine":  "loom",
+    "type":  "ruleset",
+    "description":  "Demonstration System LoomVTT",
+    "author":  "LoomVTT",
+    "client":  "main.mjs",
+    "backgroundUrl":  "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
+    "coverUrl":  "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
+    "active":  true,
+    "actorTypes":  [
+                       "hero",
+                       "villain",
+                       "beast"
+                   ],
+    "itemTypes":  [
+                      "weapon",
+                      "armor",
+                      "potion",
+                      "scroll"
+                  ],
+    "styles":  [
+                   "styles/system.css"
+               ],
+    "languages":  [
+                      {
+                          "lang":  "pt-BR",
+                          "name":  "Português (Brasil)",
+                          "path":  "lang/pt-BR.json"
+                      },
+                      {
+                          "lang":  "en",
+                          "name":  "English",
+                          "path":  "lang/en.json"
+                      }
+                  ],
+    "settings":  [
+                     {
+                         "key":  "language",
+                         "type":  "string",
+                         "default":  "pt-BR",
+                         "label":  "Idioma do Sistema / Language",
+                         "hint":  "Idioma padrão para fichas e rolagens / Default language for sheets and rolls",
+                         "scope":  "client",
+                         "choices":  {
+                                         "pt-BR":  "Português (Brasil)",
+                                         "en":  "English"
+                                     }
+                     },
+                     {
+                         "key":  "initiativeBonusAttr",
+                         "type":  "string",
+                         "default":  "swift",
+                         "label":  "Initiative Attribute",
+                         "hint":  "Attribute used to calculate initiative bonus (might, swift, or wits)",
+                         "scope":  "world"
+                     }
+                 ],
+    "manifest":  "https://raw.githubusercontent.com/sammore2/loom-exemple-ruleset/main/ruleset.json",
+    "download":  "https://github.com/sammore2/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip"
 }
