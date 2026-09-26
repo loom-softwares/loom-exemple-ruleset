@@ -59,5 +59,6 @@
                      }
                  ],
     "manifest":  "https://raw.githubusercontent.com/loom-softwares/loom-exemple-ruleset/main/ruleset.json",
-    "download":  "https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip"
+    "download":  "https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip",
+    "repository":  "https://github.com/loom-softwares/loom-exemple-ruleset"
 }
