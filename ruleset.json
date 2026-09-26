@@ -58,6 +58,6 @@
                          "scope":  "world"
                      }
                  ],
-    "manifest":  "https://raw.githubusercontent.com/sammore2/loom-exemple-ruleset/main/ruleset.json",
-    "download":  "https://github.com/sammore2/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip"
+    "manifest":  "https://raw.githubusercontent.com/loom-softwares/loom-exemple-ruleset/main/ruleset.json",
+    "download":  "https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip"
 }
