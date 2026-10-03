@@ -1,0 +1,131 @@
+name: Release Loom package
+
+# Push a tag like v1.2.3 -> builds the package zip, stamps the version into the
+# manifest and publishes the release (zip + manifest) the way the Loom installer
+# expects: <repo>/releases/latest/download/<manifest>.json and the zip as asset.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: v
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "Tag '$TAG' is not semver (expected vMAJOR.MINOR.PATCH)"; exit 1
+          fi
+          if [ -f ruleset.json ]; then MANIFEST=ruleset.json; elif [ -f addon.json ]; then MANIFEST=addon.json; else echo "No ruleset.json/addon.json at repo root"; exit 1; fi
+          NAME=$(node -p "require('./$MANIFEST').name")
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp version into manifest
+        env:
+          MANIFEST: ${{ steps.v.outputs.manifest }}
+          VERSION: ${{ steps.v.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync(process.env.MANIFEST, "utf8"));
+            m.version = process.env.VERSION;
+            m.manifest = `https://github.com/${process.env.REPO}/releases/latest/download/${process.env.MANIFEST}`;
+            fs.writeFileSync(process.env.MANIFEST, JSON.stringify(m, null, 2) + "\n");
+          '
+
+      - name: Extract release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          : > release-notes.md
+          if [ -f CHANGELOG.md ]; then
+            node -e '
+              const fs = require("fs");
+              const lines = fs.readFileSync("CHANGELOG.md", "utf8").split("\n").map(l => l.replace("\r", ""));
+              const ver = process.env.VERSION;
+              const start = lines.findIndex(l => l.startsWith("##") && [ver, "[" + ver + "]", "v" + ver, "[v" + ver + "]"].includes(l.slice(2).trim().split(" ")[0]));
+              if (start === -1) process.exit(0);
+              let end = lines.findIndex((l, i) => i > start && /^##\s/.test(l));
+              if (end === -1) end = lines.length;
+              fs.writeFileSync("release-notes.md", lines.slice(start + 1, end).join("\n").trim() + "\n");
+            '
+          fi
+          if [ -s release-notes.md ]; then echo "Changelog entry found for ${VERSION}"; else echo "No changelog entry for ${VERSION}; falling back to generated notes"; fi
+
+      - name: Build package zip
+        env:
+          NAME: ${{ steps.v.outputs.name }}
+        run: |
+          zip -r "${NAME}.zip" . \
+            -x '.git/*' '.github/*' '.agents/*' '.dev/*' '.vite/*' 'node_modules/*' \
+               '.gitignore' '.gitattributes' '*.zip' 'release-notes.md' 'release-manifest.json'
+
+      - name: Build release manifest (adds download URL + sha256)
+        env:
+          MANIFEST: ${{ steps.v.outputs.manifest }}
+          NAME: ${{ steps.v.outputs.name }}
+          TAG: ${{ steps.v.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const crypto = require("crypto");
+            const m = JSON.parse(fs.readFileSync(process.env.MANIFEST, "utf8"));
+            const zip = `${process.env.NAME}.zip`;
+            m.download = `https://github.com/${process.env.REPO}/releases/download/${process.env.TAG}/${zip}`;
+            m.sha256 = crypto.createHash("sha256").update(fs.readFileSync(zip)).digest("hex");
+            fs.writeFileSync("release-manifest.json", JSON.stringify(m, null, 2) + "\n");
+          '
+          mv release-manifest.json "${MANIFEST}.release"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          body_path: release-notes.md
+          generate_release_notes: true
+          files: |
+            ${{ steps.v.outputs.name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload manifest asset under its real name
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST: ${{ steps.v.outputs.manifest }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          mkdir -p out && cp "${MANIFEST}.release" "out/${MANIFEST}"
+          gh release upload "$TAG" "out/${MANIFEST}" --clobber
+
+      - name: Sync version back to default branch (best effort)
+        continue-on-error: true
+        env:
+          MANIFEST: ${{ steps.v.outputs.manifest }}
+          TAG: ${{ steps.v.outputs.tag }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp "$MANIFEST" /tmp/manifest.stamped
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout -B sync-version "origin/$DEFAULT_BRANCH"
+          cp /tmp/manifest.stamped "$MANIFEST"
+          git add "$MANIFEST"
+          git diff --cached --quiet || { git commit -m "chore: release ${TAG}"; git push origin "HEAD:${DEFAULT_BRANCH}"; }
