@@ -14,11 +14,20 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # The demo has no lockfile and no dependencies: no npm cache, no npm ci.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
 
       - name: Resolve version
         id: v
@@ -77,9 +86,19 @@ jobs:
           NAME: ${{ steps.v.outputs.name }}
         run: |
           zip -r "${NAME}.zip" . \
-            -x '.git/*' '.github/*' '.agents/*' '.dev/*' '.vite/*' 'node_modules/*' \
-               'tests/*' 'i18n/*' 'scripts/*' 'package.json' \
+            -x '.git/*' '.github/*' '.agents/*' '.dev/*' '.planning/*' '.codex/*' '.vite/*' 'node_modules/*' 'packs/source/*' \
+               './.git/*' './.github/*' './.agents/*' './.dev/*' './.planning/*' './.codex/*' './.vite/*' './node_modules/*' './packs/source/*' \
+               'tests/*' './tests/*' 'i18n/*' './i18n/*' 'scripts/*' './scripts/*' \
+               'package.json' 'package-lock.json' \
                '.gitignore' '.gitattributes' '*.zip' 'release-notes.md' 'release-manifest.json'
+
+      - name: Verify package contents
+        env:
+          NAME: ${{ steps.v.outputs.name }}
+          MANIFEST: ${{ steps.v.outputs.manifest }}
+        run: |
+          unzip -t "${NAME}.zip"
+          node scripts/verify-package.mjs "${NAME}.zip" "$MANIFEST"
 
       - name: Build release manifest (adds download URL + sha256)
         env:
@@ -118,6 +137,36 @@ jobs:
         run: |
           mkdir -p out && cp "${MANIFEST}.release" "out/${MANIFEST}"
           gh release upload "$TAG" "out/${MANIFEST}" --clobber
+
+      - name: Publish package version to Loom Hub
+        if: ${{ !contains(github.ref_name, '-') }}
+        continue-on-error: true
+        env:
+          RELEASE_TAG: ${{ steps.v.outputs.tag }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'NODE'
+          const requestUrl = new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
+          requestUrl.searchParams.set('audience', 'urn:loomsite:package-release');
+          const tokenResponse = await fetch(requestUrl, {
+            headers: { Authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` }
+          });
+          if (!tokenResponse.ok) throw new Error(`GitHub OIDC token request failed (${tokenResponse.status}).`);
+          const { value: token } = await tokenResponse.json();
+          const response = await fetch('https://loomvtt.com/api/publish-package-release', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              repository: process.env.RELEASE_REPOSITORY,
+              tag: process.env.RELEASE_TAG,
+            })
+          });
+          const text = await response.text();
+          console.log(`Loom Hub response (${response.status}): ${text}`);
+          if (!response.ok) throw new Error(`Loom Hub version publish failed (${response.status}). The GitHub release is already published.`);
+          const result = JSON.parse(text || "{}");
+          console.log(`Loom Hub catalog updated for ${result.version}.`);
+          NODE
 
       - name: Sync version back to default branch (best effort)
         continue-on-error: true

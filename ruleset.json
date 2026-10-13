@@ -3,9 +3,11 @@
     "title": "Loom Demo System",
     "version": "0.2.0",
     "engine": "loom",
+    "engineVersion": ">=0.1.0",
     "type": "ruleset",
     "description": "Open sandbox to learn how to build a system on Loom. Define attributes, skills, resources, item categories, the dice system, the chat card and combat in the system editor (GM).",
     "author": "LoomVTT",
+    "license": "MIT",
     "client": "main.mjs",
     "backgroundUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
     "coverUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
@@ -46,5 +48,6 @@
     ],
     "manifest": "https://raw.githubusercontent.com/loom-softwares/loom-exemple-ruleset/main/ruleset.json",
     "download": "https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip",
-    "repository": "https://github.com/loom-softwares/loom-exemple-ruleset"
+    "repository": "https://github.com/loom-softwares/loom-exemple-ruleset",
+    "bugs": "https://github.com/loom-softwares/loom-exemple-ruleset/issues"
 }
