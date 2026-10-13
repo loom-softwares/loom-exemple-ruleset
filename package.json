@@ -1,0 +1,12 @@
+{
+  "name": "loom-demo-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Loom sandbox ruleset: build your own system on Loom",
+  "scripts": {
+    "test": "node --test",
+    "lang": "node scripts/merge-lang.mjs",
+    "check": "node --test && node --check main.mjs"
+  }
+}

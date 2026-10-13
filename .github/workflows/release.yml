@@ -35,6 +35,10 @@ jobs:
           echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
+      # Runs before the version is stamped, so the manifest is checked as committed.
+      - name: Run tests
+        run: npm test
+
       - name: Stamp version into manifest
         env:
           MANIFEST: ${{ steps.v.outputs.manifest }}
@@ -74,6 +78,7 @@ jobs:
         run: |
           zip -r "${NAME}.zip" . \
             -x '.git/*' '.github/*' '.agents/*' '.dev/*' '.vite/*' 'node_modules/*' \
+               'tests/*' 'i18n/*' 'scripts/*' 'package.json' \
                '.gitignore' '.gitattributes' '*.zip' 'release-notes.md' 'release-manifest.json'
 
       - name: Build release manifest (adds download URL + sha256)
