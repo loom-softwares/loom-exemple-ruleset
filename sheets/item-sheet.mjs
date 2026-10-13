@@ -2,80 +2,199 @@
 // Loom Demo System — sheets/item-sheet.mjs
 // ══════════════════════════════════════════════════════════════
 //
-// Custom Handlebars sheet for system items (LoomItemSheet).
-// Demonstrates as an educational reference:
-// - Inheritance from LoomHandlebarsMixin(LoomItemSheet)
-// - Native image/icon picking via data-action="pick-portrait"
-// - Contextual properties by item type (weapon, armor, potion, scroll)
-// - Direct action button to roll weapon damage
+// Configurable item sheet (LoomItemSheet). One class for every item type: gear, ability,
+// spell, weapon, armor, potion, scroll (and '*' as the fallback). The generic item sheet
+// discards the system's data model, so this class ships its own render and save path.
+//
+// Pure logic (normalization, context, HTML) lives in sheets/item-view.mjs and is tested in
+// plain Node. This file only wires it to the engine:
+// - the config is re-read with loadConfig({ fresh: true }) on open and before each save;
+// - edits are debounced (300 ms) and saved with one PUT to /api/items/:id (the world route
+//   also refreshes the owning actor for embedded items);
+// - one delegated listener (the engine's data-action dispatch, plus the form change/input
+//   listener of the document sheet) handles every control;
+// - focus and caret are restored after a re-render, so typing is not lost.
 
-import { LoomHandlebarsMixin, LoomItemSheet } from '/_loom/sdk/index.js';
+import { LoomHandlebarsMixin, LoomItemSheet, api, sheets, showToast } from '/_loom/sdk/index.js';
+import { loadConfig } from '../lib/config.mjs';
+import { isPlainObject } from '../lib/helpers.mjs';
+import {
+  ITEM_TYPES,
+  applyField,
+  buildItemContext,
+  normalizeItemData,
+  normalizeItemName,
+  renderItem,
+  safeImageUrl,
+} from './item-view.mjs';
+
+const SAVE_DEBOUNCE_MS = 300;
+const IMG_MAX = 500;
+
+/** Translator for the sheet: localized text, English fallback, never throws. */
+function t(key, fallback) {
+  try {
+    const out = window.Loom?.i18n?.localize?.(key);
+    return typeof out === 'string' && out !== '' && out !== key ? out : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
   static PARTS = {
     main: { template: '/marketplace/rulesets/loom-demo-system/templates/item-sheet.hbs' },
   };
 
+  get dataKey() { return 'data'; }
+
   constructor(props) {
     super({
       ...props,
       id: props.id || `item-sheet-${props.itemId || props.documentId}`,
       documentId: props.itemId || props.documentId,
-      width: props.width || 480,
+      width: props.width || 440,
       height: props.height || 'auto',
     });
     this.itemId = props.itemId || props.documentId;
+    this._cfg = null;
+    this._cfgSignature = '';
+    this._configChanged = false;
+    this._pendingFields = new Map();
+    this._formSaveTimer = undefined;
+    this._focusSnapshot = null;
+    this._portraitRejected = false;
   }
 
   /**
-   * Prepares template context with item type flags and systemData shortcuts.
-   * @returns {Promise<Record<string, any>>}
+   * Reads the world config and remembers whether it differs from the previous read, so the
+   * sheet can show a "configuration changed" hint. Never throws (loadConfig falls back).
    */
+  async _readConfig() {
+    const cfg = await loadConfig({ fresh: true });
+    const signature = JSON.stringify(cfg);
+    if (this._cfgSignature && signature !== this._cfgSignature) this._configChanged = true;
+    this._cfgSignature = signature;
+    this._cfg = cfg;
+    return cfg;
+  }
+
+  async mount() {
+    await this._readConfig();
+    return super.mount();
+  }
+
   async _prepareContext() {
     const base = await super._prepareContext();
-    const doc = this.document || {};
-    const sd = doc.systemData || doc.data || {};
+    const cfg = this._cfg || (await this._readConfig());
+    const editable = Boolean(this.document) && Boolean(this.isEditable);
+    const ctx = buildItemContext(this.document || {}, cfg, t, {
+      editable,
+      configChanged: this._configChanged,
+      portraitRejected: this._portraitRejected,
+    });
+    return { ...base, body: renderItem(ctx) };
+  }
 
-    return {
-      ...base,
-      document: doc,
-      systemData: sd,
-      isWeapon: doc.type === 'weapon',
-      isArmor: doc.type === 'armor',
-      isPotion: doc.type === 'potion',
-      isScroll: doc.type === 'scroll',
-    };
+  _postRender(...args) {
+    if (typeof super._postRender === 'function') super._postRender(...args);
+    this._restoreFocus();
+  }
+
+  /** Anti-blur: puts focus and caret back on the field the user was typing in. */
+  _restoreFocus() {
+    const snap = this._focusSnapshot;
+    this._focusSnapshot = null;
+    if (!snap || !this.element) return;
+    const field = this.element.querySelector(`[data-field="${snap.field}"]`);
+    if (!field || field.disabled) return;
+    field.focus({ preventScroll: true });
+    if (snap.selStart !== null && typeof field.setSelectionRange === 'function') {
+      try { field.setSelectionRange(snap.selStart, snap.selEnd); } catch { /* not a text control */ }
+    }
+  }
+
+  onAction(action, id, target) {
+    if (action === 'clear-portrait') {
+      if (!this.document || !this.isEditable) return;
+      this._pendingFields.set('portrait', '');
+      void this._flushPendingFields();
+      return;
+    }
+    if (typeof super.onAction === 'function') super.onAction(action, id, target);
+  }
+
+  /** Single change/input entry point for every control in the sheet. */
+  _onChangeForm(event) {
+    const el = event?.target;
+    const field = el?.dataset?.field;
+    if (!field || !this.document || !this.isEditable) return;
+
+    let value;
+    if (el.type === 'checkbox') value = el.checked;
+    else if (el.type === 'number') value = el.value.trim() === '' ? NaN : Number(el.value);
+    else value = el.value;
+    this._pendingFields.set(field, value);
+
+    // Remember the caret only while typing; a committed change (select, blur) drops it.
+    this._focusSnapshot = event.type === 'input'
+      ? { field, selStart: el.selectionStart ?? null, selEnd: el.selectionEnd ?? null }
+      : null;
+
+    clearTimeout(this._formSaveTimer);
+    this._formSaveTimer = setTimeout(() => {
+      this._formSaveTimer = undefined;
+      void this._flushPendingFields();
+    }, SAVE_DEBOUNCE_MS);
   }
 
   /**
-   * Action dispatcher for item sheet UI buttons (e.g. roll damage).
-   * @param {string} action - Action key.
-   * @param {string} [id] - Optional ID.
-   * @param {HTMLElement} [target] - Target element.
+   * Applies every pending field to a copy of the stored data, normalizes it and sends one PUT.
+   * Key references that no longer exist are kept (normalizeItemData does not touch them).
    */
-  async onAction(action, id, target) {
-    if (action === 'roll-damage') {
-      const doc = this.document || {};
-      const sd = doc.systemData || doc.data || {};
-      const formula = sd.damage || '1d6';
+  async _flushPendingFields() {
+    if (!this.document || this._pendingFields.size === 0) return;
+    const pending = this._pendingFields;
+    this._pendingFields = new Map();
 
-      if (window.Loom?.dispatchRoll) {
-        const damageWord = window.Loom?.i18n?.localize?.('loom-demo-system.actions.damage') || 'Damage';
-        const itemWord = window.Loom?.i18n?.localize?.('loom-demo-system.items.newItem') || 'Item';
-        window.Loom.dispatchRoll({
-          formula,
-          meta: {
-            system: 'Loom Demo',
-            label: `${doc.name || itemWord} (${damageWord})`,
-            actorAvatar: doc.imgUrl || '',
-            actorName: doc.name || itemWord,
-          },
-        });
+    try {
+      const type = typeof this.document.type === 'string' ? this.document.type : 'gear';
+      const cfg = await this._readConfig();
+
+      let data = isPlainObject(this.document.data) ? this.document.data : {};
+      let name;
+      let imgUrl;
+      this._portraitRejected = false;
+
+      for (const [field, value] of pending) {
+        if (field === 'name') {
+          name = normalizeItemName(value);
+        } else if (field === 'portrait') {
+          const raw = typeof value === 'string' ? value.trim().slice(0, IMG_MAX) : '';
+          if (raw === '' || safeImageUrl(raw)) imgUrl = raw;
+          else this._portraitRejected = true;
+        } else {
+          data = applyField(data, field, value);
+        }
       }
-      return;
-    }
 
-    // Delegate pick-portrait / image selection to base class
-    super.onAction?.(action, id, target);
+      const body = { data: normalizeItemData(data, cfg, type) };
+      if (name !== undefined && name !== '') body.name = name;
+      if (imgUrl !== undefined) body.imgUrl = imgUrl;
+
+      await api.put(`${this.apiRoute}/${this.document.id}`, body);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      showToast(t('sandbox.item.saveFailed', `Could not save the item: ${message}`), 'error');
+    }
+    await this._reloadDocument();
   }
+}
+
+/**
+ * Registers the sheet for every item type and the '*' fallback. Called from main.mjs.
+ * Nothing registers itself at import time.
+ */
+export function registerItemSheet() {
+  for (const type of [...ITEM_TYPES, '*']) sheets.catalog('item', type, DemoItemSheet);
 }

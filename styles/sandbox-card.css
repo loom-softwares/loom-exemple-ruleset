@@ -1,0 +1,190 @@
+/* Chat roll card of the demo sandbox. All classes use the ldm-card- prefix.
+   The root has NO background or border: the chat message envelope is the only box. */
+
+.ldm-card {
+  --ldm-card-accent: #7c5cff;
+  --ldm-card-surface: var(--rpg-surface, #1c1e24);
+  --ldm-card-text: var(--rpg-text, #f3f4f6);
+  --ldm-card-muted: var(--rpg-text-muted, #9ca3af);
+  --ldm-card-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
+  --ldm-card-gold: #e5a93c;
+  --ldm-card-red: #ef4444;
+  --ldm-card-green: #10b981;
+  --ldm-card-purple: #a78bfa;
+  color: var(--ldm-card-text);
+  font-size: 0.875rem;
+  line-height: 1.35;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.ldm-card *,
+.ldm-card *::before,
+.ldm-card *::after {
+  box-sizing: border-box;
+}
+
+.ldm-card-main {
+  background: var(--ldm-card-surface);
+  border: 1px solid var(--ldm-card-border);
+  border-left: 3px solid var(--ldm-card-accent, #7c5cff);
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ldm-card-compact .ldm-card-main {
+  padding: 6px 8px;
+}
+
+.ldm-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.ldm-card-title {
+  color: var(--ldm-card-accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ldm-card-formula {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--ldm-card-muted);
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.ldm-card-dice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.ldm-card-die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--ldm-card-border);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.ldm-card-die-hit {
+  background: var(--ldm-card-accent);
+  border-color: var(--ldm-card-accent);
+  color: #111318;
+}
+
+.ldm-card-die-miss {
+  color: var(--ldm-card-muted);
+}
+
+.ldm-card-die-one {
+  color: var(--ldm-card-red);
+  border-color: var(--ldm-card-red);
+  font-weight: 700;
+}
+
+.ldm-card-die-dropped {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.ldm-card-die-crit {
+  outline: 2px solid var(--ldm-card-gold);
+  outline-offset: 1px;
+}
+
+.ldm-card-die-fumble {
+  outline: 2px solid var(--ldm-card-red);
+  outline-offset: 1px;
+}
+
+.ldm-card-more {
+  color: var(--ldm-card-muted);
+  font-size: 0.75rem;
+}
+
+.ldm-card-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.ldm-card-total {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ldm-card-unit,
+.ldm-card-mod,
+.ldm-card-target {
+  color: var(--ldm-card-muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.ldm-card-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.ldm-card-badge-crit {
+  color: var(--ldm-card-gold);
+  background: rgba(229, 169, 60, 0.14);
+}
+
+.ldm-card-badge-fumble,
+.ldm-card-badge-fail {
+  color: var(--ldm-card-red);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.ldm-card-badge-pass {
+  color: var(--ldm-card-green);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.ldm-card-badge-glitch {
+  color: var(--ldm-card-purple);
+  background: rgba(167, 139, 250, 0.14);
+}
+
+@media (max-width: 360px) {
+  .ldm-card-main {
+    padding: 6px 8px;
+  }
+
+  .ldm-card-total {
+    font-size: 1.25rem;
+  }
+}

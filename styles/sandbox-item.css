@@ -1,0 +1,236 @@
+/* ══════════════════════════════════════════════════════════════
+   Loom Demo System — styles/sandbox-item.css
+   Item sheet (sheets/item-sheet.mjs, sheets/item-view.mjs).
+   Every class is prefixed ldm-item-. Colors come from the system tokens
+   with fallbacks, so the sheet still reads on a dark UI without them.
+   Works from 360px wide with no horizontal scroll.
+   ══════════════════════════════════════════════════════════════ */
+
+.ldm-item-sheet {
+  --ldm-item-gold: var(--rpg-gold, #e5a93c);
+  --ldm-item-surface: var(--rpg-surface, #1c1e24);
+  --ldm-item-surface-2: var(--rpg-surface-elevated, #242730);
+  --ldm-item-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
+  --ldm-item-focus: var(--rpg-border-focus, rgba(229, 169, 60, 0.6));
+  --ldm-item-text: var(--rpg-text, #f3f4f6);
+  --ldm-item-muted: var(--rpg-text-muted, #9ca3af);
+  --ldm-item-danger: var(--rpg-red, #ef4444);
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  max-width: 100%;
+  color: var(--ldm-item-text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ldm-item-sheet *,
+.ldm-item-sheet *::before,
+.ldm-item-sheet *::after {
+  box-sizing: border-box;
+}
+
+/* ── Header: portrait, type, name ───────────────────────────── */
+
+.ldm-item-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.ldm-item-portrait {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+}
+
+.ldm-item-img,
+.ldm-item-img--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--ldm-item-border);
+  border-radius: 6px;
+  background: var(--ldm-item-surface-2);
+  object-fit: cover;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ldm-item-gold);
+}
+
+.ldm-item-identity {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ldm-item-type {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: 1px solid var(--ldm-item-border);
+  border-radius: 999px;
+  color: var(--ldm-item-gold);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Blocks, fields, rows ───────────────────────────────────── */
+
+.ldm-item-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ldm-item-border);
+  border-radius: 8px;
+  background: var(--ldm-item-surface);
+  min-width: 0;
+}
+
+.ldm-item-fieldset {
+  min-width: 0;
+  margin: 0;
+}
+
+.ldm-item-fieldset > legend {
+  padding: 0 4px;
+  color: var(--ldm-item-gold);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ldm-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ldm-item-row > .ldm-item-field {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.ldm-item-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ldm-item-label {
+  color: var(--ldm-item-muted);
+  font-size: 12px;
+}
+
+.ldm-item-input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ldm-item-border);
+  border-radius: 6px;
+  background: var(--ldm-item-surface-2);
+  color: var(--ldm-item-text);
+  font: inherit;
+}
+
+.ldm-item-textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.ldm-item-input:focus-visible,
+.ldm-item-btn:focus-visible,
+.ldm-item-check input:focus-visible {
+  outline: 2px solid var(--ldm-item-focus);
+  outline-offset: 1px;
+}
+
+.ldm-item-input:disabled,
+.ldm-item-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* A stored key that no longer exists in the configuration. Shown, never reset. */
+.ldm-item-removed {
+  border-style: dashed;
+  border-color: var(--ldm-item-danger);
+}
+
+.ldm-item-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ldm-item-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ldm-item-gold);
+}
+
+.ldm-item-help {
+  color: var(--ldm-item-muted);
+  font-size: 12px;
+}
+
+.ldm-item-error {
+  color: var(--ldm-item-danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ldm-item-input[aria-invalid="true"] {
+  border-color: var(--ldm-item-danger);
+}
+
+.ldm-item-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--ldm-item-gold);
+  border-radius: 4px;
+  background: var(--ldm-item-surface-2);
+  color: var(--ldm-item-text);
+  font-size: 13px;
+}
+
+.ldm-item-btn {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--ldm-item-border);
+  border-radius: 6px;
+  background: var(--ldm-item-surface-2);
+  color: var(--ldm-item-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ldm-item-btn:hover:not(:disabled) {
+  border-color: var(--ldm-item-focus);
+}
+
+/* ── Narrow screens (phone portrait, 360px and up) ──────────── */
+
+@media (max-width: 420px) {
+  .ldm-item-sheet {
+    padding: 10px 12px;
+  }
+
+  .ldm-item-row > .ldm-item-field {
+    flex-basis: 100%;
+  }
+}

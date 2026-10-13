@@ -1,0 +1,17 @@
+{
+  "sandbox.card.untitled": "Roll",
+  "sandbox.card.target": "Target",
+  "sandbox.card.pass": "Pass",
+  "sandbox.card.fail": "Fail",
+  "sandbox.card.glitch": "Glitch",
+  "sandbox.card.successes": "successes",
+  "sandbox.card.critical": "Critical",
+  "sandbox.card.fumble": "Fumble",
+  "sandbox.card.modifier": "Mod",
+  "sandbox.card.dice": "Dice",
+  "sandbox.card.dieHit": "hit",
+  "sandbox.card.dieMiss": "miss",
+  "sandbox.card.dieDropped": "dropped",
+  "sandbox.card.dieOne": "rolled a 1",
+  "sandbox.card.damage": "Damage"
+}

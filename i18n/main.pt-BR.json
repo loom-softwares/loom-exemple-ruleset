@@ -1,0 +1,8 @@
+{
+  "sandbox.main.keyCategory": "Sistema sandbox",
+  "sandbox.main.keyRuleEditor": "Abrir o editor de regras",
+  "sandbox.main.keyRuleEditorHint": "Só o GM: abre o editor de regras do sistema sandbox.",
+  "sandbox.main.gmOnly": "Só o GM pode editar as regras.",
+  "sandbox.main.keyCombatPanel": "Abrir o painel de combate",
+  "sandbox.main.keyCombatPanelHint": "Abre o painel de combate do sistema sandbox."
+}

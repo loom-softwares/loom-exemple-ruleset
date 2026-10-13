@@ -1,0 +1,4 @@
+{
+  "sandbox.config.settingName": "System configuration",
+  "sandbox.config.settingHint": "JSON of the rules, edited from the system editor."
+}

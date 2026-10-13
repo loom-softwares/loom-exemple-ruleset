@@ -1,0 +1,17 @@
+{
+  "sandbox.card.untitled": "Rolagem",
+  "sandbox.card.target": "Alvo",
+  "sandbox.card.pass": "Sucesso",
+  "sandbox.card.fail": "Falha",
+  "sandbox.card.glitch": "Glitch",
+  "sandbox.card.successes": "sucessos",
+  "sandbox.card.critical": "Crítico",
+  "sandbox.card.fumble": "Falha crítica",
+  "sandbox.card.modifier": "Mod",
+  "sandbox.card.dice": "Dados",
+  "sandbox.card.dieHit": "acerto",
+  "sandbox.card.dieMiss": "erro",
+  "sandbox.card.dieDropped": "descartado",
+  "sandbox.card.dieOne": "tirou 1",
+  "sandbox.card.damage": "Dano"
+}

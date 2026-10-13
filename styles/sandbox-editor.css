@@ -1,0 +1,396 @@
+/* ══════════════════════════════════════════════════════════════
+   RULE EDITOR (.ldm-editor-*)
+   Tokens fall back to the values of the sandbox sheet palette in system.css.
+   Works on a dark UI and down to 360 px wide with no horizontal scroll.
+   ══════════════════════════════════════════════════════════════ */
+.ldm-editor-root {
+  --ldm-editor-gold: var(--rpg-gold, #e5a93c);
+  --ldm-editor-surface: var(--rpg-surface, #1c1e24);
+  --ldm-editor-surface-elevated: var(--rpg-surface-elevated, #242730);
+  --ldm-editor-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
+  --ldm-editor-border-focus: var(--rpg-border-focus, rgba(229, 169, 60, 0.5));
+  --ldm-editor-red: var(--rpg-red, #ef4444);
+  --ldm-editor-text: var(--rpg-text, #f3f4f6);
+  --ldm-editor-text-muted: var(--rpg-text-muted, #9ca3af);
+  --ldm-editor-warn: #f59e0b;
+  --ldm-editor-ok: var(--rpg-teal, #10b981);
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 16px;
+  color: var(--ldm-editor-text);
+  background: var(--ldm-editor-surface);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ldm-editor-root *,
+.ldm-editor-root *::before,
+.ldm-editor-root *::after {
+  box-sizing: border-box;
+}
+
+.ldm-editor-header,
+.ldm-editor-section,
+.ldm-editor-preview-wrap {
+  min-width: 0;
+}
+
+.ldm-editor-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ldm-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 8px;
+  background: var(--ldm-editor-surface-elevated);
+}
+
+.ldm-editor-h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ldm-editor-gold);
+  letter-spacing: 0.02em;
+}
+
+.ldm-editor-h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--ldm-editor-text-muted);
+  font-weight: 600;
+}
+
+.ldm-editor-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ldm-editor-text-muted);
+}
+
+.ldm-editor-summary {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--ldm-editor-gold);
+  background: rgba(229, 169, 60, 0.08);
+  font-size: 13px;
+}
+
+.ldm-editor-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--ldm-editor-border);
+  border-radius: 6px;
+  color: var(--ldm-editor-text-muted);
+  text-align: center;
+}
+
+.ldm-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.ldm-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ldm-editor-label {
+  font-size: 12px;
+  color: var(--ldm-editor-text-muted);
+}
+
+.ldm-editor-input,
+.ldm-editor-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 6px;
+  background: var(--ldm-editor-surface);
+  color: var(--ldm-editor-text);
+  font: inherit;
+}
+
+.ldm-editor-textarea {
+  min-height: 90px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.ldm-editor-color {
+  width: 100%;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 6px;
+  background: var(--ldm-editor-surface);
+}
+
+.ldm-editor-input:focus-visible,
+.ldm-editor-textarea:focus-visible,
+.ldm-editor-color:focus-visible,
+.ldm-editor-btn:focus-visible {
+  outline: 2px solid var(--ldm-editor-border-focus);
+  outline-offset: 1px;
+}
+
+.ldm-editor-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ldm-editor-key {
+  display: inline-block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--ldm-editor-surface);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ldm-editor-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ldm-editor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 6px;
+  background: var(--ldm-editor-surface);
+  min-width: 0;
+}
+
+.ldm-editor-row-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.ldm-editor-row-tools,
+.ldm-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.ldm-editor-btn {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 6px;
+  background: var(--ldm-editor-surface-elevated);
+  color: var(--ldm-editor-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ldm-editor-btn:hover:not(:disabled) {
+  border-color: var(--ldm-editor-border-focus);
+}
+
+.ldm-editor-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ldm-editor-add {
+  border-color: var(--ldm-editor-border-focus);
+}
+
+.ldm-editor-danger {
+  color: var(--ldm-editor-red);
+}
+
+.ldm-editor-primary {
+  background: var(--ldm-editor-gold);
+  border-color: var(--ldm-editor-gold);
+  color: #131418;
+  font-weight: 600;
+}
+
+.ldm-editor-primary:hover:not(:disabled) {
+  background: var(--rpg-gold-hover, #f59e0b);
+}
+
+.ldm-editor-errors {
+  padding: 10px 12px;
+  border: 1px solid var(--ldm-editor-red);
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.08);
+  font-size: 13px;
+}
+
+.ldm-editor-errors p {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.ldm-editor-errors ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.ldm-editor-notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--ldm-editor-surface-elevated);
+  font-size: 13px;
+  border-left: 3px solid var(--ldm-editor-text-muted);
+}
+
+.ldm-editor-notice.is-ok {
+  border-left-color: var(--ldm-editor-ok);
+}
+
+.ldm-editor-notice.is-error {
+  border-left-color: var(--ldm-editor-red);
+}
+
+.ldm-editor-notice.is-warn {
+  border-left-color: var(--ldm-editor-warn);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ldm-editor-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ldm-editor-warn);
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.08);
+  font-size: 13px;
+}
+
+.ldm-editor-confirm p {
+  margin: 0;
+}
+
+.ldm-editor-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--ldm-editor-border);
+  background: var(--ldm-editor-surface);
+}
+
+.ldm-editor-status {
+  font-size: 12px;
+  color: var(--ldm-editor-text-muted);
+}
+
+.ldm-editor-preview {
+  --ldm-editor-accent: #7c5cff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--ldm-editor-border);
+  border-left: 4px solid var(--ldm-editor-accent);
+  border-radius: 6px;
+  background: var(--ldm-editor-surface);
+  min-width: 0;
+}
+
+.ldm-editor-preview-head {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ldm-editor-preview-formula {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: var(--ldm-editor-text-muted);
+}
+
+.ldm-editor-preview-dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ldm-editor-preview-dice li {
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--ldm-editor-surface-elevated);
+  text-align: center;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+}
+
+.ldm-editor-preview-result {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ldm-editor-accent);
+}
+
+.ldm-editor-preview.is-compact .ldm-editor-preview-result {
+  font-size: 14px;
+}
+
+.ldm-editor-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--ldm-editor-accent);
+  color: #131418;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .ldm-editor-root {
+    padding: 12px;
+  }
+
+  .ldm-editor-grid,
+  .ldm-editor-row-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

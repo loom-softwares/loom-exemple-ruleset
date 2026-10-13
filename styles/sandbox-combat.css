@@ -1,0 +1,256 @@
+/* Combat panel for the demo sandbox. Every class is prefixed ldm-combat-.
+   Dark UI first; tokens fall back to literal values so the panel works without system.css.
+   Must fit a 360 px wide window without horizontal scrolling. */
+
+.ldm-combat-root {
+  --ldm-combat-bg: var(--rpg-surface, #1c1e24);
+  --ldm-combat-bg: var(--rpg-dark-bg, #131418);
+  --ldm-combat-bg-row: var(--rpg-surface-elevated, #242730);
+  --ldm-combat-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
+  --ldm-combat-text: var(--rpg-text, #f3f4f6);
+  --ldm-combat-muted: var(--rpg-text-muted, #9ca3af);
+  --ldm-combat-accent: var(--rpg-gold, #e5a93c);
+  --ldm-combat-danger: var(--rpg-red, #ef4444);
+  --ldm-combat-focus: var(--rpg-border-focus, rgba(229, 169, 60, 0.5));
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 12px 16px;
+  color: var(--ldm-combat-text);
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.ldm-combat-root *,
+.ldm-combat-root *::before,
+.ldm-combat-root *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.ldm-combat-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ldm-combat-border);
+}
+
+.ldm-combat-round {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ldm-combat-accent);
+}
+
+.ldm-combat-turn {
+  color: var(--ldm-combat-muted);
+}
+
+.ldm-combat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ldm-combat-row {
+  padding: 8px 10px;
+  border: 1px solid var(--ldm-combat-border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--ldm-combat-bg-row);
+}
+
+/* Current turn: a border and a text tag, never color alone. */
+.ldm-combat-row.ldm-combat-current {
+  border-color: var(--ldm-combat-accent);
+  box-shadow: 0 0 0 1px var(--ldm-combat-accent) inset;
+}
+
+/* The viewer's own combatant. */
+.ldm-combat-row.ldm-combat-own {
+  border-left-color: var(--ldm-combat-accent);
+  background: color-mix(in srgb, var(--ldm-combat-accent) 12%, var(--ldm-combat-bg-row));
+}
+
+.ldm-combat-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ldm-combat-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ldm-combat-init {
+  font-size: 12px;
+  color: var(--ldm-combat-muted);
+  white-space: nowrap;
+}
+
+.ldm-combat-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.ldm-combat-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ldm-combat-border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ldm-combat-text);
+}
+
+.ldm-combat-tag-own {
+  border-color: var(--ldm-combat-accent);
+  color: var(--ldm-combat-accent);
+}
+
+.ldm-combat-res {
+  margin-top: 6px;
+}
+
+.ldm-combat-res-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ldm-combat-muted);
+}
+
+.ldm-combat-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.ldm-combat-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  max-width: 100%;
+  background: #6b7280;
+  border-radius: 4px;
+}
+
+.ldm-combat-adjust {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ldm-combat-note,
+.ldm-combat-empty {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ldm-combat-muted);
+}
+
+.ldm-combat-empty {
+  padding: 16px 0;
+  text-align: center;
+}
+
+.ldm-combat-status {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ldm-combat-muted);
+}
+
+.ldm-combat-status-error {
+  color: var(--ldm-combat-danger);
+}
+
+.ldm-combat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ldm-combat-border);
+}
+
+.ldm-combat-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--ldm-combat-border);
+  border-radius: 6px;
+  background: var(--ldm-combat-bg);
+  color: var(--ldm-combat-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ldm-combat-btn:hover:not(:disabled) {
+  border-color: var(--ldm-combat-accent);
+}
+
+.ldm-combat-btn-small {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 2px 8px;
+  line-height: 1;
+}
+
+.ldm-combat-btn-primary {
+  border-color: var(--ldm-combat-accent);
+  color: var(--ldm-combat-accent);
+}
+
+.ldm-combat-btn-danger:hover:not(:disabled) {
+  border-color: var(--ldm-combat-danger);
+  color: var(--ldm-combat-danger);
+}
+
+.ldm-combat-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ldm-combat-btn:focus-visible,
+.ldm-combat-row:focus-visible {
+  outline: 2px solid var(--ldm-combat-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 380px) {
+  .ldm-combat-root {
+    padding: 10px 12px;
+  }
+
+  .ldm-combat-actions {
+    flex-direction: column;
+  }
+
+  .ldm-combat-btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldm-combat-bar-fill {
+    transition: none;
+  }
+}

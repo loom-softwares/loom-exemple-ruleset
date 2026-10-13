@@ -1,0 +1,472 @@
+/* ══════════════════════════════════════════════════════════════
+   Sandbox actor sheet (.ldm-sheet-*)
+   Dark UI first. Every colour has a fallback so the sheet still reads
+   when the system tokens are missing. Works down to 360px wide.
+   ══════════════════════════════════════════════════════════════ */
+
+.ldm-sheet {
+  --ldm-sheet-bg: var(--rpg-surface, #1c1e24);
+  --ldm-sheet-bg-2: var(--rpg-surface-elevated, #242730);
+  --ldm-sheet-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
+  --ldm-sheet-text: var(--rpg-text, #f3f4f6);
+  --ldm-sheet-muted: var(--rpg-text-muted, #9ca3af);
+  --ldm-sheet-accent: var(--rpg-gold, #e5a93c);
+  --ldm-sheet-danger: var(--rpg-red, #ef4444);
+  --ldm-sheet-focus: var(--rpg-border-focus, rgba(229, 169, 60, 0.6));
+
+  color: var(--ldm-sheet-text);
+  background: var(--ldm-sheet-bg);
+  padding: 12px 16px 20px;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: hidden;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ldm-sheet *,
+.ldm-sheet *::before,
+.ldm-sheet *::after {
+  box-sizing: border-box;
+}
+
+.ldm-sheet :focus-visible {
+  outline: 2px solid var(--ldm-sheet-focus);
+  outline-offset: 2px;
+}
+
+.ldm-sheet--empty {
+  padding: 24px 16px;
+  text-align: center;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+
+.ldm-sheet-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-portrait {
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ldm-sheet-bg-2);
+  border: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-portrait-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ldm-sheet-portrait-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ldm-sheet-muted);
+}
+
+.ldm-sheet-identity {
+  min-width: 0;
+}
+
+.ldm-sheet-name {
+  margin: 0;
+  font-size: 1.35em;
+  overflow-wrap: anywhere;
+}
+
+.ldm-sheet-type {
+  margin: 2px 0 0;
+  color: var(--ldm-sheet-muted);
+}
+
+.ldm-sheet-system {
+  font-size: 0.9em;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────── */
+
+.ldm-sheet-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-dice {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ldm-sheet-muted);
+  overflow-wrap: anywhere;
+}
+
+.ldm-sheet-dice-label {
+  font-weight: 600;
+}
+
+.ldm-sheet-hint {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--ldm-sheet-accent);
+  background: var(--ldm-sheet-bg-2);
+  font-size: 13px;
+}
+
+/* ── Buttons and inputs ───────────────────────────────────────── */
+
+.ldm-sheet-btn {
+  appearance: none;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ldm-sheet-border);
+  background: var(--ldm-sheet-bg-2);
+  color: var(--ldm-sheet-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ldm-sheet-btn:hover:not(:disabled) {
+  border-color: var(--ldm-sheet-accent);
+}
+
+.ldm-sheet-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ldm-sheet-btn--step {
+  min-width: 36px;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 10px;
+}
+
+.ldm-sheet-btn--danger {
+  color: var(--ldm-sheet-danger);
+}
+
+.ldm-sheet-adv--adv {
+  border-color: #10b981;
+}
+
+.ldm-sheet-adv--dis {
+  border-color: var(--ldm-sheet-danger);
+}
+
+.ldm-sheet-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+  width: 72px;
+  min-height: 32px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--ldm-sheet-border);
+  background: #0f1014;
+  color: var(--ldm-sheet-text);
+  font: inherit;
+  text-align: center;
+}
+
+.ldm-sheet-input::-webkit-outer-spin-button,
+.ldm-sheet-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.ldm-sheet-input--small {
+  width: 56px;
+}
+
+.ldm-sheet-input:disabled,
+.ldm-sheet-notes:disabled {
+  opacity: 0.6;
+}
+
+.ldm-sheet-notes {
+  width: 100%;
+  min-height: 90px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ldm-sheet-border);
+  background: #0f1014;
+  color: var(--ldm-sheet-text);
+  font: inherit;
+  resize: vertical;
+}
+
+/* ── Sections ─────────────────────────────────────────────────── */
+
+.ldm-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.ldm-sheet-section {
+  min-width: 0;
+}
+
+.ldm-sheet-h {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ldm-sheet-accent);
+}
+
+.ldm-sheet-subh {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ldm-sheet-muted);
+}
+
+.ldm-sheet-empty {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--ldm-sheet-muted);
+}
+
+/* ── Resources ────────────────────────────────────────────────── */
+
+.ldm-sheet-res-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.ldm-sheet-res {
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--ldm-sheet-bg-2);
+  border: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-res-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.ldm-sheet-res-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--ldm-sheet-muted);
+}
+
+.ldm-sheet-bar {
+  height: 10px;
+  margin: 6px 0 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #0f1014;
+  border: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--ldm-sheet-res-color, #7c5cff);
+  transition: width 0.2s ease;
+}
+
+.ldm-sheet-res-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+/* ── Attributes ───────────────────────────────────────────────── */
+
+.ldm-sheet-attr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.ldm-sheet-attr {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--ldm-sheet-bg-2);
+  border: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-attr-label {
+  font-weight: 600;
+}
+
+.ldm-sheet-attr .ldm-sheet-input {
+  width: 100%;
+  font-size: 18px;
+}
+
+.ldm-sheet-range {
+  font-size: 11px;
+  color: var(--ldm-sheet-muted);
+}
+
+/* ── Skills ───────────────────────────────────────────────────── */
+
+.ldm-sheet-skill-group + .ldm-sheet-skill-group {
+  margin-top: 10px;
+}
+
+.ldm-sheet-skill-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ldm-sheet-skill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--ldm-sheet-bg-2);
+  border: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-skill-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ldm-sheet-skill-mod {
+  min-width: 40px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--ldm-sheet-accent);
+  font-weight: 600;
+}
+
+/* ── Items ────────────────────────────────────────────────────── */
+
+.ldm-sheet-item-group {
+  margin-bottom: 12px;
+}
+
+.ldm-sheet-item-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ldm-sheet-cat-h {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--ldm-sheet-muted);
+  font-weight: 600;
+}
+
+.ldm-sheet-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ldm-sheet-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ldm-sheet-bg-2);
+  border: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-item-main {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.ldm-sheet-item-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ldm-sheet-item-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--ldm-sheet-muted);
+}
+
+.ldm-sheet-item-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ldm-sheet-muted);
+  overflow-wrap: anywhere;
+}
+
+.ldm-sheet-item-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.ldm-sheet-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--ldm-sheet-muted);
+}
+
+/* ── Narrow windows (360px phone landscape and up) ─────────────── */
+
+@media (max-width: 480px) {
+  .ldm-sheet-header {
+    align-items: flex-start;
+  }
+
+  .ldm-sheet-portrait {
+    width: 64px;
+    height: 64px;
+  }
+
+  .ldm-sheet-skill {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .ldm-sheet-skill .ldm-sheet-btn {
+    grid-column: 1 / -1;
+  }
+}

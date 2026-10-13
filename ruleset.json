@@ -1,64 +1,50 @@
-﻿{
-    "name":  "loom-demo-system",
-    "title":  "Loom Demo System",
-    "version":  "0.1.0",
-    "engine":  "loom",
-    "type":  "ruleset",
-    "description":  "Demonstration System LoomVTT",
-    "author":  "LoomVTT",
-    "client":  "main.mjs",
-    "backgroundUrl":  "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
-    "coverUrl":  "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
-    "active":  true,
-    "actorTypes":  [
-                       "hero",
-                       "villain",
-                       "beast"
-                   ],
-    "itemTypes":  [
-                      "weapon",
-                      "armor",
-                      "potion",
-                      "scroll"
-                  ],
-    "styles":  [
-                   "styles/system.css"
-               ],
-    "languages":  [
-                      {
-                          "lang":  "pt-BR",
-                          "name":  "Português (Brasil)",
-                          "path":  "lang/pt-BR.json"
-                      },
-                      {
-                          "lang":  "en",
-                          "name":  "English",
-                          "path":  "lang/en.json"
-                      }
-                  ],
-    "settings":  [
-                     {
-                         "key":  "language",
-                         "type":  "string",
-                         "default":  "pt-BR",
-                         "label":  "Idioma do Sistema / Language",
-                         "hint":  "Idioma padrão para fichas e rolagens / Default language for sheets and rolls",
-                         "scope":  "client",
-                         "choices":  {
-                                         "pt-BR":  "Português (Brasil)",
-                                         "en":  "English"
-                                     }
-                     },
-                     {
-                         "key":  "initiativeBonusAttr",
-                         "type":  "string",
-                         "default":  "swift",
-                         "label":  "Initiative Attribute",
-                         "hint":  "Attribute used to calculate initiative bonus (might, swift, or wits)",
-                         "scope":  "world"
-                     }
-                 ],
-    "manifest":  "https://raw.githubusercontent.com/loom-softwares/loom-exemple-ruleset/main/ruleset.json",
-    "download":  "https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip",
-    "repository":  "https://github.com/loom-softwares/loom-exemple-ruleset"
+{
+    "name": "loom-demo-system",
+    "title": "Loom Demo System",
+    "version": "0.2.0",
+    "engine": "loom",
+    "type": "ruleset",
+    "description": "Open sandbox to learn how to build a system on Loom. Define attributes, skills, resources, item categories, the dice system, the chat card and combat in the system editor (GM).",
+    "author": "LoomVTT",
+    "client": "main.mjs",
+    "backgroundUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
+    "coverUrl": "/marketplace/rulesets/loom-demo-system/assets/BG.jpg",
+    "active": true,
+    "actorTypes": [
+        "hero",
+        "villain",
+        "beast"
+    ],
+    "itemTypes": [
+        "gear",
+        "ability",
+        "spell",
+        "weapon",
+        "armor",
+        "potion",
+        "scroll"
+    ],
+    "styles": [
+        "styles/system.css",
+        "styles/sandbox-card.css",
+        "styles/sandbox-combat.css",
+        "styles/sandbox-editor.css",
+        "styles/sandbox-item.css",
+        "styles/sandbox-sheet.css"
+    ],
+    "languages": [
+        {
+            "lang": "pt-BR",
+            "name": "Português (Brasil)",
+            "path": "lang/pt-BR.json"
+        },
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "lang/en.json"
+        }
+    ],
+    "manifest": "https://raw.githubusercontent.com/loom-softwares/loom-exemple-ruleset/main/ruleset.json",
+    "download": "https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest/download/loom-demo-system.zip",
+    "repository": "https://github.com/loom-softwares/loom-exemple-ruleset"
 }
