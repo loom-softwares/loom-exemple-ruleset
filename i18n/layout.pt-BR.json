@@ -1,0 +1,18 @@
+{
+  "sandbox.layout.tablist": "Seções da ficha",
+  "sandbox.layout.block.resources": "Recursos",
+  "sandbox.layout.block.attributes": "Atributos",
+  "sandbox.layout.block.skills": "Perícias",
+  "sandbox.layout.block.items_gear": "Equipamento",
+  "sandbox.layout.block.items_ability": "Habilidades",
+  "sandbox.layout.block.items_spell": "Magias",
+  "sandbox.layout.block.items_other": "Outros itens",
+  "sandbox.layout.block.notes": "Anotações",
+  "sandbox.layout.block.effects": "Efeitos",
+  "sandbox.layout.item.details": "Detalhes",
+  "sandbox.layout.item.uses": "Usos",
+  "sandbox.layout.item.roll": "Rolagem",
+  "sandbox.layout.item.cost": "Custo",
+  "sandbox.layout.item.description": "Descrição",
+  "sandbox.layout.item.effects": "Efeitos"
+}

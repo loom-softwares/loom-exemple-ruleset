@@ -28,12 +28,42 @@ import {
   categoryList,
   attributeList,
   skillList,
+  resolveLayout,
+  groupedList,
+  skillSections,
+  blockLabelKey,
+  LAYOUT_BLOCKS,
+  LAYOUT_DENSITIES,
 } from '../lib/config.mjs';
 import { describe as describeDice, buildExtra, rollCheck } from '../lib/dice.mjs';
+import { renderTabs, renderGrid, renderBlock, attachTabs } from '../lib/layout-view.mjs';
+import { renderEffectsBlock, loadEffects, attachEffects, getEffectsEditState, applyItemEffects } from '../lib/effects-view.mjs';
 
 export const ACTOR_TYPES = Object.freeze(['hero', 'villain', 'beast']);
 
-const ITEM_GROUP_TYPES = Object.freeze(['gear', 'ability', 'spell']);
+/** Item groups shown by the item blocks. `other` = legacy types and any unknown type. */
+const ITEM_GROUP_TYPES = Object.freeze(['gear', 'ability', 'spell', 'other']);
+/** Groups that can be created from the sheet (legacy types cannot). */
+const ADDABLE_GROUP_TYPES = Object.freeze(['gear', 'ability', 'spell']);
+/**
+ * Item types whose effects are copied onto the actor when the item is used. Gear, weapons and
+ * armor never copy their effects (they are not "used"). The engine never applies item effects itself.
+ */
+export const EFFECT_USE_TYPES = Object.freeze(['ability', 'spell', 'potion', 'scroll']);
+
+// English fallbacks for the block titles (the real text lives in sandbox.layout.*).
+const BLOCK_FALLBACK = Object.freeze({
+  resources: 'Resources',
+  attributes: 'Attributes',
+  skills: 'Skills',
+  'items:gear': 'Gear',
+  'items:ability': 'Abilities',
+  'items:spell': 'Spells',
+  'items:other': 'Other items',
+  notes: 'Notes',
+  effects: 'Effects',
+});
+const TABLIST_FALLBACK = 'Sheet sections';
 const DEFAULT_RES_COLOR = '#7c5cff';
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const NOTES_MAX = 4000;
@@ -58,27 +88,25 @@ const STRINGS = Object.freeze({
   'sandbox.sheet.combat': 'Open combat panel',
   'sandbox.sheet.reloadConfig': 'Reload configuration',
   'sandbox.sheet.configChanged': 'The system configuration changed. The sheet now uses the new version.',
-  'sandbox.sheet.resources': 'Resources',
+  'sandbox.sheet.noEntries': 'Nothing to show here yet.',
   'sandbox.sheet.decrease': 'Decrease',
   'sandbox.sheet.increase': 'Increase',
   'sandbox.sheet.resCount': '{value} / {max}',
   'sandbox.sheet.resValue': '{label} value',
-  'sandbox.sheet.attributes': 'Attributes',
   'sandbox.sheet.rollNamed': 'Roll {label}',
   'sandbox.sheet.min': 'Min',
   'sandbox.sheet.max': 'Max',
-  'sandbox.sheet.skills': 'Skills',
   'sandbox.sheet.basedOn': 'Based on {label}',
   'sandbox.sheet.skillsOther': 'No attribute',
   'sandbox.sheet.rank': 'Rank',
   'sandbox.sheet.modifier': 'Modifier',
-  'sandbox.sheet.items': 'Items',
   'sandbox.sheet.addItem': 'Add {kind}',
   'sandbox.sheet.noItems': 'Nothing here yet.',
   'sandbox.sheet.uncategorized': 'Uncategorized',
   'sandbox.sheet.kindGear': 'Gear',
   'sandbox.sheet.kindAbility': 'Ability',
   'sandbox.sheet.kindSpell': 'Spell',
+  'sandbox.sheet.kindOther': 'Other',
   'sandbox.sheet.quantity': 'Quantity',
   'sandbox.sheet.uses': 'Uses',
   'sandbox.sheet.use': 'Use',
@@ -87,7 +115,6 @@ const STRINGS = Object.freeze({
   'sandbox.sheet.confirmDelete': 'Delete this item?',
   'sandbox.sheet.costLabel': 'Cost {amount} {res}',
   'sandbox.sheet.unnamed': 'Unnamed',
-  'sandbox.sheet.notes': 'Notes',
   'sandbox.sheet.noActor': 'No actor is loaded.',
   'sandbox.sheet.newGear': 'New gear',
   'sandbox.sheet.newAbility': 'New ability',
@@ -95,6 +122,7 @@ const STRINGS = Object.freeze({
   'sandbox.sheet.created': 'Item created.',
   'sandbox.sheet.deleted': 'Item deleted.',
   'sandbox.sheet.used': '{actor} used {item}.',
+  'sandbox.sheet.effectsApplied': 'Applied {count} effect(s) from {item}.',
   'sandbox.sheet.damage': 'Damage',
   'sandbox.sheet.errInsufficient': 'Not enough {res}.',
   'sandbox.sheet.errNoUses': 'No uses left.',
@@ -436,15 +464,39 @@ const TYPE_LABEL_KEYS = Object.freeze({
   beast: 'sandbox.sheet.typeBeast',
 });
 
+/** Item block of an item type: gear, ability, spell, or other (legacy types and unknown types). */
 function groupOfItem(type) {
-  if (type === 'ability') return 'ability';
-  if (type === 'spell') return 'spell';
-  return 'gear';
+  if (type === 'gear' || type === 'ability' || type === 'spell') return type;
+  return 'other';
 }
 
 function itemKindLabel(cfg, group) {
-  if (group === 'gear') return null;
+  if (group === 'gear' || group === 'other') return null;
   return abilityKindLabel(cfg, group);
+}
+
+/** Localized title of a layout block, or its English fallback. Never throws. */
+function blockTitleOf(t, block) {
+  const key = blockLabelKey(block);
+  let text;
+  try {
+    text = key ? t(key) : '';
+  } catch {
+    text = '';
+  }
+  if (typeof text === 'string' && text !== '' && text !== key) return text;
+  return BLOCK_FALLBACK[block] ?? '';
+}
+
+/** Localized text with a fallback, for the few keys outside STRINGS. Never throws. */
+function textOf(t, key, fallback) {
+  let text;
+  try {
+    text = t(key);
+  } catch {
+    text = '';
+  }
+  return typeof text === 'string' && text !== '' && text !== key ? text : fallback;
 }
 
 /**
@@ -482,29 +534,43 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     name: safeName(`attr.${a.key}`),
   }));
 
-  // Skills grouped by their attribute, in attribute order. Skills whose attribute is
-  // empty or no longer exists go to a last group without a base value.
-  const skillAll = skillList(c);
-  const attrKeys = new Set(attributes.map((a) => a.key));
-  const skillRow = (s, attrKey, base) => {
+  // Attribute groups for the attributes block (config `group` text; the empty group is untitled).
+  const attrByKey = new Map(attributes.map((a) => [a.key, a]));
+  const attributeGroups = groupedList(c.attributes)
+    .map((g) => ({
+      group: g.group,
+      attrs: g.items.map((a) => attrByKey.get(a.key)).filter(Boolean),
+    }))
+    .filter((g) => g.attrs.length > 0);
+
+  // Skills in the sections chosen by layout.skillGrouping. The modifier is the attribute
+  // value the skill is based on (0 when the attribute is empty or was removed).
+  const grouping = resolveLayout(c).skillGrouping;
+  const baseOf = (attrKey) => (attrByKey.has(attrKey) ? attrByKey.get(attrKey).value : 0);
+  const skillRow = (s) => {
     const rank = actorValue(actorRef, c, 'skill', s.key);
     return {
       key: s.key,
       label: s.label,
-      attr: attrKey,
+      attr: s.attr,
       rank,
       max: s.max,
-      modifier: base + rank,
+      modifier: baseOf(s.attr) + rank,
       name: safeName(`skill.${s.key}`),
     };
   };
-  const skillGroups = [];
-  for (const a of attributes) {
-    const rows = skillAll.filter((s) => s.attr === a.key).map((s) => skillRow(s, a.key, a.value));
-    if (rows.length) skillGroups.push({ attrKey: a.key, label: a.label, base: a.value, skills: rows });
-  }
-  const orphan = skillAll.filter((s) => !attrKeys.has(s.attr)).map((s) => skillRow(s, '', 0));
-  if (orphan.length) skillGroups.push({ attrKey: '', label: labels['sandbox.sheet.skillsOther'], base: 0, skills: orphan });
+  const skillGroups = skillSections(c).map((section) => {
+    // Attribute grouping: the title names the attribute; skills without one get the
+    // "No attribute" label. Group grouping: the group text. None: no title.
+    let title = section.title;
+    let basedOn = false;
+    if (grouping === 'attribute') {
+      basedOn = section.key !== '';
+      if (section.key === '') title = labels['sandbox.sheet.skillsOther'];
+    }
+    if (grouping === 'none') title = '';
+    return { key: section.key, title, basedOn, skills: section.skills.map(skillRow) };
+  });
 
   const resources = resourceList(c)
     .map((r) => resourceState(sys, c, r.key))
@@ -515,13 +581,13 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
       name: safeName(`res.${r.key}`),
     }));
 
-  // Items grouped by type (gear, ability, spell), then by category.
+  // Items grouped by type (gear, ability, spell, other), then by category.
   const list = Array.isArray(items) ? items.filter(isPlainObject) : [];
   const categories = categoryList(c);
   const itemGroups = ITEM_GROUP_TYPES.map((group) => {
-    const kind = group === 'gear'
-      ? labels['sandbox.sheet.kindGear']
-      : itemKindLabel(c, group);
+    const kind = group === 'gear' ? labels['sandbox.sheet.kindGear']
+      : group === 'other' ? labels['sandbox.sheet.kindOther']
+        : itemKindLabel(c, group);
     const byCategory = new Map();
     for (const item of list) {
       if (groupOfItem(item.type) !== group) continue;
@@ -544,13 +610,21 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     return {
       type: group,
       kind,
-      addLabel: fmt(labels['sandbox.sheet.addItem'], { kind }),
+      // Legacy types cannot be created from the sheet, so their group has no add button.
+      addLabel: ADDABLE_GROUP_TYPES.includes(group) ? fmt(labels['sandbox.sheet.addItem'], { kind }) : '',
       count,
       categories: ordered,
     };
   });
 
   const typeKey = hasActor && TYPE_LABEL_KEYS[actor.type] ? TYPE_LABEL_KEYS[actor.type] : 'sandbox.sheet.typeOther';
+
+  // Layout: tabs and blocks from the config (every block is always present, see resolveLayout).
+  const layout = resolveLayout(c);
+  const tabKeys = layout.tabs.map((tab) => tab.key);
+  const blockTitles = {};
+  for (const block of LAYOUT_BLOCKS) blockTitles[block] = blockTitleOf(t, block);
+  const activeTab = tabKeys.includes(ui.activeTab) ? ui.activeTab : (tabKeys[0] ?? '');
 
   return {
     empty: !hasActor,
@@ -565,10 +639,19 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     editable: ui.editable !== false,
     configChanged: ui.configChanged === true,
     attributes,
+    attributeGroups,
     skillGroups,
     resources,
     itemGroups,
     notes: typeof sys.notes === 'string' ? sys.notes : '',
+    layout,
+    activeTab,
+    blockTitles,
+    tablistLabel: textOf(t, 'sandbox.layout.tablist', TABLIST_FALLBACK),
+    effects: Array.isArray(ui.effects) ? ui.effects : [],
+    effectsEdit: isPlainObject(ui.effectsEdit) ? ui.effectsEdit : {},
+    // Translator in the shape the effects block expects: t(key, fallback).
+    t: (key, fallback) => textOf(t, key, typeof fallback === 'string' ? fallback : key),
     labels,
   };
 }
@@ -594,11 +677,14 @@ function itemRow(item, d, group, cfg, labels) {
     id,
     name,
     type: group,
-    kindLabel: group === 'gear' ? labels['sandbox.sheet.kindGear'] : itemKindLabel(cfg, group),
-    quantity: group === 'gear' ? (toNumber(d.quantity) ?? 1) : null,
+    kindLabel: group === 'gear' ? labels['sandbox.sheet.kindGear']
+      : group === 'other' ? labels['sandbox.sheet.kindOther']
+        : itemKindLabel(cfg, group),
+    quantity: group === 'ability' || group === 'spell' ? null : (toNumber(d.quantity) ?? 1),
     uses,
     canRoll,
-    canUse: canRoll || costLabel !== '' || uses !== null,
+    // Effect-use types always show Use (an effects-only spell is usable); others need roll, cost or uses.
+    canUse: EFFECT_USE_TYPES.includes(item.type) || canRoll || costLabel !== '' || uses !== null,
     costLabel,
     description: typeof d.description === 'string' ? d.description.slice(0, DESCRIPTION_MAX) : '',
     qtyName: safeName(`item.${id}.qty`),
@@ -643,8 +729,12 @@ function renderToolbar(c) {
   </div>`;
 }
 
-function renderResources(c) {
-  if (!c.resources.length) return '';
+function emptyNote(c) {
+  return `<p class="ldm-sheet-empty">${L(c, 'sandbox.sheet.noEntries')}</p>`;
+}
+
+function renderResourcesBody(c) {
+  if (!c.resources.length) return emptyNote(c);
   const dis = c.editable ? '' : ' disabled';
   const rows = c.resources.map((r) => {
     const pct = Number.isFinite(r.pct) ? clamp(r.pct, 0, 100) : 0;
@@ -664,31 +754,29 @@ function renderResources(c) {
       </div>
     </div>`;
   }).join('');
-  return `<section class="ldm-sheet-section" aria-labelledby="ldm-sheet-h-res">
-    <h3 id="ldm-sheet-h-res" class="ldm-sheet-h">${L(c, 'sandbox.sheet.resources')}</h3>
-    <div class="ldm-sheet-res-list">${rows}</div>
-  </section>`;
+  return `<div class="ldm-sheet-res-list">${rows}</div>`;
 }
 
-function renderAttributes(c) {
-  if (!c.attributes.length) return '';
+function renderAttributesBody(c) {
+  if (!c.attributes.length) return emptyNote(c);
   const dis = c.editable ? '' : ' disabled';
-  const cards = c.attributes.map((a) => `<div class="ldm-sheet-attr">
+  const card = (a) => `<div class="ldm-sheet-attr">
       <label class="ldm-sheet-attr-label" for="ldm-sheet-a-${esc(a.name)}">${esc(a.label)}</label>
       <input id="ldm-sheet-a-${esc(a.name)}" type="number" class="ldm-sheet-input" name="${esc(a.name)}" value="${esc(a.value)}" min="${esc(a.min)}" max="${esc(a.max)}" inputmode="numeric" data-field="attr" data-key="${esc(a.key)}"${dis}>
       <span class="ldm-sheet-range">${L(c, 'sandbox.sheet.min')} ${esc(a.min)} · ${L(c, 'sandbox.sheet.max')} ${esc(a.max)}</span>
       <button type="button" class="ldm-sheet-btn" data-action="attr-roll" data-key="${esc(a.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: a.label })}">${L(c, 'sandbox.sheet.rollNamed', { label: a.label })}</button>
-    </div>`).join('');
-  return `<section class="ldm-sheet-section" aria-labelledby="ldm-sheet-h-attr">
-    <h3 id="ldm-sheet-h-attr" class="ldm-sheet-h">${L(c, 'sandbox.sheet.attributes')}</h3>
-    <div class="ldm-sheet-attr-grid">${cards}</div>
-  </section>`;
+    </div>`;
+  // One sub-section per attribute group. The ungrouped (empty) group has no title.
+  return c.attributeGroups.map((g) => {
+    const head = g.group ? `<h4 class="ldm-sheet-subh">${esc(g.group)}</h4>` : '';
+    return `<div class="ldm-sheet-attr-group">${head}<div class="ldm-sheet-attr-grid">${g.attrs.map(card).join('')}</div></div>`;
+  }).join('');
 }
 
-function renderSkills(c) {
-  if (!c.skillGroups.length) return '';
+function renderSkillsBody(c) {
+  if (!c.skillGroups.length) return emptyNote(c);
   const dis = c.editable ? '' : ' disabled';
-  const groups = c.skillGroups.map((g) => {
+  return c.skillGroups.map((g) => {
     const rows = g.skills.map((s) => {
       const mod = s.modifier >= 0 ? `+${s.modifier}` : `${s.modifier}`;
       return `<li class="ldm-sheet-skill">
@@ -698,16 +786,13 @@ function renderSkills(c) {
         <button type="button" class="ldm-sheet-btn" data-action="skill-roll" data-key="${esc(s.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: s.label })}">${L(c, 'sandbox.sheet.rollNamed', { label: s.label })}</button>
       </li>`;
     }).join('');
-    const basedOn = g.attrKey ? L(c, 'sandbox.sheet.basedOn', { label: g.label }) : esc(g.label);
-    return `<div class="ldm-sheet-skill-group">
-      <h4 class="ldm-sheet-subh">${basedOn}</h4>
-      <ul class="ldm-sheet-skill-list">${rows}</ul>
-    </div>`;
+    let head = '';
+    if (g.title) {
+      const text = g.basedOn ? L(c, 'sandbox.sheet.basedOn', { label: g.title }) : esc(g.title);
+      head = `<h4 class="ldm-sheet-subh">${text}</h4>`;
+    }
+    return `<div class="ldm-sheet-skill-group">${head}<ul class="ldm-sheet-skill-list">${rows}</ul></div>`;
   }).join('');
-  return `<section class="ldm-sheet-section" aria-labelledby="ldm-sheet-h-skill">
-    <h3 id="ldm-sheet-h-skill" class="ldm-sheet-h">${L(c, 'sandbox.sheet.skills')}</h3>
-    ${groups}
-  </section>`;
 }
 
 function renderItemRow(c, it) {
@@ -740,53 +825,95 @@ function renderItemRow(c, it) {
   </li>`;
 }
 
-function renderItems(c) {
+/** Body of one item block (gear, ability, spell or other): add button, then categories. */
+function renderItemsBody(c, group) {
   const dis = c.editable ? '' : ' disabled';
-  const groups = c.itemGroups.map((g) => {
-    const cats = g.categories.map((cat) => `<div class="ldm-sheet-cat">
+  const add = group.addLabel
+    ? `<div class="ldm-sheet-item-group-head"><button type="button" class="ldm-sheet-btn" data-action="add-item" data-type="${esc(group.type)}"${dis}>${esc(group.addLabel)}</button></div>`
+    : '';
+  const cats = group.categories.map((cat) => `<div class="ldm-sheet-cat">
         <h5 class="ldm-sheet-cat-h">${esc(cat.label)}</h5>
         <ul class="ldm-sheet-item-list">${cat.items.map((it) => renderItemRow(c, it)).join('')}</ul>
       </div>`).join('');
-    const empty = g.count === 0 ? `<p class="ldm-sheet-empty">${L(c, 'sandbox.sheet.noItems')}</p>` : '';
-    return `<div class="ldm-sheet-item-group" data-type="${esc(g.type)}">
-      <div class="ldm-sheet-item-group-head">
-        <h4 class="ldm-sheet-subh">${esc(g.kind)}</h4>
-        <button type="button" class="ldm-sheet-btn" data-action="add-item" data-type="${esc(g.type)}"${dis}>${esc(g.addLabel)}</button>
-      </div>
-      ${cats}${empty}
-    </div>`;
-  }).join('');
-  return `<section class="ldm-sheet-section" aria-labelledby="ldm-sheet-h-items">
-    <h3 id="ldm-sheet-h-items" class="ldm-sheet-h">${L(c, 'sandbox.sheet.items')}</h3>
-    ${groups}
-  </section>`;
+  const empty = group.count === 0 ? `<p class="ldm-sheet-empty">${L(c, 'sandbox.sheet.noItems')}</p>` : '';
+  return `<div class="ldm-sheet-item-group" data-type="${esc(group.type)}">${add}${cats}${empty}</div>`;
 }
 
-function renderNotes(c) {
+function renderNotesBody(c) {
   const dis = c.editable ? '' : ' disabled';
-  return `<section class="ldm-sheet-section" aria-labelledby="ldm-sheet-h-notes">
-    <h3 id="ldm-sheet-h-notes" class="ldm-sheet-h">${L(c, 'sandbox.sheet.notes')}</h3>
-    <textarea class="ldm-sheet-notes" name="notes" rows="4" maxlength="${NOTES_MAX}" data-field="notes" aria-label="${L(c, 'sandbox.sheet.notes')}"${dis}>${esc(c.notes)}</textarea>
-  </section>`;
+  return `<textarea class="ldm-sheet-notes" name="notes" rows="4" maxlength="${NOTES_MAX}" data-field="notes" aria-label="${esc(c.blockTitles?.notes ?? BLOCK_FALLBACK.notes)}"${dis}>${esc(c.notes)}</textarea>`;
 }
 
-/** Renders the whole sheet body from a context built by buildSheetContext. Pure. */
-export function renderSheet(ctx) {
+/**
+ * One layout block as a card: the title comes from the block name, the body from the matching
+ * renderer. `renderEffects` is the effects block renderer (injected by tests). Unknown blocks: ''.
+ */
+function renderBlockFor(c, block, renderEffects) {
+  const title = c.blockTitles?.[block] ?? BLOCK_FALLBACK[block] ?? '';
+  let body;
+  switch (block) {
+    case 'resources': body = renderResourcesBody(c); break;
+    case 'attributes': body = renderAttributesBody(c); break;
+    case 'skills': body = renderSkillsBody(c); break;
+    case 'items:gear':
+    case 'items:ability':
+    case 'items:spell':
+    case 'items:other': {
+      const group = c.itemGroups.find((g) => `items:${g.type}` === block);
+      body = group ? renderItemsBody(c, group) : '';
+      break;
+    }
+    case 'notes': body = renderNotesBody(c); break;
+    case 'effects': {
+      // The effects renderer brings its own heading, so the block card has no title of its own.
+      const edit = c.effectsEdit ?? {};
+      const html = renderEffects({
+        effects: c.effects,
+        editable: c.editable,
+        ownerKind: 'actor',
+        editingId: edit.editingId ?? '',
+        draft: edit.draft ?? null,
+        errors: Array.isArray(edit.errors) ? edit.errors : [],
+        t: c.t,
+      });
+      return renderBlock({ key: block, title: '', body: typeof html === 'string' ? html : '' });
+    }
+    default:
+      return '';
+  }
+  return renderBlock({ key: block, title, body: typeof body === 'string' ? body : '' });
+}
+
+/**
+ * Renders the whole sheet from a context built by buildSheetContext. Pure.
+ * Layout: header and toolbar (outside the tabs), then the tab set of the config. Each tab is a
+ * grid of blocks. `opts.renderEffects` replaces the effects block renderer (tests only).
+ */
+export function renderSheet(ctx, opts = {}) {
   const c = ctx && typeof ctx === 'object' ? ctx : { empty: true, labels: {} };
   if (c.empty) {
     return `<div class="ldm-sheet ldm-sheet--empty"><p class="ldm-sheet-empty">${L(c, 'sandbox.sheet.noActor')}</p></div>`;
   }
-  return `<div class="ldm-sheet${c.editable ? '' : ' ldm-sheet--readonly'}">
+  const renderEffects = typeof opts?.renderEffects === 'function' ? opts.renderEffects : renderEffectsBlock;
+  const layout = c.layout ?? resolveLayout(defaultConfig());
+  const density = LAYOUT_DENSITIES.includes(layout.density) ? layout.density : 'comfortable';
+  const tabs = layout.tabs.map((tab) => ({ key: tab.key, label: tab.label, columns: tab.columns, blocks: tab.blocks }));
+  const panels = {};
+  for (const tab of tabs) {
+    panels[tab.key] = renderGrid(tab.blocks.map((block) => renderBlockFor(c, block, renderEffects)), tab.columns);
+  }
+  const tabsHtml = renderTabs({
+    idPrefix: 'ldm-sheet',
+    tabs,
+    activeKey: c.activeTab,
+    panels,
+    ariaLabel: c.tablistLabel,
+  });
+  return `<div class="ldm-sheet ldm-density-${density}${c.editable ? '' : ' ldm-sheet--readonly'}">
     ${renderHeader(c)}
     ${renderToolbar(c)}
     ${c.configChanged ? `<p class="ldm-sheet-hint" role="status">${L(c, 'sandbox.sheet.configChanged')}</p>` : ''}
-    <div class="ldm-sheet-body">
-      ${renderResources(c)}
-      ${renderAttributes(c)}
-      ${renderSkills(c)}
-      ${renderItems(c)}
-      ${renderNotes(c)}
-    </div>
+    <div class="ldm-sheet-body">${tabsHtml}</div>
   </div>`;
 }
 
@@ -852,6 +979,12 @@ function buildSheetClass(loom) {
     _ldmCast = null;
     _ldmCastId = '';
     _ldmCastState = 'none'; // 'none' | 'ok' | 'refused'
+    // Layout: active tab key (kept across re-renders, '' = first tab) and the listeners that
+    // are attached once to the window root.
+    _ldmTab = '';
+    _ldmTabsWired = false;
+    _ldmEffects = [];
+    _ldmEffectsWired = false;
 
     constructor(props) {
       super({ ...props, classes: [...(props?.classes ?? []), 'ldm-sheet-window'] });
@@ -871,6 +1004,18 @@ function buildSheetClass(loom) {
       await this._ldmLoadPromise;
       if (!Array.isArray(this.document?.items)) await this._ldmLoadItems();
       await this._ldmLoadCast();
+      await this._ldmLoadEffects();
+    }
+
+    /** Effects of the actor, re-read on every open or reload (no live sync). Never throws. */
+    async _ldmLoadEffects() {
+      try {
+        const list = await loadEffects('actor', String(this.document?.id ?? ''));
+        this._ldmEffects = Array.isArray(list) ? list : [];
+      } catch (err) {
+        loomGlobal()?.clog?.error?.(`[SANDBOX-SHEET] effects load failed: ${err?.message ?? err}`);
+        this._ldmEffects = [];
+      }
     }
 
     /**
@@ -946,6 +1091,41 @@ function buildSheetClass(loom) {
 
     _onFirstRender() {
       this._ldmWireInput();
+      this._ldmWireTabs();
+      this._ldmWireEffects();
+    }
+
+    /**
+     * Tab bar and arrow keys: ONE delegated click and keydown listener on the window root
+     * (attachTabs). The active tab is kept on the instance, so it survives every re-render.
+     */
+    _ldmWireTabs() {
+      if (!this.element || this._ldmTabsWired) return;
+      this._ldmTabsWired = true;
+      attachTabs(this.element, {
+        getTabs: () => resolveLayout(this._ldmCfg ?? defaultConfig()).tabs,
+        getActive: () => this._ldmTab,
+        setActive: (key) => {
+          this._ldmTab = typeof key === 'string' ? key : '';
+        },
+        rerender: () => this.rerenderBody(),
+      });
+    }
+
+    /** Effects block: ONE delegated listener set by attachEffects, attached once per window. */
+    _ldmWireEffects() {
+      if (!this.element || this._ldmEffectsWired) return;
+      this._ldmEffectsWired = true;
+      attachEffects(this.element, {
+        ownerKind: 'actor',
+        getOwnerId: () => String(this.document?.id ?? ''),
+        getEffects: () => this._ldmEffects,
+        setEffects: (list) => {
+          this._ldmEffects = Array.isArray(list) ? list : [];
+        },
+        isEditable: () => this.isEditable !== false && this._ldmCastState !== 'refused',
+        rerender: () => this.rerenderBody(),
+      });
     }
 
     /** One delegated input listener on the window root. Typing is debounced 300 ms. */
@@ -1076,13 +1256,19 @@ function buildSheetClass(loom) {
       const actor = doc
         ? { id: doc.id, name: doc.name, type: doc.type, avatarUrl: doc.avatarUrl, systemData: this._ldmView() }
         : null;
-      return buildSheetContext(actor, this._ldmItemList(), this._ldmCfg ?? defaultConfig(), {
+      const ctx = buildSheetContext(actor, this._ldmItemList(), this._ldmCfg ?? defaultConfig(), {
         isGM: loom?.user?.isGM === true,
         editable: this.isEditable !== false && this._ldmCastState !== 'refused',
         advantage: this._ldmAdvantage,
         configChanged: this._ldmConfigChanged,
+        activeTab: this._ldmTab,
+        effects: this._ldmEffects,
+        effectsEdit: this.element ? getEffectsEditState(this.element) : {},
         t: localizeKey,
       });
+      // A removed or unknown tab falls back to the first one, and the instance follows.
+      this._ldmTab = ctx.activeTab;
+      return ctx;
     }
 
     /** Renders the body into compiledHtml (the mixin injects it on mount and on every re-render). */
@@ -1205,6 +1391,8 @@ function buildSheetClass(loom) {
       const actorName = String(doc.name ?? '');
       const itemName = String(item.name ?? '');
       const roll = isPlainObject(d.roll) ? d.roll : null;
+      // Effects are copied only when the use went through: a rolled use needs its roll dispatched.
+      let useOk = true;
       if (roll && roll.enabled === true) {
         const result = await rollCheck(cfg, {
           actorId: doc.id,
@@ -1217,6 +1405,7 @@ function buildSheetClass(loom) {
           extraMeta: { actorName },
         });
         if (!result.ok) toast('sandbox.sheet.errNoDispatch');
+        useOk = result.ok === true;
         const extra = typeof roll.damage === 'string' ? buildExtra(roll.damage) : { ok: false };
         if (result.ok && extra.ok && loomGlobal()?.dispatchRoll) {
           loomGlobal().dispatchRoll({
@@ -1237,7 +1426,26 @@ function buildSheetClass(loom) {
           }
         }
       }
+      if (useOk) await this._ldmApplyUseEffects(item);
       this.rerenderBody();
+    }
+
+    /**
+     * Copies the item's effects onto the actor after a successful use (the engine never does it).
+     * Only for EFFECT_USE_TYPES. Unlinked (NPC) casts are skipped: their data is their own and
+     * actor effects would not reach them. One summary toast; the Effects block is reloaded.
+     */
+    async _ldmApplyUseEffects(item) {
+      const doc = this.document;
+      if (!doc?.id || !isPlainObject(item) || !EFFECT_USE_TYPES.includes(item.type)) return;
+      if (this._ldmCast) return;
+      const worldId = String(loomGlobal()?.world?.id ?? '');
+      const result = await applyItemEffects(item, String(doc.id), worldId);
+      const applied = result.created + result.updated;
+      if (applied > 0) {
+        this._ldmEffects = await loadEffects('actor', String(doc.id));
+        if (result.ok) toast('sandbox.sheet.effectsApplied', { count: applied, item: String(item.name ?? '') }, 'success');
+      }
     }
 
     async _ldmAddItem(type) {

@@ -394,3 +394,142 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ── Section tabs and layout editor ───────────────────────────── */
+/* The tab bar and panels use the shared standard (styles/sandbox-layout.css). Its theme
+   variables are mapped to the editor palette here, so the tabs match the rest of the window. */
+
+.ldm-editor-root {
+  --ldm-accent: var(--ldm-editor-gold);
+  --ldm-surface: var(--ldm-editor-surface-elevated);
+  --ldm-border: var(--ldm-editor-border);
+  --ldm-text: var(--ldm-editor-text);
+  --ldm-muted: var(--ldm-editor-text-muted);
+  --ldm-gap: 0.75rem;
+  --ldm-pad: 0.75rem;
+}
+
+.ldm-editor-notice.is-info {
+  border-color: var(--ldm-editor-border-focus);
+  color: var(--ldm-editor-text);
+}
+
+.ldm-editor-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ldm-editor-blocks > .ldm-editor-label {
+  font-weight: 600;
+}
+
+.ldm-editor-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.ldm-editor-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 6px;
+  background: var(--ldm-editor-surface);
+}
+
+.ldm-editor-chip-name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ldm-editor-chip-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ldm-editor-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--ldm-editor-border);
+}
+
+.ldm-editor-layout-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px dashed var(--ldm-editor-border);
+  border-radius: 6px;
+}
+
+.ldm-editor-lp-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ldm-editor-lp-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ldm-editor-lp-chip {
+  padding: 2px 8px;
+  border-bottom: 2px solid var(--ldm-editor-gold);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.ldm-editor-lp-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--ldm-editor-cols, 2), minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+
+.ldm-editor-lp-box {
+  display: block;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--ldm-editor-border);
+  border-radius: 4px;
+  background: var(--ldm-editor-surface-elevated);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ldm-editor-lp-box.is-empty {
+  color: var(--ldm-editor-text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 480px) {
+  .ldm-editor-lp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ldm-editor-chip-tools .ldm-editor-btn {
+    padding: 3px 6px;
+  }
+}

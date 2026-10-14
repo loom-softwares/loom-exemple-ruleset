@@ -13,13 +13,18 @@
 
 import { esc, deepClone, isPlainObject } from '../lib/helpers.mjs';
 import {
+  ITEM_LAYOUT_BLOCKS,
   abilityKindLabel,
   attributeList,
+  blockLabelKey,
   skillList,
   resourceList,
   categoryList,
+  resolveItemLayout,
 } from '../lib/config.mjs';
 import { buildExtra } from '../lib/dice.mjs';
+import { renderBlock, renderGrid, renderTabs } from '../lib/layout-view.mjs';
+import { renderEffectsBlock } from '../lib/effects-view.mjs';
 
 /** Item types this sheet handles. Legacy types use the same fields. */
 export const ITEM_TYPES = Object.freeze(['gear', 'ability', 'spell', 'weapon', 'armor', 'potion', 'scroll']);
@@ -50,6 +55,7 @@ const LABEL_DEFAULTS = Object.freeze({
   portraitHelp: 'A path starting with / or an http(s) URL.',
   portraitInvalid: 'That image URL is not allowed. It was not saved.',
   clearPortrait: 'Clear image',
+  effectsUnavailable: 'The effects block could not be shown.',
   category: 'Category',
   none: 'None',
   description: 'Description',
@@ -208,20 +214,50 @@ function refField(list, stored, L) {
   return { value: stored, removed, options };
 }
 
+/** English fallbacks for the item block titles (the keys live in sandbox.layout.item.*). */
+const BLOCK_FALLBACK = Object.freeze({
+  details: 'Details',
+  uses: 'Uses',
+  roll: 'Roll',
+  cost: 'Cost',
+  description: 'Description',
+  effects: 'Effects',
+});
+
+/** Localized titles for ITEM_LAYOUT_BLOCKS; the English fallback is used when no translation exists. */
+export function itemBlockTitles(t) {
+  const tr = typeof t === 'function' ? t : (key, fallback) => fallback;
+  const out = {};
+  for (const block of ITEM_LAYOUT_BLOCKS) {
+    const key = blockLabelKey(block, 'item');
+    let text;
+    try {
+      text = tr(key, BLOCK_FALLBACK[block]);
+    } catch {
+      text = BLOCK_FALLBACK[block];
+    }
+    out[block] = typeof text === 'string' && text !== '' && text !== key ? text : BLOCK_FALLBACK[block];
+  }
+  return out;
+}
+
 /**
  * Builds the view context for one item.
  *
  * @param {object} item item row: { id, type, name, imgUrl, data }
  * @param {object} cfg world configuration (may be null/undefined: lists are then empty)
  * @param {(key: string, fallback: string) => string} [t] translator
- * @param {{ editable?: boolean, configChanged?: boolean, portraitRejected?: boolean }} [opts]
+ * @param {{ editable?: boolean, configChanged?: boolean, portraitRejected?: boolean,
+ *           activeTab?: string, effects?: unknown[], editingId?: string | null }} [opts]
  * @returns {object} context for renderItem
  */
 export function buildItemContext(item, cfg, t, opts = {}) {
   const row = isPlainObject(item) ? item : {};
+  const o = isPlainObject(opts) ? opts : {};
   const type = typeof row.type === 'string' && row.type !== '' ? row.type : 'gear';
   const data = normalizeItemData(row.data ?? row.systemData, cfg, type);
-  const L = itemLabels(t);
+  const translate = typeof t === 'function' ? t : (key, fallback) => fallback;
+  const L = itemLabels(translate);
 
   const kindLabel = abilityKindLabel(cfg, type);
   const typeLabel = kindLabel !== type ? kindLabel : (L.types[type] ?? type);
@@ -237,6 +273,11 @@ export function buildItemContext(item, cfg, t, opts = {}) {
 
   const removedCount = [category, attr, skill, res].filter((r) => r.removed).length;
 
+  // Layout: every item block is always listed (resolveItemLayout appends the missing ones).
+  const layout = resolveItemLayout(cfg);
+  const tabKeys = layout.tabs.map((tab) => tab.key);
+  const activeTab = tabKeys.includes(o.activeTab) ? o.activeTab : (tabKeys[0] ?? '');
+
   return {
     id: textOf(row.id, 64),
     type,
@@ -244,9 +285,9 @@ export function buildItemContext(item, cfg, t, opts = {}) {
     name: textOf(row.name, NAME_MAX),
     imgUrl,
     portrait: safeImageUrl(imgUrl),
-    portraitRejected: opts.portraitRejected === true,
-    editable: opts.editable !== false,
-    configChanged: opts.configChanged === true,
+    portraitRejected: o.portraitRejected === true,
+    editable: o.editable !== false,
+    configChanged: o.configChanged === true,
     showQuantity: !NO_QUANTITY.has(type),
     showUses: USES_TYPES.has(type),
     category,
@@ -263,9 +304,26 @@ export function buildItemContext(item, cfg, t, opts = {}) {
     },
     cost: { res, amount: data.cost.amount },
     removedCount,
+    layout,
+    activeTab,
+    tabsLabel: safeTranslate(translate, 'sandbox.layout.tablist', 'Sheet sections'),
+    blockTitles: itemBlockTitles(translate),
+    effects: Array.isArray(o.effects) ? o.effects : [],
+    editingId: typeof o.editingId === 'string' ? o.editingId.slice(0, 64) : null,
+    translate,
     labels: L,
     data,
   };
+}
+
+/** Translator call that never throws and falls back when the key is not translated. */
+function safeTranslate(t, key, fallback) {
+  try {
+    const out = t(key, fallback);
+    return typeof out === 'string' && out !== '' && out !== key ? out : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function selectHtml(field, ref, dis, label, extraClass = '') {
@@ -280,90 +338,149 @@ function numberHtml(field, value, min, max, dis, label) {
   return `<input type="number" class="ldm-item-input" data-field="${esc(field)}" value="${esc(value)}" min="${min}" max="${max}" step="1" inputmode="numeric" aria-label="${esc(label)}"${dis}>`;
 }
 
+/** Label wrapping one control. `control` is trusted markup built by this module. */
+function fieldLabel(text, control) {
+  return `<label class="ldm-item-field"><span class="ldm-item-label">${esc(text)}</span>${control}</label>`;
+}
+
+// ── Block bodies. Each returns trusted HTML; every value goes through esc(). ──
+
+function detailsBody(c, L, dis) {
+  const initial = String(c.typeLabel || '?').charAt(0).toUpperCase();
+  const img = c.portrait
+    ? `<img class="ldm-item-img" src="${esc(c.portrait)}" alt="">`
+    : `<span class="ldm-item-img ldm-item-img--empty" aria-hidden="true">${esc(initial)}</span>`;
+  const clear = c.editable && c.imgUrl
+    ? `<button type="button" class="ldm-item-btn" data-action="clear-portrait">${esc(L.clearPortrait)}</button>`
+    : '';
+  const name = `<input type="text" class="ldm-item-input ldm-item-name" data-field="name" value="${esc(c.name)}" maxlength="${NAME_MAX}" autocomplete="off" aria-label="${esc(L.name)}"${dis}>`;
+  const portrait = `<input type="text" class="ldm-item-input" data-field="portrait" value="${esc(c.imgUrl)}" maxlength="${IMG_MAX}" autocomplete="off" aria-describedby="ldm-item-portrait-help"${dis}>`;
+  const quantity = c.showQuantity
+    ? fieldLabel(L.quantity, numberHtml('quantity', c.quantity, 0, QUANTITY_MAX, dis, L.quantity))
+    : '';
+
+  return `<div class="ldm-item-details">
+  <div class="ldm-item-head">
+    <div class="ldm-item-portrait">${img}</div>
+    <div class="ldm-item-head-fields">
+      <span class="ldm-item-type">${esc(c.typeLabel)}</span>
+      ${fieldLabel(L.name, name)}
+    </div>
+  </div>
+  ${fieldLabel(L.portrait, portrait)}
+  <span class="ldm-item-help" id="ldm-item-portrait-help">${esc(L.portraitHelp)}</span>
+  ${clear}
+  <div class="ldm-item-row">
+    ${fieldLabel(L.category, selectHtml('category', c.category, dis, L.category))}
+    ${quantity}
+  </div>
+</div>`;
+}
+
+function usesBody(c, L, dis) {
+  return `<div class="ldm-item-row">${fieldLabel(L.usesValue, numberHtml('uses.value', c.uses.value, 0, c.uses.max, dis, L.usesValue))}${fieldLabel(L.usesMax, numberHtml('uses.max', c.uses.max, 0, USES_MAX, dis, L.usesMax))}</div>`;
+}
+
+function rollBody(c, L, dis) {
+  const r = c.roll;
+  const describedBy = r.damageError ? 'ldm-item-damage-help ldm-item-damage-error' : 'ldm-item-damage-help';
+  const error = r.damageError
+    ? `<span class="ldm-item-error" id="ldm-item-damage-error" role="alert">${esc(L.damageInvalid)} (${esc(r.damageError)})</span>`
+    : '';
+  const damage = `<input type="text" class="ldm-item-input" data-field="roll.damage" value="${esc(r.damage)}" maxlength="${DAMAGE_MAX}" autocomplete="off" aria-describedby="${describedBy}"${r.damageError ? ' aria-invalid="true"' : ''}${dis}>`;
+  return `<label class="ldm-item-check"><input type="checkbox" data-field="roll.enabled"${r.enabled ? ' checked' : ''}${dis}> <span>${esc(L.rollEnabled)}</span></label>
+  <div class="ldm-item-row">
+    ${fieldLabel(L.rollAttr, selectHtml('roll.attr', r.attr, dis, L.rollAttr))}
+    ${fieldLabel(L.rollSkill, selectHtml('roll.skill', r.skill, dis, L.rollSkill))}
+    ${fieldLabel(L.rollBonus, numberHtml('roll.bonus', r.bonus, -BONUS_LIMIT, BONUS_LIMIT, dis, L.rollBonus))}
+  </div>
+  ${fieldLabel(L.damage, damage)}
+  <span class="ldm-item-help" id="ldm-item-damage-help">${esc(L.damageHelp)}</span>
+  ${error}`;
+}
+
+function costBody(c, L, dis) {
+  return `<div class="ldm-item-row">${fieldLabel(L.costRes, selectHtml('cost.res', c.cost.res, dis, L.costRes))}${fieldLabel(L.costAmount, numberHtml('cost.amount', c.cost.amount, 0, COST_MAX, dis, L.costAmount))}</div>`;
+}
+
+function descriptionBody(c, L, dis) {
+  return `<label class="ldm-item-field"><span class="ldm-item-label">${esc(L.description)}</span><textarea class="ldm-item-input ldm-item-textarea" data-field="description" rows="4" maxlength="${DESCRIPTION_MAX}"${dis} aria-label="${esc(L.description)}">${esc(c.description)}</textarea></label>`;
+}
+
+/** Effects block: always present. A renderer failure shows a note instead of an empty block. */
+function effectsBody(c, L, renderEffects) {
+  try {
+    const out = renderEffects({
+      effects: c.effects,
+      editable: c.editable,
+      ownerKind: 'item',
+      editingId: c.editingId,
+      t: c.translate,
+    });
+    if (typeof out === 'string') return out;
+  } catch {
+    // Fall through to the note below.
+  }
+  return `<p class="ldm-item-help" role="note">${esc(L.effectsUnavailable)}</p>`;
+}
+
 /**
- * Renders the item sheet body as an HTML string. Every value is escaped; there is no raw
- * HTML path. Inputs carry `data-field` (read by the sheet) and buttons carry `data-action`.
+ * Renders the item sheet body as an HTML string: notices, a compact title (the name only),
+ * then the tab set built from the item layout. Every block of every tab is in the markup, so
+ * hidden tabs keep their fields (the sheet toggles `hidden`). Every value is escaped.
  *
  * @param {object} ctx result of buildItemContext
+ * @param {{ renderEffects?: Function }} [options] renderEffects defaults to renderEffectsBlock;
+ *   tests inject a stub so they do not depend on the effects block internals.
  * @returns {string}
  */
-export function renderItem(ctx) {
+export function renderItem(ctx, options = {}) {
   const c = ctx && typeof ctx === 'object' ? ctx : buildItemContext({}, null);
   const L = c.labels || itemLabels();
   const dis = c.editable ? '' : ' disabled';
-  const parts = [];
+  const opts = isPlainObject(options) ? options : {};
+  const renderEffects = typeof opts.renderEffects === 'function' ? opts.renderEffects : renderEffectsBlock;
+  const titles = c.blockTitles || itemBlockTitles();
 
-  if (c.configChanged) parts.push(`<p class="ldm-item-notice" role="status">${esc(L.configChanged)}</p>`);
-  if (!c.editable) parts.push(`<p class="ldm-item-notice" role="note">${esc(L.readOnly)}</p>`);
-  if (c.portraitRejected) parts.push(`<p class="ldm-item-error" role="alert">${esc(L.portraitInvalid)}</p>`);
+  const bodies = Object.freeze({
+    details: () => detailsBody(c, L, dis),
+    uses: () => (c.showUses ? usesBody(c, L, dis) : ''),
+    roll: () => rollBody(c, L, dis),
+    cost: () => costBody(c, L, dis),
+    description: () => descriptionBody(c, L, dis),
+    effects: () => effectsBody(c, L, renderEffects),
+  });
 
-  const img = c.portrait
-    ? `<img class="ldm-item-img" src="${esc(c.portrait)}" alt="">`
-    : `<span class="ldm-item-img ldm-item-img--empty" aria-hidden="true">${esc(String(c.typeLabel || '?').charAt(0).toUpperCase())}</span>`;
-
-  parts.push(`<header class="ldm-item-header">
-  <div class="ldm-item-portrait">${img}</div>
-  <div class="ldm-item-identity">
-    <span class="ldm-item-type">${esc(c.typeLabel)}</span>
-    <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.name)}</span>
-      <input type="text" class="ldm-item-input ldm-item-name" data-field="name" value="${esc(c.name)}" maxlength="${NAME_MAX}" autocomplete="off"${dis}></label>
-  </div>
-</header>`);
-
-  parts.push(`<section class="ldm-item-block">
-  <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.portrait)}</span>
-    <input type="text" class="ldm-item-input" data-field="portrait" value="${esc(c.imgUrl)}" maxlength="${IMG_MAX}" autocomplete="off" aria-describedby="ldm-item-portrait-help"${dis}></label>
-  <span class="ldm-item-help" id="ldm-item-portrait-help">${esc(L.portraitHelp)}</span>
-  ${c.editable && c.imgUrl ? `<button type="button" class="ldm-item-btn" data-action="clear-portrait">${esc(L.clearPortrait)}</button>` : ''}
-</section>`);
-
-  const coreRows = [];
-  coreRows.push(`<label class="ldm-item-field"><span class="ldm-item-label">${esc(L.category)}</span>${selectHtml('category', c.category, dis, L.category)}</label>`);
-  if (c.showQuantity) {
-    coreRows.push(`<label class="ldm-item-field"><span class="ldm-item-label">${esc(L.quantity)}</span>${numberHtml('quantity', c.quantity, 0, QUANTITY_MAX, dis, L.quantity)}</label>`);
+  const tabs = c.layout.tabs;
+  const panels = Object.create(null);
+  for (const tab of tabs) {
+    const blocks = [];
+    for (const block of tab.blocks) {
+      if (!Object.prototype.hasOwnProperty.call(bodies, block)) continue;
+      const body = bodies[block]();
+      if (body === '') continue;
+      blocks.push(renderBlock({ key: block, title: titles[block] || BLOCK_FALLBACK[block] || block, body }));
+    }
+    panels[tab.key] = renderGrid(blocks, tab.columns);
   }
-  parts.push(`<section class="ldm-item-block">
-  <div class="ldm-item-row">${coreRows.join('')}</div>
-  ${c.showUses ? `<fieldset class="ldm-item-fieldset"><legend>${esc(L.uses)}</legend>
-    <div class="ldm-item-row">
-      <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.usesValue)}</span>${numberHtml('uses.value', c.uses.value, 0, c.uses.max, dis, L.usesValue)}</label>
-      <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.usesMax)}</span>${numberHtml('uses.max', c.uses.max, 0, USES_MAX, dis, L.usesMax)}</label>
-    </div>
-  </fieldset>` : ''}
-  <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.description)}</span>
-    <textarea class="ldm-item-input ldm-item-textarea" data-field="description" rows="4" maxlength="${DESCRIPTION_MAX}"${dis}>${esc(c.description)}</textarea></label>
-</section>`);
 
-  const r = c.roll;
-  const damageDescribed = r.damageError
-    ? 'ldm-item-damage-help ldm-item-damage-error'
-    : 'ldm-item-damage-help';
-  parts.push(`<fieldset class="ldm-item-fieldset ldm-item-block">
-  <legend>${esc(L.roll)}</legend>
-  <label class="ldm-item-check"><input type="checkbox" data-field="roll.enabled"${r.enabled ? ' checked' : ''}${dis}> <span>${esc(L.rollEnabled)}</span></label>
-  <div class="ldm-item-row">
-    <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.rollAttr)}</span>${selectHtml('roll.attr', r.attr, dis, L.rollAttr)}</label>
-    <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.rollSkill)}</span>${selectHtml('roll.skill', r.skill, dis, L.rollSkill)}</label>
-    <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.rollBonus)}</span>${numberHtml('roll.bonus', r.bonus, -BONUS_LIMIT, BONUS_LIMIT, dis, L.rollBonus)}</label>
-  </div>
-  <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.damage)}</span>
-    <input type="text" class="ldm-item-input" data-field="roll.damage" value="${esc(r.damage)}" maxlength="${DAMAGE_MAX}" autocomplete="off" aria-describedby="${damageDescribed}"${r.damageError ? ' aria-invalid="true"' : ''}${dis}></label>
-  <span class="ldm-item-help" id="ldm-item-damage-help">${esc(L.damageHelp)}</span>
-  ${r.damageError ? `<span class="ldm-item-error" id="ldm-item-damage-error" role="alert">${esc(L.damageInvalid)} (${esc(r.damageError)})</span>` : ''}
-</fieldset>`);
+  const notices = [];
+  if (c.configChanged) notices.push(`<p class="ldm-item-notice" role="status">${esc(L.configChanged)}</p>`);
+  if (!c.editable) notices.push(`<p class="ldm-item-notice" role="note">${esc(L.readOnly)}</p>`);
+  if (c.portraitRejected) notices.push(`<p class="ldm-item-error" role="alert">${esc(L.portraitInvalid)}</p>`);
+  if (c.removedCount > 0) notices.push(`<p class="ldm-item-notice" role="note">${esc(L.removedNote)}</p>`);
 
-  const cost = c.cost;
-  parts.push(`<fieldset class="ldm-item-fieldset ldm-item-block">
-  <legend>${esc(L.cost)}</legend>
-  <div class="ldm-item-row">
-    <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.costRes)}</span>${selectHtml('cost.res', cost.res, dis, L.costRes)}</label>
-    <label class="ldm-item-field"><span class="ldm-item-label">${esc(L.costAmount)}</span>${numberHtml('cost.amount', cost.amount, 0, COST_MAX, dis, L.costAmount)}</label>
-  </div>
-</fieldset>`);
+  const title = c.name ? `<div class="ldm-item-title">${esc(c.name)}</div>` : '';
+  const tabsHtml = renderTabs({
+    idPrefix: 'ldm-item',
+    tabs,
+    activeKey: c.activeTab,
+    labelOf: (tab) => tab.label,
+    panels,
+    ariaLabel: c.tabsLabel,
+  });
 
-  if (c.removedCount > 0) parts.push(`<p class="ldm-item-notice" role="note">${esc(L.removedNote)}</p>`);
-
-  return `<div class="ldm-item-sheet" data-item-id="${esc(c.id)}" data-item-type="${esc(c.type)}">${parts.join('\n')}</div>`;
+  return `<div class="ldm-item-sheet" data-item-id="${esc(c.id)}" data-item-type="${esc(c.type)}">${notices.join('\n')}${title}${tabsHtml}</div>`;
 }
 
 /**

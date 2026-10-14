@@ -1,0 +1,18 @@
+{
+  "sandbox.layout.tablist": "Sheet sections",
+  "sandbox.layout.block.resources": "Resources",
+  "sandbox.layout.block.attributes": "Attributes",
+  "sandbox.layout.block.skills": "Skills",
+  "sandbox.layout.block.items_gear": "Gear",
+  "sandbox.layout.block.items_ability": "Abilities",
+  "sandbox.layout.block.items_spell": "Spells",
+  "sandbox.layout.block.items_other": "Other items",
+  "sandbox.layout.block.notes": "Notes",
+  "sandbox.layout.block.effects": "Effects",
+  "sandbox.layout.item.details": "Details",
+  "sandbox.layout.item.uses": "Uses",
+  "sandbox.layout.item.roll": "Roll",
+  "sandbox.layout.item.cost": "Cost",
+  "sandbox.layout.item.description": "Description",
+  "sandbox.layout.item.effects": "Effects"
+}

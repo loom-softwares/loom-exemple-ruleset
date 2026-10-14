@@ -14,8 +14,15 @@ import { esc, slug, deepClone, isPlainObject } from '../lib/helpers.mjs';
 import {
   CONFIG_MODULE,
   LIMITS,
+  LAYOUT_BLOCKS,
+  ITEM_LAYOUT_BLOCKS,
+  LAYOUT_LIMITS,
+  LAYOUT_SKILL_GROUPINGS,
   PRESETS,
+  blockLabelKey,
   defaultConfig,
+  resolveLayout,
+  resolveItemLayout,
   validateConfig,
   migrateConfig,
   parseConfig,
@@ -25,6 +32,7 @@ import {
   onConfigSaved,
 } from '../lib/config.mjs';
 import { buildCheck, describe as describeDice } from '../lib/dice.mjs';
+import { renderTabs, attachTabs, clampColumns } from '../lib/layout-view.mjs';
 
 export const EDITOR_WINDOW_ID = 'loom-demo-rule-editor';
 const MENU_KEY = 'ruleEditor';
@@ -33,7 +41,43 @@ const DEFAULT_ACCENT = '#7c5cff';
 const DEFAULT_COLOR = '#888888';
 /** Lists edited as rows. Their order is the order shown to the GM. */
 export const LIST_NAMES = Object.freeze(['attributes', 'skills', 'resources', 'itemCategories', 'abilityKinds']);
+/** Layout tab lists inside `draft.layout`: actor sheet tabs and item sheet tabs. */
+export const LAYOUT_TAB_LISTS = Object.freeze(['tabs', 'itemTabs']);
+/** Editor sections in navigation order. Each key is a panel of the section tabs. */
+export const SECTION_KEYS = Object.freeze([
+  'dice', 'attributes', 'skills', 'resources', 'categories', 'kinds', 'layout', 'card', 'combat', 'io',
+]);
 const SAMPLE_FACES = [6, 5, 2, 1, 4, 3];
+
+/** English names of the layout blocks, used only when the language file has no entry. */
+const BLOCK_FALLBACK = Object.freeze({
+  resources: 'Resources',
+  attributes: 'Attributes',
+  skills: 'Skills',
+  'items:gear': 'Gear',
+  'items:ability': 'Abilities',
+  'items:spell': 'Spells',
+  'items:other': 'Other items',
+  notes: 'Notes',
+  effects: 'Effects',
+  details: 'Details',
+  uses: 'Uses',
+  roll: 'Roll',
+  cost: 'Cost',
+  description: 'Description',
+});
+
+/** Layout scopes: tab list inside `draft.layout`, block scope, allowed blocks and resolver. */
+const LAYOUT_SCOPES = Object.freeze({
+  actor: Object.freeze({
+    list: 'tabs', scope: 'actor', blocks: LAYOUT_BLOCKS, resolve: resolveLayout,
+    titleKey: 'sandbox.editor.layoutActorTitle', titleFallback: 'Actor sheet',
+  }),
+  item: Object.freeze({
+    list: 'itemTabs', scope: 'item', blocks: ITEM_LAYOUT_BLOCKS, resolve: resolveItemLayout,
+    titleKey: 'sandbox.editor.layoutItemTitle', titleFallback: 'Item sheet',
+  }),
+});
 
 // ---------------------------------------------------------------------------
 // Translation. Every visible string goes through here. The English fallback lives in code;
@@ -106,10 +150,10 @@ export function updateRow(list, index, field, value) {
 export function newRowTemplate(listName, draft) {
   switch (listName) {
     case 'attributes':
-      return { key: '', label: '', min: 0, max: 10, default: 0 };
+      return { key: '', label: '', min: 0, max: 10, default: 0, group: '' };
     case 'skills': {
       const first = Array.isArray(draft?.attributes) && draft.attributes[0] ? draft.attributes[0].key : '';
-      return { key: '', label: '', attr: first, max: 10, default: 0 };
+      return { key: '', label: '', attr: first, max: 10, default: 0, group: '' };
     }
     case 'resources':
       return { key: '', label: '', max: 10, color: DEFAULT_COLOR, showInCombat: false };
@@ -119,6 +163,134 @@ export function newRowTemplate(listName, draft) {
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pure layout helpers. A tab list is `layout.tabs` or `layout.itemTabs`. Every helper returns a
+// new list and never mutates its input. Tab moves, adds and removes keep the identity of the tab
+// objects; a block edit returns a new object for the one tab it changes (the editor carries the
+// new-tab flags over, see RuleEditorWindow.setLayoutTabs). Invalid indexes and refused operations
+// return an unchanged copy.
+// ---------------------------------------------------------------------------
+
+const NEW_TAB_KEY_STEM = 'tab';
+const NEW_TAB_LABEL = 'Tab';
+const TAB_KEY_RE = /^[a-z][a-z0-9_]{0,23}$/;
+
+function isIndexIn(index, length) {
+  return Number.isInteger(index) && index >= 0 && index < length;
+}
+
+function tabListCopy(layoutTabs) {
+  return Array.isArray(layoutTabs) ? layoutTabs.slice() : [];
+}
+
+function blocksOf(tab) {
+  return Array.isArray(tab?.blocks) ? tab.blocks : [];
+}
+
+/** Layout tab list name ('tabs' or 'itemTabs') from a dataset value, or null for anything else. */
+export function layoutListName(value) {
+  return LAYOUT_TAB_LISTS.includes(value) ? value : null;
+}
+
+/** Blocks that no tab of the list lists, in the order of `allBlocks`. These are the blocks the
+ * add-block choice offers. */
+export function unplacedBlocks(layoutTabs, allBlocks) {
+  if (!Array.isArray(allBlocks)) return [];
+  const placed = new Set();
+  if (Array.isArray(layoutTabs)) {
+    for (const tab of layoutTabs) for (const block of blocksOf(tab)) placed.add(block);
+  }
+  return allBlocks.filter((block) => typeof block === 'string' && !placed.has(block));
+}
+
+/** Free key for a tab built from `label`: a slug that matches the config grammar, unique in the
+ * list. `ignoreIndex` skips one tab (the tab being renamed). */
+export function tabKeyFor(layoutTabs, label, ignoreIndex = -1) {
+  const taken = new Set();
+  if (Array.isArray(layoutTabs)) {
+    layoutTabs.forEach((tab, index) => {
+      if (index !== ignoreIndex && isPlainObject(tab) && typeof tab.key === 'string') taken.add(tab.key);
+    });
+  }
+  let base = slug(typeof label === 'string' ? label : '');
+  if (!TAB_KEY_RE.test(base)) base = NEW_TAB_KEY_STEM;
+  let candidate = base;
+  for (let n = 2; taken.has(candidate); n++) {
+    candidate = `${base.slice(0, 20).replace(/_+$/, '')}_${n}`;
+  }
+  return candidate;
+}
+
+/** Copy of the list where tab `tabIndex` is replaced by a new object with the given blocks. */
+function withTabBlocks(out, tabIndex, blocks) {
+  out[tabIndex] = { ...out[tabIndex], blocks };
+  return out;
+}
+
+/** Moves block `blockIndex` of tab `tabIndex` up (dir -1) or down (dir 1) inside that tab. */
+export function moveBlock(layoutTabs, tabIndex, blockIndex, dir) {
+  const out = tabListCopy(layoutTabs);
+  if (!isIndexIn(tabIndex, out.length) || !isPlainObject(out[tabIndex])) return out;
+  const blocks = blocksOf(out[tabIndex]).slice();
+  const target = dir === -1 ? blockIndex - 1 : dir === 1 ? blockIndex + 1 : blockIndex;
+  if (!isIndexIn(blockIndex, blocks.length) || !isIndexIn(target, blocks.length) || target === blockIndex) return out;
+  [blocks[blockIndex], blocks[target]] = [blocks[target], blocks[blockIndex]];
+  return withTabBlocks(out, tabIndex, blocks);
+}
+
+/** Appends `block` to tab `tabIndex`. Refused when the block is already on any tab of the list,
+ * when the block name is not text, or when the tab already holds the maximum number of blocks. */
+export function addBlock(layoutTabs, tabIndex, block) {
+  const out = tabListCopy(layoutTabs);
+  if (!isIndexIn(tabIndex, out.length) || !isPlainObject(out[tabIndex])) return out;
+  if (typeof block !== 'string' || block === '') return out;
+  if (unplacedBlocks(out, [block]).length === 0) return out;
+  const blocks = blocksOf(out[tabIndex]);
+  if (blocks.length >= LAYOUT_LIMITS.maxBlocksPerTab) return out;
+  return withTabBlocks(out, tabIndex, [...blocks, block]);
+}
+
+/** Removes block `blockIndex` from tab `tabIndex`. The block is then unplaced, and it shows in the
+ * first tab until another tab takes it. */
+export function removeBlock(layoutTabs, tabIndex, blockIndex) {
+  const out = tabListCopy(layoutTabs);
+  if (!isIndexIn(tabIndex, out.length) || !isPlainObject(out[tabIndex])) return out;
+  const blocks = blocksOf(out[tabIndex]).slice();
+  if (!isIndexIn(blockIndex, blocks.length)) return out;
+  blocks.splice(blockIndex, 1);
+  return withTabBlocks(out, tabIndex, blocks);
+}
+
+/** Appends an empty tab with two columns and a key built from `label`. Refused at the tab maximum. */
+export function addTab(layoutTabs, label) {
+  const out = tabListCopy(layoutTabs);
+  if (out.length >= LAYOUT_LIMITS.maxTabs) return out;
+  const text = typeof label === 'string'
+    ? label.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, LAYOUT_LIMITS.label).trim()
+    : '';
+  const shown = text || NEW_TAB_LABEL;
+  out.push({
+    key: tabKeyFor(out, shown),
+    label: shown,
+    columns: LAYOUT_LIMITS.defaultColumns,
+    blocks: [],
+  });
+  return out;
+}
+
+/** Removes tab `tabIndex`. The last remaining tab cannot be removed (a sheet always has one tab). */
+export function removeTab(layoutTabs, tabIndex) {
+  const out = tabListCopy(layoutTabs);
+  if (out.length <= 1 || !isIndexIn(tabIndex, out.length)) return out;
+  out.splice(tabIndex, 1);
+  return out;
+}
+
+/** Moves tab `tabIndex` one place (dir -1 up, 1 down). Out-of-range moves are ignored. */
+export function moveTab(layoutTabs, tabIndex, dir) {
+  return moveRow(layoutTabs, tabIndex, dir);
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +370,7 @@ export function createEditorState(cfg, { readOnly = false } = {}) {
     baseline: baselineOf(source),
     pending: null,
     preset: 'd20Classic',
+    section: 'dice',
     notice: null,
     importText: '',
     importErrors: [],
@@ -207,10 +380,13 @@ export function createEditorState(cfg, { readOnly = false } = {}) {
   };
 }
 
-/** Marks every row of a draft as having an editable key (used for presets, imports and reset). */
+/** Marks every row and layout tab of a draft as having an editable key (presets, imports, reset). */
 export function markKeysEditable(state) {
   for (const list of LIST_NAMES) {
     for (const row of state.draft[list] ?? []) state.keyEditable.add(row);
+  }
+  for (const name of LAYOUT_TAB_LISTS) {
+    for (const tab of state.draft.layout?.[name] ?? []) state.keyEditable.add(tab);
   }
 }
 
@@ -306,6 +482,12 @@ function keyField(listName, index, row, state) {
     autocomplete: 'off',
   });
   return field(T('sandbox.editor.fieldKey', 'Key'), `<input${attrs}${rowAttrs(listName, index)}>`, hint);
+}
+
+/** Optional group text of an attribute or skill row (empty means no group). */
+function groupField(listName, index, row) {
+  const placeholder = ` placeholder="${T('sandbox.editor.groupPlaceholder', 'optional')}"`;
+  return textField('group', T('sandbox.editor.group', 'Group'), row.group ?? '', LIMITS.group, `${rowAttrs(listName, index)}${placeholder}`);
 }
 
 function listSection(id, titleKey, titleFallback, hintKey, hintFallback, listName, rows, state, renderFields, addKey, addFallback) {
@@ -408,6 +590,170 @@ function describeInitiative(cfg) {
   }
   return TV('sandbox.editor.initSummaryAttr', 'Initiative: {attr} value plus bonus {bonus}.', vars);
 }
+
+/** Raw (unescaped) localized name of a layout block in a scope. Escape it before it reaches HTML. */
+function blockName(block, scope) {
+  return translate(blockLabelKey(block, scope), BLOCK_FALLBACK[block] ?? String(block ?? ''));
+}
+
+function tabAttrs(listName, index) {
+  return ` data-tab-list="${esc(listName)}" data-index="${index}"`;
+}
+
+/** Key of a layout tab: read-only once saved, editable (auto-slugged from the label) when new. */
+function tabKeyField(listName, index, tab, s) {
+  if (!s.keyEditable?.has(tab)) {
+    return `<div class="ldm-editor-field"><span class="ldm-editor-label">${T('sandbox.editor.fieldKey', 'Key')}</span><code class="ldm-editor-key">${esc(tab.key)}</code><span class="ldm-editor-hint">${T('sandbox.editor.tabKeyFixed', 'Key is fixed once saved.')}</span></div>`;
+  }
+  const hint = s.autoKey?.has(tab) ? T('sandbox.editor.keyHint', 'Created from the label; you can change it until you save.') : '';
+  const attrs = attrString({
+    type: 'text',
+    class: 'ldm-editor-input',
+    'data-field': 'key',
+    value: tab.key,
+    maxlength: 24,
+    spellcheck: 'false',
+    autocomplete: 'off',
+  });
+  return field(T('sandbox.editor.fieldKey', 'Key'), `<input${attrs}${tabAttrs(listName, index)}>`, hint);
+}
+
+/** One tab of a layout list: fields, move and remove tools, its blocks as chips, and the add-block choice. */
+function tabRow(meta, tabs, tab, index, s) {
+  const at = tabAttrs(meta.list, index);
+  const blocks = Array.isArray(tab.blocks) ? tab.blocks : [];
+  const columnOptions = [1, 2, 3, 4].map((n) => [String(n), String(n)]);
+  const fields = `<div class="ldm-editor-grid">${tabKeyField(meta.list, index, tab, s)}`
+    + textField('label', T('sandbox.editor.fieldLabel', 'Label'), tab.label ?? '', LIMITS.label, at)
+    + selectField('columns', T('sandbox.editor.columns', 'Columns'), columnOptions, String(clampColumns(tab.columns)), at)
+    + '</div>';
+  const last = tabs.length - 1;
+  const tools = `<div class="ldm-editor-row-tools">
+    <button type="button" class="ldm-editor-btn" data-action="ed-tab-move" data-dir="-1"${at}${index === 0 ? ' disabled' : ''}>${T('sandbox.editor.up', 'Up')}</button>
+    <button type="button" class="ldm-editor-btn" data-action="ed-tab-move" data-dir="1"${at}${index >= last ? ' disabled' : ''}>${T('sandbox.editor.down', 'Down')}</button>
+    <button type="button" class="ldm-editor-btn ldm-editor-danger" data-action="ed-tab-remove"${at}${tabs.length <= 1 ? ' disabled' : ''}>${T('sandbox.editor.remove', 'Remove')}</button>
+  </div>`;
+
+  const chips = blocks.map((block, bi) => {
+    const name = blockName(block, meta.scope);
+    const blockAt = `${at} data-block="${bi}"`;
+    return `<li class="ldm-editor-chip">
+      <span class="ldm-editor-chip-name">${esc(name)}</span>
+      <span class="ldm-editor-chip-tools">
+        <button type="button" class="ldm-editor-btn" data-action="ed-block-move" data-dir="-1"${blockAt}${bi === 0 ? ' disabled' : ''} aria-label="${TV('sandbox.editor.blockUp', 'Move {name} up', { name })}">${T('sandbox.editor.up', 'Up')}</button>
+        <button type="button" class="ldm-editor-btn" data-action="ed-block-move" data-dir="1"${blockAt}${bi >= blocks.length - 1 ? ' disabled' : ''} aria-label="${TV('sandbox.editor.blockDown', 'Move {name} down', { name })}">${T('sandbox.editor.down', 'Down')}</button>
+        <button type="button" class="ldm-editor-btn ldm-editor-danger" data-action="ed-block-remove"${blockAt} aria-label="${TV('sandbox.editor.blockRemove', 'Remove {name}', { name })}">${T('sandbox.editor.remove', 'Remove')}</button>
+      </span>
+    </li>`;
+  }).join('');
+  const chipBlock = blocks.length
+    ? `<ul class="ldm-editor-chips" aria-label="${T('sandbox.editor.blocksOnTab', 'Blocks on this tab')}">${chips}</ul>`
+    : `<p class="ldm-editor-hint">${T('sandbox.editor.tabEmpty', 'No blocks on this tab yet.')}</p>`;
+
+  const free = unplacedBlocks(tabs, meta.blocks);
+  const none = free.length === 0 || blocks.length >= LAYOUT_LIMITS.maxBlocksPerTab;
+  const options = free
+    .map((block) => `<option value="${esc(block)}">${esc(blockName(block, meta.scope))}</option>`)
+    .join('');
+  const addRow = `<div class="ldm-editor-actions">
+    <select class="ldm-editor-input" data-block-select aria-label="${T('sandbox.editor.blockPick', 'Block to add')}"${none ? ' disabled' : ''}>
+      <option value="">${none ? T('sandbox.editor.noBlocksLeft', 'No blocks left to add.') : T('sandbox.editor.blockPickNone', 'Choose a block...')}</option>${none ? '' : options}
+    </select>
+    <button type="button" class="ldm-editor-btn" data-action="ed-block-add"${at}${none ? ' disabled' : ''}>${T('sandbox.editor.blockAdd', 'Add block')}</button>
+  </div>`;
+
+  return `<li class="ldm-editor-row">
+    <div class="ldm-editor-row-body">
+      ${fields}
+      <div class="ldm-editor-blocks"><span class="ldm-editor-label">${T('sandbox.editor.blocks', 'Blocks')}</span>${chipBlock}${addRow}</div>
+    </div>
+    ${tools}
+  </li>`;
+}
+
+/**
+ * Schematic preview of a resolved tab list: tab names, column count and one box per block.
+ * Boxes only (no real sheet). Every label is escaped; `aria-hidden` because the lists above
+ * carry the same information.
+ */
+export function renderLayoutPreview(tabs, scope = 'actor') {
+  const list = Array.isArray(tabs) ? tabs : [];
+  if (list.length === 0) return '';
+  const body = list.map((tab) => {
+    const blocks = Array.isArray(tab.blocks) ? tab.blocks : [];
+    const cols = clampColumns(tab.columns);
+    const boxes = blocks.length
+      ? blocks.map((block) => `<span class="ldm-editor-lp-box">${esc(blockName(block, scope))}</span>`).join('')
+      : `<span class="ldm-editor-lp-box is-empty">${T('sandbox.editor.tabEmpty', 'No blocks on this tab yet.')}</span>`;
+    return `<div class="ldm-editor-lp-tab">
+      <div class="ldm-editor-lp-bar"><span class="ldm-editor-lp-chip">${esc(tab.label)}</span><span class="ldm-editor-hint">${TV('sandbox.editor.previewColumns', '{count} columns', { count: cols })}</span></div>
+      <div class="ldm-editor-lp-grid" style="--ldm-editor-cols:${cols}">${boxes}</div>
+    </div>`;
+  }).join('');
+  return `<div class="ldm-editor-layout-preview" aria-hidden="true">${body}</div>`;
+}
+
+/** One sheet of the layout section (actor or item): its tabs, the unplaced-block notice and the preview. */
+function layoutPart(kind, draft, cfg, s) {
+  const meta = LAYOUT_SCOPES[kind];
+  const tabs = Array.isArray(draft.layout?.[meta.list]) ? draft.layout[meta.list] : [];
+  const full = tabs.length >= LAYOUT_LIMITS.maxTabs;
+  const rows = tabs.map((tab, index) => tabRow(meta, tabs, tab, index, s)).join('');
+  const resolved = meta.resolve(cfg).tabs;
+  const missing = unplacedBlocks(cfg.layout?.[meta.list] ?? [], meta.blocks);
+  const notice = missing.length
+    ? `<p class="ldm-editor-notice is-info" role="status">${TV('sandbox.editor.unplacedNotice', 'Not on any tab: {blocks}. They appear in the first tab, "{tab}".', {
+      blocks: missing.map((block) => blockName(block, meta.scope)).join(', '),
+      tab: resolved[0]?.label ?? '',
+    })}</p>`
+    : '';
+  const add = `<div class="ldm-editor-actions">
+    <button type="button" class="ldm-editor-btn ldm-editor-add" data-action="ed-tab-add" data-tab-list="${esc(meta.list)}"${full ? ' disabled' : ''}>${T('sandbox.editor.addTab', 'Add tab')}</button>
+    ${full ? `<span class="ldm-editor-hint">${TV('sandbox.editor.limitReached', 'Limit reached ({max}).', { max: LAYOUT_LIMITS.maxTabs })}</span>` : ''}
+  </div>`;
+  return `<div class="ldm-editor-subsection" data-ldm-layout="${esc(meta.scope)}">
+    <h4 class="ldm-editor-h4" id="ldm-editor-layout-${esc(meta.scope)}">${T(meta.titleKey, meta.titleFallback)}</h4>
+    <ol class="ldm-editor-rows">${rows}</ol>
+    ${add}
+    ${notice}
+    <p class="ldm-editor-hint">${T('sandbox.editor.effectsAlways', 'Effects is always shown on the sheet, even when no tab lists it. You can move it to any tab.')}</p>
+    ${renderLayoutPreview(resolved, meta.scope)}
+  </div>`;
+}
+
+/** Layout section: density and skill grouping, then the actor and item sheet tab lists. */
+function layoutSection(draft, cfg, s) {
+  const layout = draft.layout ?? {};
+  const density = layout.density === 'compact' ? 'compact' : 'comfortable';
+  const grouping = LAYOUT_SKILL_GROUPINGS.includes(layout.skillGrouping) ? layout.skillGrouping : 'attribute';
+  const global = `<div class="ldm-editor-grid">
+    ${selectField('layout.density', T('sandbox.editor.density', 'Density'), [
+      ['comfortable', T('sandbox.editor.densityComfortable', 'Comfortable')],
+      ['compact', T('sandbox.editor.densityCompact', 'Compact')],
+    ], density)}
+    ${selectField('layout.skillGrouping', T('sandbox.editor.skillGrouping', 'Group skills by'), [
+      ['attribute', T('sandbox.editor.groupByAttribute', 'Attribute')],
+      ['group', T('sandbox.editor.groupByGroup', 'Group field')],
+      ['none', T('sandbox.editor.groupNone', 'No grouping')],
+    ], grouping)}
+  </div>`;
+  const body = `${global}${layoutPart('actor', draft, cfg, s)}${layoutPart('item', draft, cfg, s)}`;
+  return section('layout', T('sandbox.editor.sectionLayout', 'Layout'), T('sandbox.editor.layoutHint', 'Choose the tabs of each sheet and the blocks each tab shows. A block that no tab lists appears in the first tab.'), body);
+}
+
+/** Section tab titles: [language key, English fallback]. Raw text is escaped by renderTabs. */
+const SECTION_TITLES = Object.freeze({
+  dice: ['sandbox.editor.sectionDice', 'Dice'],
+  attributes: ['sandbox.editor.sectionAttributes', 'Attributes'],
+  skills: ['sandbox.editor.sectionSkills', 'Skills'],
+  resources: ['sandbox.editor.sectionResources', 'Resources'],
+  categories: ['sandbox.editor.sectionCategories', 'Item categories'],
+  kinds: ['sandbox.editor.sectionKinds', 'Item kinds'],
+  layout: ['sandbox.editor.sectionLayout', 'Layout'],
+  card: ['sandbox.editor.sectionCard', 'Chat card'],
+  combat: ['sandbox.editor.sectionCombat', 'Combat'],
+  io: ['sandbox.editor.sectionIO', 'Import and export'],
+});
 
 function ioSection(state) {
   const errors = state.importErrors?.length
@@ -547,7 +893,8 @@ export function renderEditor(state) {
       + textField('label', T('sandbox.editor.fieldLabel', 'Label'), row.label ?? '', LIMITS.label, rowAttrs('attributes', i))
       + numberField('min', T('sandbox.editor.min', 'Min'), row.min, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i))
       + numberField('max', T('sandbox.editor.max', 'Max'), row.max, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i))
-      + numberField('default', T('sandbox.editor.default', 'Default'), row.default, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i)),
+      + numberField('default', T('sandbox.editor.default', 'Default'), row.default, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i))
+      + groupField('attributes', i, row),
     'sandbox.editor.addAttribute', 'Add attribute',
   );
 
@@ -559,7 +906,8 @@ export function renderEditor(state) {
       + textField('label', T('sandbox.editor.fieldLabel', 'Label'), row.label ?? '', LIMITS.label, rowAttrs('skills', i))
       + selectField('attr', T('sandbox.editor.attribute', 'Attribute'), attributeOptions(draft, row.attr ?? ''), row.attr ?? '', rowAttrs('skills', i))
       + numberField('max', T('sandbox.editor.max', 'Max'), row.max, 0, LIMITS.skillMax, rowAttrs('skills', i))
-      + numberField('default', T('sandbox.editor.default', 'Default'), row.default, 0, LIMITS.skillMax, rowAttrs('skills', i)),
+      + numberField('default', T('sandbox.editor.default', 'Default'), row.default, 0, LIMITS.skillMax, rowAttrs('skills', i))
+      + groupField('skills', i, row),
     'sandbox.editor.addSkill', 'Add skill',
   );
 
@@ -601,18 +949,32 @@ export function renderEditor(state) {
     </div>
   </div>`;
 
+  // Section navigation: the shared tabs standard. Every panel is rendered (hidden ones carry the
+  // `hidden` attribute), so inputs keep their values and focus can be restored across re-renders.
+  const panels = {
+    dice: diceSection(draft, cfg),
+    attributes,
+    skills,
+    resources,
+    categories,
+    kinds,
+    layout: layoutSection(draft, cfg, s),
+    card: cardSection(draft, cfg),
+    combat: combatSection(draft, cfg),
+    io: ioSection(s),
+  };
+  const nav = renderTabs({
+    idPrefix: 'ldm-editor',
+    tabs: SECTION_KEYS.map((key) => ({ key, label: translate(SECTION_TITLES[key][0], SECTION_TITLES[key][1]), columns: 1, blocks: [] })),
+    activeKey: s.section,
+    panels,
+    ariaLabel: translate('sandbox.editor.sections', 'Editor sections'),
+  });
+
   return wrap(`
     <header class="ldm-editor-header">${top}</header>
     ${stale}${notice}${pendingBar(s)}${errorBox}
-    ${diceSection(draft, cfg)}
-    ${attributes}
-    ${skills}
-    ${resources}
-    ${categories}
-    ${kinds}
-    ${cardSection(draft, cfg)}
-    ${combatSection(draft, cfg)}
-    ${ioSection(s)}
+    ${nav}
     ${footer}`);
 }
 
@@ -644,7 +1006,7 @@ function captureFocus(root) {
   if (typeof document === 'undefined') return null;
   const el = document.activeElement;
   if (!el || !root.contains(el) || !el.dataset) return null;
-  const keys = ['action', 'field', 'state', 'list', 'index', 'dir'];
+  const keys = ['action', 'field', 'state', 'list', 'tabList', 'index', 'block', 'dir'];
   const marks = {};
   for (const k of keys) if (el.dataset[k] !== undefined) marks[k] = el.dataset[k];
   if (Object.keys(marks).length === 0) return null;
@@ -710,6 +1072,15 @@ export class RuleEditorWindow extends EngineBase {
     this.bound = true;
     this.element.addEventListener('input', (e) => this.onFieldEvent(e, false));
     this.element.addEventListener('change', (e) => this.onFieldEvent(e, true));
+    // Section tabs: one delegated click and keydown listener on the window root (shared standard).
+    attachTabs(this.element, {
+      getTabs: () => SECTION_KEYS.map((key) => ({ key })),
+      getActive: () => this.state.section,
+      setActive: (key) => {
+        this.state.section = key;
+      },
+      rerender: () => this.refresh(),
+    });
   }
 
   /** Re-reads the saved config (fresh from the server) and replaces the draft. */
@@ -768,6 +1139,10 @@ export class RuleEditorWindow extends EngineBase {
       return;
     }
     const draft = this.state.draft;
+    if (el.dataset.tabList !== undefined) {
+      this.applyTabField(el, value);
+      return;
+    }
     if (el.dataset.list !== undefined) {
       const list = el.dataset.list;
       const index = Number(el.dataset.index);
@@ -786,11 +1161,102 @@ export class RuleEditorWindow extends EngineBase {
     setPath(draft, el.dataset.field, value);
   }
 
+  /** Layout tab list named by a dataset value, with its tab array from the draft (or null). */
+  layoutTabsFor(datasetValue) {
+    const name = layoutListName(datasetValue);
+    if (!name) return null;
+    const tabs = this.state.draft.layout?.[name];
+    return Array.isArray(tabs) ? { name, tabs } : null;
+  }
+
+  /**
+   * Stores a new tab list for `name`. Block edits return a new object for the tab they change, so
+   * the new-tab flags of the old object (editable key, auto-slug) move to the object at the same index.
+   */
+  setLayoutTabs(name, next) {
+    const layout = this.state.draft.layout;
+    const before = Array.isArray(layout[name]) ? layout[name] : [];
+    next.forEach((tab, index) => {
+      const old = before[index];
+      if (!old || old === tab) return;
+      if (this.state.keyEditable.has(old)) this.state.keyEditable.add(tab);
+      if (this.state.autoKey.has(old)) this.state.autoKey.add(tab);
+    });
+    layout[name] = next;
+  }
+
+  /** Field edits of a layout tab: label (auto-slugs a new tab's key), key and columns. */
+  applyTabField(el, value) {
+    const hit = this.layoutTabsFor(el.dataset.tabList);
+    const index = Number(el.dataset.index);
+    const tab = hit ? hit.tabs[index] : undefined;
+    if (!hit || !isPlainObject(tab)) return;
+    const prop = el.dataset.field;
+    if (prop === 'columns') {
+      tab.columns = Number(value);
+    } else if (prop === 'key') {
+      tab.key = String(value);
+      this.state.autoKey.delete(tab);
+    } else if (prop === 'label') {
+      tab.label = String(value);
+      if (this.state.autoKey.has(tab)) {
+        tab.key = tabKeyFor(hit.tabs, String(value), index);
+        const keyEl = this.element?.querySelector(`[data-tab-list="${hit.name}"][data-index="${index}"][data-field="key"]`);
+        if (keyEl) keyEl.value = tab.key;
+      }
+    }
+  }
+
   onAction(action, id, target) {
     const list = target?.dataset?.list;
     const index = Number(target?.dataset?.index);
     const draft = this.state.draft;
     switch (action) {
+      case 'ed-tab-add': {
+        const hit = this.layoutTabsFor(target?.dataset?.tabList);
+        if (!hit) return undefined;
+        const next = addTab(hit.tabs, translate('sandbox.editor.newTabLabel', 'New tab'));
+        if (next.length === hit.tabs.length) return undefined;
+        const added = next[next.length - 1];
+        this.state.keyEditable.add(added);
+        this.state.autoKey.add(added);
+        draft.layout[hit.name] = next;
+        return this.refresh();
+      }
+      case 'ed-tab-move': {
+        const hit = this.layoutTabsFor(target?.dataset?.tabList);
+        if (!hit) return undefined;
+        draft.layout[hit.name] = moveTab(hit.tabs, index, Number(target.dataset.dir));
+        return this.refresh();
+      }
+      case 'ed-tab-remove': {
+        const hit = this.layoutTabsFor(target?.dataset?.tabList);
+        if (!hit) return undefined;
+        draft.layout[hit.name] = removeTab(hit.tabs, index);
+        return this.refresh();
+      }
+      case 'ed-block-move': {
+        const hit = this.layoutTabsFor(target?.dataset?.tabList);
+        if (!hit) return undefined;
+        this.setLayoutTabs(hit.name, moveBlock(hit.tabs, index, Number(target.dataset.block), Number(target.dataset.dir)));
+        return this.refresh();
+      }
+      case 'ed-block-remove': {
+        const hit = this.layoutTabsFor(target?.dataset?.tabList);
+        if (!hit) return undefined;
+        this.setLayoutTabs(hit.name, removeBlock(hit.tabs, index, Number(target.dataset.block)));
+        return this.refresh();
+      }
+      case 'ed-block-add': {
+        const hit = this.layoutTabsFor(target?.dataset?.tabList);
+        if (!hit) return undefined;
+        const picker = target.parentElement?.querySelector('[data-block-select]');
+        const block = picker ? String(picker.value) : '';
+        const allowed = LAYOUT_SCOPES[hit.name === 'itemTabs' ? 'item' : 'actor'].blocks;
+        if (!allowed.includes(block)) return undefined;
+        this.setLayoutTabs(hit.name, addBlock(hit.tabs, index, block));
+        return this.refresh();
+      }
       case 'ed-move':
         draft[list] = moveRow(draft[list], index, Number(target.dataset.dir));
         return this.refresh();

@@ -24,6 +24,15 @@ import {
   registerConfigSetting,
   getConfigSync,
   clearConfigCache,
+  LAYOUT_BLOCKS,
+  ITEM_LAYOUT_BLOCKS,
+  LAYOUT_LIMITS,
+  defaultLayout,
+  resolveLayout,
+  resolveItemLayout,
+  groupedList,
+  skillSections,
+  blockLabelKey,
 } from '../lib/config.mjs';
 import { deepClone } from '../lib/helpers.mjs';
 
@@ -997,5 +1006,453 @@ describe('getConfigSync', () => {
     assert.deepEqual(first, stored);
     first.attributes.push({ key: 'x', label: 'X', min: 0, max: 1, default: 0 });
     assert.deepEqual(getConfigSync(), stored, 'mutating the result must not change the cache');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Layout (actor tabs, item tabs), group field and migration
+// ---------------------------------------------------------------------------
+
+/** Config with the layout patched; everything else default. */
+function withLayout(patch) {
+  return withCfg({ layout: { ...defaultLayout(), ...patch } });
+}
+
+function flatBlocks(tabs) {
+  return tabs.flatMap((tab) => tab.blocks);
+}
+
+const ACTOR_DEFAULT_TABS = [
+  { key: 'main', label: 'Main', columns: 2, blocks: ['resources', 'attributes', 'skills'] },
+  { key: 'powers', label: 'Powers', columns: 1, blocks: ['items:ability', 'items:spell'] },
+  { key: 'gear', label: 'Gear', columns: 1, blocks: ['items:gear', 'items:other', 'notes'] },
+  { key: 'effects', label: 'Effects', columns: 1, blocks: ['effects'] },
+];
+
+const ITEM_DEFAULT_TABS = [
+  { key: 'details', label: 'Details', columns: 2, blocks: ['details', 'uses'] },
+  { key: 'rules', label: 'Rules', columns: 2, blocks: ['roll', 'cost'] },
+  { key: 'effects', label: 'Effects', columns: 1, blocks: ['effects'] },
+  { key: 'text', label: 'Description', columns: 1, blocks: ['description'] },
+];
+
+describe('layout defaults', () => {
+  test('default actor and item layouts are valid and deterministic', () => {
+    const cfg = expectClean(defaultConfig());
+    assert.deepEqual(cfg.layout.tabs, ACTOR_DEFAULT_TABS);
+    assert.deepEqual(cfg.layout.itemTabs, ITEM_DEFAULT_TABS);
+    assert.equal(cfg.layout.density, 'comfortable');
+    assert.equal(cfg.layout.skillGrouping, 'attribute');
+    assert.equal(serializeConfig(defaultConfig()), serializeConfig(defaultConfig()));
+  });
+
+  test('both presets carry the default layout and validate cleanly', () => {
+    for (const name of Object.keys(PRESETS)) {
+      const cfg = expectClean(PRESETS[name]());
+      assert.deepEqual(cfg.layout, defaultLayout());
+    }
+  });
+
+  test('block lists are frozen and complete', () => {
+    assert.ok(Object.isFrozen(LAYOUT_BLOCKS));
+    assert.ok(Object.isFrozen(ITEM_LAYOUT_BLOCKS));
+    assert.deepEqual(
+      [...LAYOUT_BLOCKS],
+      ['resources', 'attributes', 'skills', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'notes', 'effects'],
+    );
+    assert.deepEqual([...ITEM_LAYOUT_BLOCKS], ['details', 'uses', 'roll', 'cost', 'description', 'effects']);
+    assert.equal(LAYOUT_LIMITS.maxTabs, 8);
+    assert.equal(LAYOUT_LIMITS.maxBlocksPerTab, 12);
+    assert.equal(LAYOUT_LIMITS.minColumns, 1);
+    assert.equal(LAYOUT_LIMITS.maxColumns, 4);
+    assert.equal(LAYOUT_LIMITS.label, 40);
+  });
+});
+
+describe('layout tab rules', () => {
+  test('unknown block is an error and is dropped', () => {
+    const r = validateConfig(withLayout({ tabs: [{ key: 'main', label: 'Main', columns: 2, blocks: ['resources', 'bogus'] }] }));
+    assert.equal(r.ok, false);
+    assert.match(r.errors.join(' | '), /bogus/);
+    assert.deepEqual(r.config.layout.tabs[0].blocks, ['resources']);
+  });
+
+  test('an item block in the actor tabs is an error', () => {
+    const r = validateConfig(withLayout({ tabs: [{ key: 'main', label: 'Main', columns: 1, blocks: ['details', 'skills'] }] }));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.config.layout.tabs[0].blocks, ['skills']);
+  });
+
+  test('an actor block in the item tabs is an error', () => {
+    const r = validateConfig(withLayout({ itemTabs: [{ key: 'details', label: 'D', columns: 1, blocks: ['resources', 'uses'] }] }));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.config.layout.itemTabs[0].blocks, ['uses']);
+  });
+
+  test('a block in two actor tabs is an error and keeps the first occurrence', () => {
+    const r = validateConfig(withLayout({
+      tabs: [
+        { key: 'a', label: 'A', columns: 1, blocks: ['skills', 'notes'] },
+        { key: 'b', label: 'B', columns: 1, blocks: ['notes', 'resources'] },
+      ],
+    }));
+    assert.equal(r.ok, false);
+    assert.match(r.errors.join(' | '), /notes/);
+    assert.deepEqual(r.config.layout.tabs.map((t) => t.blocks), [['skills', 'notes'], ['resources']]);
+  });
+
+  test('a block in two item tabs is an error and keeps the first occurrence', () => {
+    const r = validateConfig(withLayout({
+      itemTabs: [
+        { key: 'a', label: 'A', columns: 1, blocks: ['roll'] },
+        { key: 'b', label: 'B', columns: 1, blocks: ['roll', 'cost'] },
+      ],
+    }));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.config.layout.itemTabs.map((t) => t.blocks), [['roll'], ['cost']]);
+  });
+
+  test('the same block twice in one tab is an error', () => {
+    const r = validateConfig(withLayout({ tabs: [{ key: 'main', label: 'Main', columns: 1, blocks: ['resources', 'resources'] }] }));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.config.layout.tabs[0].blocks, ['resources']);
+  });
+
+  test('empty tab lists fall back to the default tabs with an error', () => {
+    const actor = validateConfig(withLayout({ tabs: [] }));
+    assert.equal(actor.ok, false);
+    assert.deepEqual(actor.config.layout.tabs, defaultLayout().tabs);
+    const item = validateConfig(withLayout({ itemTabs: [] }));
+    assert.equal(item.ok, false);
+    assert.deepEqual(item.config.layout.itemTabs, defaultLayout().itemTabs);
+  });
+
+  test('a non-list tabs value falls back to the default tabs', () => {
+    const r = validateConfig(withLayout({ tabs: 'main' }));
+    assert.equal(r.ok, false);
+    assert.deepEqual(r.config.layout.tabs, defaultLayout().tabs);
+  });
+
+  test('missing tab keys use the defaults silently', () => {
+    const cfg = expectClean(withCfg({ layout: { density: 'compact' } }));
+    assert.equal(cfg.layout.density, 'compact');
+    assert.deepEqual(cfg.layout.tabs, defaultLayout().tabs);
+    assert.deepEqual(cfg.layout.itemTabs, defaultLayout().itemTabs);
+  });
+
+  test('duplicate tab keys are dropped and the tab count is capped at 8', () => {
+    const dup = validateConfig(withLayout({
+      tabs: [
+        { key: 'main', label: 'Main', columns: 1, blocks: ['resources'] },
+        { key: 'main', label: 'Again', columns: 1, blocks: ['skills'] },
+      ],
+    }));
+    assert.equal(dup.ok, false);
+    assert.equal(dup.config.layout.tabs.length, 1);
+    const many = validateConfig(withLayout({
+      tabs: Array.from({ length: 9 }, (_, i) => ({ key: `tab${i}`, label: `T${i}`, columns: 1, blocks: [] })),
+    }));
+    assert.equal(many.config.layout.tabs.length, 8);
+    assert.match(many.errors.join(' | '), /at most 8/);
+  });
+
+  test('columns clamp to 1..4 and default to 2 when missing', () => {
+    const cols = (c) => validateConfig(withLayout({ tabs: [{ key: 'a', label: 'A', columns: c, blocks: ['notes'] }] })).config.layout.tabs[0].columns;
+    assert.equal(cols(0), 1);
+    assert.equal(cols(9), 4);
+    assert.equal(cols('x'), 2);
+    assert.equal(cols(2.6), 3);
+    const clean = expectClean(withLayout({ tabs: [{ key: 'a', label: 'A', blocks: ['notes'] }] }));
+    assert.equal(clean.layout.tabs[0].columns, 2);
+  });
+
+  test('item tab columns follow the same clamp', () => {
+    const cols = (c) => validateConfig(withLayout({ itemTabs: [{ key: 'a', label: 'A', columns: c, blocks: ['cost'] }] })).config.layout.itemTabs[0].columns;
+    assert.equal(cols(-3), 1);
+    assert.equal(cols(7), 4);
+  });
+
+  test('invalid density and skillGrouping fall back with an error', () => {
+    const r = validateConfig(withCfg({ layout: { density: 'huge', skillGrouping: 'x' } }));
+    assert.equal(r.ok, false);
+    assert.equal(r.config.layout.density, 'comfortable');
+    assert.equal(r.config.layout.skillGrouping, 'attribute');
+    assert.equal(validateConfig(withLayout({ density: 'compact', skillGrouping: 'none' })).config.layout.skillGrouping, 'none');
+  });
+
+  test('a block missing from every tab is not an error (resolveLayout shows it)', () => {
+    expectClean(withLayout({ tabs: [{ key: 'only', label: 'Only', columns: 1, blocks: ['notes'] }] }));
+  });
+});
+
+describe('layout hostile input', () => {
+  const hostile = [null, 'x', 5, [], [null], [42], [{}], ['notes'], {}, { tabs: 'x' }, { tabs: {} }, { itemTabs: [null] }];
+
+  test('never throws on any layout shape and the result re-validates', () => {
+    for (const layout of hostile) {
+      const cfg = withCfg({ layout });
+      assert.doesNotThrow(() => validateConfig(cfg));
+      assert.doesNotThrow(() => resolveLayout(cfg));
+      assert.doesNotThrow(() => resolveItemLayout(cfg));
+      const once = validateConfig(cfg).config;
+      assert.equal(validateConfig(once).ok, true);
+    }
+  });
+
+  test('labels with markup stay inert text', () => {
+    const label = '<img onerror=x>"><script>';
+    const r = validateConfig(withLayout({
+      tabs: [{ key: 'main', label, columns: 1, blocks: ['notes'] }],
+      itemTabs: [{ key: 'd', label, columns: 1, blocks: ['cost'] }],
+    }));
+    assert.equal(r.config.layout.tabs[0].label, label);
+    assert.equal(r.config.layout.itemTabs[0].label, label);
+  });
+
+  test('__proto__ keys do not pollute prototypes', () => {
+    const raw = JSON.parse('{"layout":{"__proto__":{"polluted":true},"tabs":[{"__proto__":{"x":1},"key":"ok","label":"Ok","blocks":["notes"]}]}}');
+    const r = validateConfig(raw);
+    assert.equal(Object.prototype.polluted, undefined);
+    assert.equal(({}).x, undefined);
+    assert.equal(r.config.layout.tabs[0].key, 'ok');
+    assert.deepEqual(r.config.layout.tabs[0].blocks, ['notes']);
+  });
+
+  test('cyclic objects in tabs and blocks do not throw', () => {
+    const cyc = {};
+    cyc.self = cyc;
+    cyc.tabs = [cyc];
+    const block = {};
+    block.loop = block;
+    const tabs = [cyc, { key: 'main', label: 'M', columns: 1, blocks: [block, 'notes'] }];
+    assert.doesNotThrow(() => validateConfig(withLayout({ tabs })));
+    const r = validateConfig(withLayout({ tabs }));
+    assert.deepEqual(r.config.layout.tabs.map((t) => t.key), ['main']);
+    assert.deepEqual(r.config.layout.tabs[0].blocks, ['notes']);
+  });
+
+  test('huge lists are capped', () => {
+    const tabs = Array.from({ length: 5000 }, (_, i) => ({ key: `t${i}`, label: 'T', columns: 1, blocks: ['notes', 'notes'] }));
+    const r = validateConfig(withLayout({ tabs }));
+    assert.equal(r.config.layout.tabs.length, 8);
+    const blocks = Array.from({ length: 5000 }, () => 'resources');
+    const r2 = validateConfig(withLayout({ tabs: [{ key: 'main', label: 'M', columns: 1, blocks }] }));
+    assert.deepEqual(r2.config.layout.tabs[0].blocks, ['resources']);
+  });
+});
+
+describe('layout idempotence', () => {
+  const messy = [
+    { layout: { density: 'weird', skillGrouping: 9, tabs: [{ key: 'A B', label: '', columns: 99, blocks: ['skills', 'bogus', 'skills'] }, { key: 'A B' }, null] } },
+    { layout: { tabs: [{ key: 'x', blocks: ['notes', 'items:gear'] }, { key: 'y', blocks: ['notes', 'details'] }], itemTabs: [{ key: 'd', blocks: ['details', 'resources', 'uses'] }, { key: 'd' }] } },
+    { layout: { tabs: [], itemTabs: 'none' } },
+    { layout: 'nope' },
+  ];
+
+  for (const [i, input] of messy.entries()) {
+    test(`case ${i} re-validates with zero errors and the same result`, () => {
+      const once = validateConfig(input).config;
+      const twice = validateConfig(once);
+      assert.equal(twice.ok, true, twice.errors.join(' | '));
+      assert.deepEqual(twice.config, once);
+    });
+  }
+});
+
+describe('resolveLayout and resolveItemLayout', () => {
+  test('missing actor blocks go to the first tab in canonical order and other tabs are kept', () => {
+    const cfg = withLayout({
+      tabs: [
+        { key: 'a', label: 'A', columns: 1, blocks: ['notes'] },
+        { key: 'b', label: 'B', columns: 3, blocks: ['skills'] },
+      ],
+    });
+    const layout = resolveLayout(cfg);
+    assert.deepEqual(layout.tabs, [
+      { key: 'a', label: 'A', columns: 1, blocks: ['notes', 'resources', 'attributes', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'effects'] },
+      { key: 'b', label: 'B', columns: 3, blocks: ['skills'] },
+    ]);
+  });
+
+  test('every actor block is shown exactly once for any valid layout', () => {
+    const configs = [defaultConfig(), PRESETS.d6Pool(), withLayout({ tabs: [{ key: 'only', label: 'Only', columns: 4, blocks: [] }] })];
+    for (const cfg of configs) {
+      assert.deepEqual(flatBlocks(resolveLayout(cfg).tabs).sort(), [...LAYOUT_BLOCKS].sort());
+    }
+  });
+
+  test('an actor config that omits effects still shows it, in the first tab', () => {
+    const cfg = withLayout({ tabs: [{ key: 'main', label: 'Main', columns: 1, blocks: ['resources'] }] });
+    const tabs = resolveLayout(cfg).tabs;
+    assert.equal(tabs.length, 1);
+    assert.ok(tabs[0].blocks.includes('effects'));
+  });
+
+  test('an item config that omits effects still shows it, in the first item tab', () => {
+    const cfg = withLayout({ itemTabs: [{ key: 'x', label: 'X', columns: 1, blocks: ['cost'] }, { key: 'y', label: 'Y', columns: 1, blocks: ['description'] }] });
+    const { tabs } = resolveItemLayout(cfg);
+    assert.ok(tabs[0].blocks.includes('effects'));
+    assert.ok(!tabs[1].blocks.includes('effects'));
+    assert.deepEqual(flatBlocks(tabs).sort(), [...ITEM_LAYOUT_BLOCKS].sort());
+  });
+
+  test('missing item blocks go to the first item tab in canonical order', () => {
+    const cfg = withLayout({
+      itemTabs: [
+        { key: 'x', label: 'X', columns: 1, blocks: ['cost'] },
+        { key: 'y', label: 'Y', columns: 2, blocks: ['description'] },
+      ],
+    });
+    const { tabs } = resolveItemLayout(cfg);
+    assert.deepEqual(tabs[0].blocks, ['cost', 'details', 'uses', 'roll', 'effects']);
+    assert.deepEqual(tabs[1], { key: 'y', label: 'Y', columns: 2, blocks: ['description'] });
+  });
+
+  test('empty tab lists resolve to the default layout with every block', () => {
+    const actor = resolveLayout(withLayout({ tabs: [] }));
+    assert.deepEqual(actor.tabs.map((t) => t.key), ['main', 'powers', 'gear', 'effects']);
+    assert.deepEqual(flatBlocks(actor.tabs).sort(), [...LAYOUT_BLOCKS].sort());
+    assert.deepEqual(resolveItemLayout(withLayout({ itemTabs: [] })), { tabs: defaultLayout().itemTabs });
+  });
+
+  test('resolution is safe for null and does not mutate the config', () => {
+    assert.deepEqual(resolveLayout(null), resolveLayout(defaultConfig()));
+    assert.deepEqual(resolveItemLayout(null), resolveItemLayout(defaultConfig()));
+    const cfg = withLayout({ tabs: [{ key: 'a', label: 'A', columns: 1, blocks: ['notes'] }] });
+    const before = serializeConfig(cfg);
+    resolveLayout(cfg);
+    resolveItemLayout(cfg);
+    assert.equal(serializeConfig(cfg), before);
+  });
+});
+
+describe('groupedList', () => {
+  test('keeps the order of first appearance and puts ungrouped items in ""', () => {
+    const items = [
+      { name: 'a', group: 'Combat' },
+      { name: 'b', group: 'Social' },
+      { name: 'c', group: 'Combat' },
+      { name: 'd' },
+      { name: 'e', group: 'Social' },
+      { name: 'f', group: '  ' },
+    ];
+    assert.deepEqual(groupedList(items), [
+      { group: 'Combat', items: [items[0], items[2]] },
+      { group: 'Social', items: [items[1], items[4]] },
+      { group: '', items: [items[3], items[5]] },
+    ]);
+  });
+
+  test('hostile group values are data and never special keys', () => {
+    const groups = groupedList([{ group: '__proto__' }, { group: 'constructor' }, { group: 5 }, null]);
+    assert.deepEqual(groups.map((g) => g.group), ['__proto__', 'constructor', '']);
+    assert.deepEqual(groups[2].items.length, 2);
+  });
+
+  test('non-lists give an empty result', () => {
+    for (const value of [null, 'x', {}, undefined]) assert.deepEqual(groupedList(value), []);
+  });
+});
+
+describe('skillSections', () => {
+  const skills = [
+    { key: 'melee', label: 'Melee', attr: 'might', group: 'Combat', max: 10, default: 0 },
+    { key: 'ranged', label: 'Ranged', attr: 'grace', group: 'Combat', max: 10, default: 0 },
+    { key: 'lore', label: 'Lore', attr: 'wits', group: 'Knowledge', max: 10, default: 0 },
+    { key: 'stray', label: 'Stray', attr: 'gone', group: '', max: 10, default: 0 },
+  ];
+  const summary = (sections) => sections.map((s) => ({ key: s.key, title: s.title, skills: s.skills.map((k) => k.key) }));
+
+  test('attribute mode groups by attribute, and a missing attribute gives the untitled section', () => {
+    const cfg = withCfg({ skills });
+    assert.deepEqual(summary(skillSections(cfg)), [
+      { key: 'might', title: 'Might', skills: ['melee'] },
+      { key: 'grace', title: 'Grace', skills: ['ranged'] },
+      { key: 'wits', title: 'Wits', skills: ['lore'] },
+      { key: '', title: '', skills: ['stray'] },
+    ]);
+  });
+
+  test('group mode groups by the skill group, and an empty group has no title', () => {
+    const cfg = withCfg({ skills, layout: { ...defaultLayout(), skillGrouping: 'group' } });
+    assert.deepEqual(summary(skillSections(cfg)), [
+      { key: 'Combat', title: 'Combat', skills: ['melee', 'ranged'] },
+      { key: 'Knowledge', title: 'Knowledge', skills: ['lore'] },
+      { key: '', title: '', skills: ['stray'] },
+    ]);
+  });
+
+  test('none mode gives exactly one untitled section with every skill', () => {
+    const cfg = withCfg({ skills, layout: { ...defaultLayout(), skillGrouping: 'none' } });
+    assert.deepEqual(summary(skillSections(cfg)), [
+      { key: 'all', title: '', skills: ['melee', 'ranged', 'lore', 'stray'] },
+    ]);
+  });
+
+  test('a skill whose attribute was removed is shown in the untitled section, not dropped', () => {
+    const cfg = withCfg({ attributes: [{ key: 'might', label: 'Might', min: 0, max: 10, default: 2 }], skills: [{ key: 'lore', label: 'Lore', attr: 'wits', max: 10, default: 0 }] });
+    const sections = skillSections(cfg);
+    assert.deepEqual(summary(sections), [{ key: '', title: '', skills: ['lore'] }]);
+  });
+
+  test('never throws on hostile input', () => {
+    assert.doesNotThrow(() => skillSections(null));
+    assert.doesNotThrow(() => skillSections({ skills: 'x' }));
+  });
+});
+
+describe('blockLabelKey', () => {
+  test('actor blocks map to sandbox.layout.block.<name>', () => {
+    assert.equal(blockLabelKey('resources'), 'sandbox.layout.block.resources');
+    assert.equal(blockLabelKey('items:gear'), 'sandbox.layout.block.items_gear');
+    assert.equal(blockLabelKey('effects'), 'sandbox.layout.block.effects');
+  });
+
+  test('item blocks map to sandbox.layout.item.<name>', () => {
+    assert.equal(blockLabelKey('details'), 'sandbox.layout.item.details');
+    assert.equal(blockLabelKey('description'), 'sandbox.layout.item.description');
+    assert.equal(blockLabelKey('effects', 'item'), 'sandbox.layout.item.effects');
+  });
+
+  test('unknown or non-text blocks give an empty key', () => {
+    assert.equal(blockLabelKey('bogus'), '');
+    assert.equal(blockLabelKey(undefined), '');
+    assert.equal(blockLabelKey(42), '');
+  });
+
+  test('every block has a key', () => {
+    for (const block of LAYOUT_BLOCKS) assert.notEqual(blockLabelKey(block), '');
+    for (const block of ITEM_LAYOUT_BLOCKS) assert.notEqual(blockLabelKey(block), '');
+  });
+});
+
+describe('group field and migration of configs written before layout', () => {
+  test('an old config without layout or group gets the defaults and loses nothing', () => {
+    const old = deepClone(defaultConfig());
+    delete old.layout;
+    for (const a of old.attributes) delete a.group;
+    for (const s of old.skills) delete s.group;
+    expectClean(old);
+    assert.deepEqual(migrateConfig(old), defaultConfig());
+  });
+
+  test('an old preset without the new keys keeps every value', () => {
+    const old = deepClone(PRESETS.d6Pool());
+    delete old.layout;
+    for (const a of old.attributes) delete a.group;
+    for (const s of old.skills) delete s.group;
+    assert.deepEqual(migrateConfig(old), PRESETS.d6Pool());
+  });
+
+  test('group is trimmed and cut to 40 characters with an error', () => {
+    const r = validateConfig(withCfg({ skills: [{ key: 'a', label: 'A', group: `  ${'x'.repeat(50)}  `, max: 5, default: 0 }] }));
+    assert.equal(r.ok, false);
+    assert.equal(r.config.skills[0].group.length, 40);
+  });
+
+  test('non-text group is cleared with an error', () => {
+    const r = validateConfig(withCfg({ attributes: [{ key: 'might', label: 'Might', group: 5, min: 0, max: 10, default: 2 }] }));
+    assert.equal(r.ok, false);
+    assert.equal(r.config.attributes[0].group, '');
   });
 });

@@ -217,17 +217,13 @@
 /* ── Sections ─────────────────────────────────────────────────── */
 
 .ldm-sheet-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   margin-top: 12px;
-}
-
-.ldm-sheet-section {
   min-width: 0;
+  max-width: 100%;
 }
 
-.ldm-sheet-h {
+/* Block titles (layout standard) take the sheet accent; the card itself is styled by sandbox-layout.css. */
+.ldm-sheet .ldm-block-title {
   margin: 0 0 8px;
   font-size: 13px;
   letter-spacing: 0.06em;
@@ -252,8 +248,8 @@
 
 .ldm-sheet-res-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--ldm-gap, 10px);
 }
 
 .ldm-sheet-res {
@@ -300,10 +296,14 @@
 
 /* ── Attributes ───────────────────────────────────────────────── */
 
+.ldm-sheet-attr-group + .ldm-sheet-attr-group {
+  margin-top: 10px;
+}
+
 .ldm-sheet-attr-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: var(--ldm-gap, 10px);
 }
 
 .ldm-sheet-attr {

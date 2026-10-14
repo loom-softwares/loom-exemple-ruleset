@@ -1,4 +1,4 @@
-import { test, describe } from 'node:test';
+import { test, describe, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildSheetContext,
@@ -16,6 +16,7 @@ import {
   ACTOR_TYPES,
 } from '../sheets/sandbox-sheet.mjs';
 import { defaultConfig } from '../lib/config.mjs';
+import { registerActorSheet, EFFECT_USE_TYPES } from '../sheets/sandbox-sheet.mjs';
 
 const HOSTILE = '<img src=x onerror=alert(1)>';
 
@@ -64,10 +65,12 @@ describe('buildSheetContext', () => {
     const gear = ctx.itemGroups.find((g) => g.type === 'gear');
     const spell = ctx.itemGroups.find((g) => g.type === 'spell');
     const ability = ctx.itemGroups.find((g) => g.type === 'ability');
-    assert.equal(gear.count, 1);
+    const other = ctx.itemGroups.find((g) => g.type === 'other');
+    assert.equal(gear.count, 0, 'a legacy weapon is not gear');
+    assert.equal(other.count, 1, 'a legacy weapon goes to the other group');
+    assert.equal(other.categories[0].label, 'Weapon');
     assert.equal(spell.count, 1);
     assert.equal(ability.count, 1);
-    assert.equal(gear.categories[0].label, 'Weapon');
     assert.equal(ability.categories[0].key, 'legacy_cat', 'unknown category kept as its raw key');
     assert.equal(spell.categories[0].items[0].costLabel, 'Cost 3 Mana');
     assert.equal(ability.categories[0].items[0].canRoll, true);
@@ -532,5 +535,461 @@ describe('resolveWriteTarget (CLAUDE.md rule 6)', () => {
   test('a cast of another actor, or one without isLinked, is refused', () => {
     assert.deepEqual(resolveWriteTarget('a1', 'c1', { actorId: 'a2', isLinked: false }), { ok: false });
     assert.deepEqual(resolveWriteTarget('a1', 'c1', { actorId: 'a1' }), { ok: false });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// Layout standard: tabs, blocks, attribute groups, skill grouping, legacy items
+// ══════════════════════════════════════════════════════════════
+
+const STUB_EFFECTS = () => '<p data-stub="effects">stub</p>';
+const LAYOUT_BLOCKS_FOR_TEST = [
+  'resources',
+  'attributes',
+  'skills',
+  'items:gear',
+  'items:ability',
+  'items:spell',
+  'items:other',
+  'notes',
+  'effects',
+];
+
+/** Block names of one tab panel, in order. Null when the panel is not in the HTML. */
+function panelBlocks(html, tabKey) {
+  const start = html.indexOf(`data-ldm-panel="${tabKey}"`);
+  if (start < 0) return null;
+  const rest = html.slice(start);
+  const next = rest.indexOf('data-ldm-panel=', 20);
+  const slice = next < 0 ? rest : rest.slice(0, next);
+  return [...slice.matchAll(/data-ldm-block="([^"]*)"/g)].map((m) => m[1]);
+}
+
+function sheetHtml(cfg, ui = {}, items = []) {
+  const actor = { id: 'L1', name: 'Layout', type: 'hero', systemData: {} };
+  const ctx = buildSheetContext(actor, items, cfg, { isGM: true, ...ui });
+  return { ctx, html: renderSheet(ctx, { renderEffects: STUB_EFFECTS }) };
+}
+
+describe('layout: default tabs and blocks', () => {
+  test('the default layout renders 4 tabs with the expected blocks', () => {
+    const { html } = sheetHtml(defaultConfig());
+    assert.equal([...html.matchAll(/class="ldm-tab"/g)].length, 4);
+    assert.deepEqual(panelBlocks(html, 'main'), ['resources', 'attributes', 'skills']);
+    assert.deepEqual(panelBlocks(html, 'powers'), ['items:ability', 'items:spell']);
+    assert.deepEqual(panelBlocks(html, 'gear'), ['items:gear', 'items:other', 'notes']);
+    assert.deepEqual(panelBlocks(html, 'effects'), ['effects']);
+  });
+
+  test('the effects block uses the injected renderer', () => {
+    const { html } = sheetHtml(defaultConfig());
+    assert.match(html, /data-stub="effects"/);
+  });
+
+  test('block titles come from sandbox.layout keys and fall back to English', () => {
+    const { ctx } = sheetHtml(defaultConfig());
+    assert.equal(ctx.blockTitles.resources, 'Resources');
+    assert.equal(ctx.blockTitles['items:other'], 'Other items');
+    const localized = buildSheetContext({ id: 'L2', name: 'n', type: 'hero', systemData: {} }, [], defaultConfig(), {
+      t: (key) => (key === 'sandbox.layout.block.resources' ? 'Recursos' : key),
+    });
+    assert.equal(localized.blockTitles.resources, 'Recursos');
+    assert.equal(localized.blockTitles.skills, 'Skills', 'a missing key falls back');
+  });
+});
+
+describe('layout: custom config', () => {
+  test('one tab, 3 columns and compact density: no tab bar, right columns and density class', () => {
+    const cfg = cfgWith((c) => {
+      c.layout = {
+        density: 'compact',
+        skillGrouping: 'attribute',
+        tabs: [{ key: 'all', label: 'All', columns: 3, blocks: [...LAYOUT_BLOCKS_FOR_TEST] }],
+      };
+    });
+    const { html } = sheetHtml(cfg);
+    assert.doesNotMatch(html, /class="ldm-tablist"/, 'no tab bar with a single tab');
+    assert.doesNotMatch(html, /role="tab"/);
+    assert.match(html, /--ldm-cols:3/);
+    assert.match(html, /ldm-density-compact/);
+    assert.deepEqual(panelBlocks(html, 'all'), LAYOUT_BLOCKS_FOR_TEST);
+  });
+
+  test('a config that omits effects still shows the effects block in the first tab', () => {
+    const cfg = cfgWith((c) => {
+      c.layout = {
+        density: 'comfortable',
+        skillGrouping: 'attribute',
+        tabs: [
+          { key: 'one', label: 'One', columns: 2, blocks: ['resources', 'attributes'] },
+          { key: 'two', label: 'Two', columns: 1, blocks: ['notes'] },
+        ],
+      };
+    });
+    const { ctx, html } = sheetHtml(cfg);
+    assert.equal(ctx.layout.tabs[0].blocks.includes('effects'), true, 'effects appended to the first tab');
+    assert.equal(panelBlocks(html, 'one').includes('effects'), true);
+    assert.equal(panelBlocks(html, 'two').includes('effects'), false);
+  });
+});
+
+describe('layout: attribute groups', () => {
+  test('each group gets its own titled sub-section and the ungrouped one has no title', () => {
+    const cfg = cfgWith((c) => {
+      c.attributes[0].group = 'Body';
+      c.attributes[1].group = 'Body';
+    });
+    const { ctx, html } = sheetHtml(cfg);
+    assert.deepEqual(ctx.attributeGroups.map((g) => g.group), ['Body', '']);
+    assert.match(html, /<h4 class="ldm-sheet-subh">Body<\/h4>/);
+    assert.equal([...html.matchAll(/class="ldm-sheet-attr-group"/g)].length, 2);
+    assert.match(html, /<div class="ldm-sheet-attr-group"><div class="ldm-sheet-attr-grid">/, 'untitled group has no heading');
+  });
+});
+
+describe('layout: skill grouping modes', () => {
+  const skillCfg = (mode) => cfgWith((c) => {
+    c.layout.skillGrouping = mode;
+    c.skills[0].group = 'Combat';
+    c.skills[1].group = 'Combat';
+  });
+
+  test('attribute: one section per attribute, titled with the attribute label', () => {
+    const { ctx } = sheetHtml(skillCfg('attribute'));
+    assert.deepEqual(ctx.skillGroups.map((g) => g.title), ['Might', 'Grace', 'Wits']);
+    assert.equal(ctx.skillGroups[0].basedOn, true);
+  });
+
+  test('group: one section per skill group text', () => {
+    const { ctx } = sheetHtml(skillCfg('group'));
+    assert.equal(ctx.skillGroups[0].title, 'Combat');
+    assert.equal(ctx.skillGroups[0].skills.length, 2);
+    assert.equal(ctx.skillGroups[0].basedOn, false);
+  });
+
+  test('none: exactly one untitled section', () => {
+    const { ctx, html } = sheetHtml(skillCfg('none'));
+    assert.equal(ctx.skillGroups.length, 1);
+    assert.equal(ctx.skillGroups[0].title, '');
+    assert.doesNotMatch(html, /<h4 class="ldm-sheet-subh">Might/);
+  });
+});
+
+describe('layout: escaping and removed data', () => {
+  test('hostile group, tab and attribute labels are escaped', () => {
+    const cfg = cfgWith((c) => {
+      c.attributes[0].label = HOSTILE;
+      c.attributes[0].group = HOSTILE;
+      c.layout.tabs = [
+        { key: 'main', label: HOSTILE, columns: 2, blocks: ['resources', 'attributes', 'skills'] },
+        { key: 'other', label: 'Two', columns: 1, blocks: ['items:gear', 'items:other', 'items:ability', 'items:spell', 'notes', 'effects'] },
+      ];
+    });
+    const { html } = sheetHtml(cfg);
+    assert.doesNotMatch(html, /<img\b/i);
+    assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  });
+
+  test('a removed attribute is not shown, but its stored value is kept', () => {
+    const cfg = defaultConfig();
+    const actor = { id: 'L3', name: 'n', type: 'hero', systemData: { attrs: { gone: 7 } } };
+    const html = renderSheet(buildSheetContext(actor, [], cfg), { renderEffects: STUB_EFFECTS });
+    assert.doesNotMatch(html, /gone/);
+    assert.equal(actor.systemData.attrs.gone, 7);
+  });
+});
+
+describe('layout: active tab', () => {
+  test('a known tab is kept, an unknown or missing one falls back to the first tab', () => {
+    const cfg = defaultConfig();
+    const actor = { id: 'L4', name: 'n', type: 'hero', systemData: {} };
+    assert.equal(buildSheetContext(actor, [], cfg, { activeTab: 'powers' }).activeTab, 'powers');
+    assert.equal(buildSheetContext(actor, [], cfg, { activeTab: 'removed' }).activeTab, 'main');
+    assert.equal(buildSheetContext(actor, [], cfg).activeTab, 'main');
+  });
+
+  test('the active tab is marked selected and the other panels are hidden', () => {
+    const { html } = sheetHtml(defaultConfig(), { activeTab: 'powers' });
+    assert.match(html, /aria-selected="true"[^>]*data-ldm-tab="powers"|data-ldm-tab="powers"[^>]*aria-selected="true"/);
+    assert.match(html, /data-ldm-panel="main"[^>]*hidden/);
+  });
+});
+
+describe('layout: items:other', () => {
+  test('legacy types and unknown types are collected in the other group', () => {
+    const items = [
+      { id: 'o1', name: 'Blade', type: 'weapon', data: { quantity: 1 } },
+      { id: 'o2', name: 'Plate', type: 'armor', data: {} },
+      { id: 'o3', name: 'Elixir', type: 'potion', data: {} },
+      { id: 'o4', name: 'Scroll', type: 'scroll', data: {} },
+      { id: 'o5', name: 'Mystery', type: 'xyz', data: {} },
+      { id: 'g1', name: 'Rope', type: 'gear', data: {} },
+    ];
+    const ctx = buildSheetContext({ id: 'L5', name: 'n', type: 'hero', systemData: {} }, items, defaultConfig());
+    const otherGroup = ctx.itemGroups.find((g) => g.type === 'other');
+    assert.equal(otherGroup.count, 5);
+    assert.equal(ctx.itemGroups.find((g) => g.type === 'gear').count, 1);
+    assert.equal(otherGroup.addLabel, '', 'legacy types cannot be created');
+  });
+});
+
+// ── Item use copies the item's effects onto the actor ──────────
+function installUseLoom(options = {}) {
+  const env = {
+    calls: [],
+    toasts: [],
+    chats: [],
+    rolls: [],
+    catalog: [],
+    actorRows: [...(options.actorRows ?? [])],
+    itemEffects: options.itemEffects ?? [],
+  };
+  const api = {
+    get: async (url) => {
+      env.calls.push(['get', url]);
+      return [];
+    },
+    put: async (url, body) => {
+      env.calls.push(['put', url, body]);
+      return {};
+    },
+  };
+  env.effects = {
+    forItem: async (id) => {
+      env.calls.push(['forItem', id]);
+      return env.itemEffects.map((r) => ({ ...r }));
+    },
+    forActor: async (id) => {
+      env.calls.push(['forActor', id]);
+      return env.actorRows.map((r) => ({ ...r }));
+    },
+    create: async (data) => {
+      env.calls.push(['create', data]);
+      if (options.createError) throw options.createError;
+      env.actorRows.push({ id: `new-${env.actorRows.length}`, ...data });
+      return {};
+    },
+    update: async (id, patch) => {
+      env.calls.push(['update', id, patch]);
+      return {};
+    },
+  };
+  globalThis.window = {
+    Loom: {
+      sheets: { catalog: (kind, type, Cls) => env.catalog.push([kind, type, Cls]) },
+      LoomHandlebarsMixin: (Base) => Base,
+      LoomActorSheet: class {
+        constructor(props) {
+          this.props = props;
+          this.document = null;
+          this.element = null;
+          this.apiRoute = '/actors';
+          this.renders = 0;
+        }
+        rerenderBody() {
+          this.renders += 1;
+        }
+        async _reloadDocument() {}
+      },
+      api,
+      effects: env.effects,
+      showToast: (message, type) => env.toasts.push([message, type]),
+      world: { id: 'world-1' },
+      user: { isGM: true },
+      dispatchRoll: options.noDispatch ? undefined : (roll) => env.rolls.push(roll),
+      ChatMessage: {
+        create: async (data) => {
+          env.chats.push(data);
+        },
+      },
+      i18n: { localize: (key) => key },
+      clog: { error() {} },
+    },
+  };
+  return env;
+}
+
+function useSheet(env, items, systemData = { res: { mp: { value: 5, max: null } } }) {
+  registerActorSheet();
+  const [, , SheetCls] = env.catalog.find((row) => row[0] === 'actor' && row[1] === 'hero');
+  const sheet = new SheetCls({});
+  const cfg = defaultConfig();
+  sheet.document = { id: 'actor-1', name: 'Ada', type: 'hero', systemData, items };
+  sheet._ldmCfg = cfg;
+  sheet._ldmCfgSig = JSON.stringify(cfg);
+  return sheet;
+}
+
+const COPY = Object.freeze({
+  id: 'ie-1',
+  name: 'Ember',
+  icon: '',
+  duration: 2,
+  disabled: false,
+  changes: [{ key: 'attrs.might', mode: 'add', value: 1 }],
+});
+const SPELL = Object.freeze({
+  id: 'it-1',
+  name: 'Fireball',
+  type: 'spell',
+  data: { category: 'fire', cost: { res: 'mp', amount: 2 }, roll: { enabled: false } },
+});
+
+describe('item use copies the item effects onto the actor', () => {
+  afterEach(() => {
+    delete globalThis.window;
+  });
+
+  test('EFFECT_USE_TYPES is ability, spell, potion and scroll only', () => {
+    assert.deepEqual([...EFFECT_USE_TYPES], ['ability', 'spell', 'potion', 'scroll']);
+  });
+
+  test('a spell use pays the cost, creates the copy after the payment, toasts once and reloads the list', async () => {
+    const env = installUseLoom({ itemEffects: [COPY] });
+    const sheet = useSheet(env, [SPELL]);
+    await sheet._ldmUseItem('it-1');
+
+    const creates = env.calls.filter((c) => c[0] === 'create');
+    assert.equal(creates.length, 1);
+    assert.deepEqual(creates[0][1], {
+      worldId: 'world-1',
+      actorId: 'actor-1',
+      name: 'Ember (Fireball)',
+      icon: '',
+      origin: 'item:it-1',
+      duration: 2,
+      disabled: false,
+      changes: [{ key: 'attrs.might', mode: 'add', value: 1 }],
+    });
+    const paid = env.calls.findIndex((c) => c[0] === 'put');
+    const created = env.calls.findIndex((c) => c[0] === 'create');
+    assert.ok(paid >= 0 && paid < created, 'the cost is written before the effect is copied');
+    assert.deepEqual(env.toasts, [['Applied 1 effect(s) from Fireball.', 'success']]);
+    assert.equal(sheet._ldmEffects.length, 1);
+    assert.equal(sheet._ldmEffects[0].origin, 'item:it-1');
+  });
+
+  test('every effect-use type copies its effects (ability, spell, potion, scroll)', async () => {
+    for (const type of EFFECT_USE_TYPES) {
+      const env = installUseLoom({ itemEffects: [COPY] });
+      const item = { id: 'it-1', name: 'Thing', type, data: { uses: { value: 2, max: 2 } } };
+      const sheet = useSheet(env, [item]);
+      await sheet._ldmUseItem('it-1');
+      assert.equal(env.calls.filter((c) => c[0] === 'create').length, 1, type);
+    }
+  });
+
+  test('gear and weapons never copy their effects, even when the use is paid', async () => {
+    for (const type of ['gear', 'weapon']) {
+      const env = installUseLoom({ itemEffects: [COPY] });
+      const item = { id: 'it-1', name: 'Kit', type, data: { cost: { res: 'mp', amount: 1 } } };
+      const sheet = useSheet(env, [item]);
+      await sheet._ldmUseItem('it-1');
+      assert.equal(env.calls.some((c) => c[0] === 'forItem'), false, type);
+      assert.equal(env.calls.some((c) => c[0] === 'create'), false, type);
+    }
+  });
+
+  test('a refused use (not enough resource) applies nothing and reads no effects', async () => {
+    const env = installUseLoom({ itemEffects: [COPY] });
+    const sheet = useSheet(env, [{ ...SPELL, data: { cost: { res: 'mp', amount: 99 } } }]);
+    await sheet._ldmUseItem('it-1');
+    assert.equal(env.calls.some((c) => c[0] === 'put'), false);
+    assert.equal(env.calls.some((c) => c[0] === 'forItem' || c[0] === 'create'), false);
+    assert.equal(env.toasts.some((t) => t[1] === 'success'), false);
+  });
+
+  test('a rolled use copies its effects only when the roll was dispatched', async () => {
+    const ability = { id: 'it-1', name: 'Strike', type: 'ability', data: { roll: { enabled: true, attr: '', skill: '', bonus: 0 } } };
+
+    const ok = installUseLoom({ itemEffects: [COPY] });
+    await useSheet(ok, [ability])._ldmUseItem('it-1');
+    assert.equal(ok.rolls.length, 1);
+    assert.equal(ok.calls.filter((c) => c[0] === 'create').length, 1);
+
+    const refused = installUseLoom({ itemEffects: [COPY], noDispatch: true });
+    await useSheet(refused, [ability])._ldmUseItem('it-1');
+    assert.equal(refused.calls.some((c) => c[0] === 'forItem'), false);
+    assert.equal(refused.calls.some((c) => c[0] === 'create'), false);
+  });
+
+  test('an item without effects reads its own effects, writes no copy and toasts nothing', async () => {
+    const env = installUseLoom({ itemEffects: [] });
+    const sheet = useSheet(env, [SPELL]);
+    await sheet._ldmUseItem('it-1');
+    assert.equal(env.calls.filter((c) => c[0] === 'forItem').length, 1);
+    assert.equal(env.calls.some((c) => c[0] === 'create' || c[0] === 'forActor'), false);
+    assert.deepEqual(env.toasts, []);
+  });
+
+  test('a forbidden copy keeps the use and shows only the forbidden toast', async () => {
+    const env = installUseLoom({
+      itemEffects: [COPY],
+      createError: Object.assign(new Error('Access denied'), { status: 403 }),
+    });
+    const sheet = useSheet(env, [SPELL]);
+    await sheet._ldmUseItem('it-1');
+    assert.equal(env.calls.some((c) => c[0] === 'put'), true, 'the cost was still paid');
+    assert.deepEqual(env.toasts, [["You cannot change this effect. Only the GM or the actor's owner can.", 'error']]);
+  });
+
+  test('an unlinked NPC cast does not receive actor effect copies', async () => {
+    const env = installUseLoom({ itemEffects: [COPY] });
+    const sheet = useSheet(env, [{ ...SPELL, data: { uses: { value: 1, max: 1 } } }]);
+    sheet._ldmCast = { id: 'cast-1', systemData: {} };
+    await sheet._ldmUseItem('it-1');
+    assert.equal(env.calls.some((c) => c[0] === 'forItem' || c[0] === 'create'), false);
+  });
+});
+
+// ── Use button for effect-use types and effects-only items ────
+describe('Use button rule and effects-only items', () => {
+  afterEach(() => {
+    delete globalThis.window;
+  });
+
+  const actorForButtons = { id: 'b1', name: 'N', type: 'hero', systemData: {} };
+
+  test('an effects-only spell and an empty ability show the Use button; gear without roll, cost or uses does not', () => {
+    const cfg = defaultConfig();
+    const html = renderSheet(buildSheetContext(actorForButtons, [
+      { id: 's1', name: 'Native Power', type: 'spell', data: {} },
+      { id: 'a1', name: 'Empty Ability', type: 'ability', data: {} },
+      { id: 'p1', name: 'Tonic', type: 'potion', data: {} },
+      { id: 'g1', name: 'Rope', type: 'gear', data: {} },
+      { id: 'w1', name: 'Blade', type: 'weapon', data: {} },
+    ], cfg));
+    assert.match(html, /data-action="use-item" data-id="s1"/);
+    assert.match(html, /data-action="use-item" data-id="a1"/);
+    assert.match(html, /data-action="use-item" data-id="p1"/);
+    assert.doesNotMatch(html, /data-action="use-item" data-id="g1"/);
+    assert.doesNotMatch(html, /data-action="use-item" data-id="w1"/);
+  });
+
+  test('planUse on an item with no cost and no uses is ok with an empty patch', () => {
+    const plan = planUse({ id: 's1', type: 'spell', data: {} }, {}, defaultConfig());
+    assert.equal(plan.ok, true);
+    assert.deepEqual(plan.patch, { res: null, uses: null });
+  });
+
+  test('an effects-only spell use pays nothing, sends no resource or uses PUT, posts the message and copies its effects', async () => {
+    const env = installUseLoom({ itemEffects: [COPY] });
+    const sheet = useSheet(env, [{ id: 'it-1', name: 'Fireball', type: 'spell', data: {} }]);
+    await sheet._ldmUseItem('it-1');
+    assert.equal(env.calls.some((c) => c[0] === 'put'), false, 'no PUT for an effects-only use');
+    assert.equal(env.chats.length, 1, 'the short use message is posted');
+    assert.equal(env.rolls.length, 0, 'nothing is rolled');
+    assert.equal(env.calls.filter((c) => c[0] === 'create').length, 1);
+    assert.deepEqual(env.toasts, [['Applied 1 effect(s) from Fireball.', 'success']]);
+  });
+
+  test('an effects-less empty ability use only posts the message: no PUT, no roll, no effects toast', async () => {
+    const env = installUseLoom({ itemEffects: [] });
+    const sheet = useSheet(env, [{ id: 'it-1', name: 'Shrug', type: 'ability', data: {} }]);
+    await sheet._ldmUseItem('it-1');
+    assert.equal(env.calls.some((c) => c[0] === 'put' || c[0] === 'create'), false);
+    assert.equal(env.rolls.length, 0);
+    assert.equal(env.chats.length, 1);
+    assert.deepEqual(env.toasts, []);
   });
 });

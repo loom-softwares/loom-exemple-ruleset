@@ -28,6 +28,8 @@
     ],
     "styles": [
         "styles/system.css",
+        "styles/sandbox-layout.css",
+        "styles/sandbox-effects.css",
         "styles/sandbox-card.css",
         "styles/sandbox-combat.css",
         "styles/sandbox-editor.css",

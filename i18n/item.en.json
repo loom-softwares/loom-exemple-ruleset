@@ -33,5 +33,6 @@
   "sandbox.item.type.weapon": "Weapon",
   "sandbox.item.type.armor": "Armor",
   "sandbox.item.type.potion": "Potion",
-  "sandbox.item.type.scroll": "Scroll"
+  "sandbox.item.type.scroll": "Scroll",
+  "sandbox.item.effectsUnavailable": "The effects block could not be shown."
 }

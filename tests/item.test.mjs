@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultConfig, abilityKindLabel } from '../lib/config.mjs';
+import { defaultConfig, abilityKindLabel, ITEM_LAYOUT_BLOCKS } from '../lib/config.mjs';
 import {
   ITEM_TYPES,
   applyField,
   buildItemContext,
+  itemBlockTitles,
   itemLabels,
   normalizeItemData,
   normalizeItemName,
@@ -354,4 +355,145 @@ test('applyField creates nested paths without mutating the source', () => {
   assert.deepEqual(out.cost, { amount: 5 });
   assert.equal('cost' in src, false);
   assert.deepEqual(applyField('junk', 'roll.enabled', true), { roll: { enabled: true } });
+});
+
+// ── Layout: tabs, blocks and effects ─────────────────────────────
+
+
+const STUB_EFFECTS = () => '<p class="stub-effects">stub</p>';
+
+function cfgWithItemTabs(itemTabs) {
+  const cfg = defaultConfig();
+  cfg.layout = { ...(cfg.layout || {}), itemTabs };
+  return cfg;
+}
+
+/** Markup of one tab panel, from its data-ldm-panel attribute up to the next panel. */
+function panelOf(html, key) {
+  const start = html.indexOf(`data-ldm-panel="${key}"`);
+  assert.ok(start >= 0, `panel ${key} is rendered`);
+  const next = html.indexOf('data-ldm-panel=', start + 1);
+  return html.slice(start, next < 0 ? undefined : next);
+}
+
+/** Opening tag of a panel (the part that carries the hidden attribute). */
+function openTagOf(fragment) {
+  return fragment.slice(0, fragment.indexOf('>'));
+}
+
+function blocksOf(fragment) {
+  return [...fragment.matchAll(/data-ldm-block="([^"]+)"/g)].map((m) => m[1]);
+}
+
+function tabLabelsOf(html) {
+  return [...html.matchAll(/<button type="button" role="tab"[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
+}
+
+test('default item layout renders the four tabs with their blocks', () => {
+  const ctx = buildItemContext({ id: 'a', type: 'ability', data: {} }, defaultConfig());
+  const html = renderItem(ctx, { renderEffects: STUB_EFFECTS });
+  assert.deepEqual(tabLabelsOf(html), ['Details', 'Rules', 'Effects', 'Description']);
+  assert.deepEqual(blocksOf(panelOf(html, 'details')), ['details', 'uses']);
+  assert.deepEqual(blocksOf(panelOf(html, 'rules')), ['roll', 'cost']);
+  assert.deepEqual(blocksOf(panelOf(html, 'effects')), ['effects']);
+  assert.deepEqual(blocksOf(panelOf(html, 'text')), ['description']);
+  assert.match(html, /role="tablist"/);
+});
+
+test('a configuration with one tab and three columns renders no tab bar', () => {
+  const cfg = cfgWithItemTabs([{ key: 'all', label: 'All', columns: 3, blocks: [...ITEM_LAYOUT_BLOCKS] }]);
+  const html = renderItem(buildItemContext({ id: 'g', type: 'gear', data: {} }, cfg), { renderEffects: STUB_EFFECTS });
+  assert.doesNotMatch(html, /role="tablist"/);
+  assert.doesNotMatch(html, /role="tab"/);
+  assert.match(html, /--ldm-cols:3/);
+  assert.match(html, /data-ldm-block="roll"/);
+  assert.match(html, /data-ldm-block="effects"/);
+});
+
+test('a configuration that omits effects still shows the block in the first tab', () => {
+  const cfg = cfgWithItemTabs([
+    { key: 'a', label: 'First', columns: 1, blocks: ['details'] },
+    { key: 'b', label: 'Second', columns: 1, blocks: ['roll', 'cost', 'description'] },
+  ]);
+  const html = renderItem(buildItemContext({ id: 'g', type: 'gear', data: {} }, cfg), { renderEffects: STUB_EFFECTS });
+  assert.ok(blocksOf(panelOf(html, 'a')).includes('effects'), 'effects appended to the first tab');
+  assert.ok(!blocksOf(panelOf(html, 'b')).includes('effects'));
+  assert.match(html, /stub-effects/);
+});
+
+test('every item type renders every block it is meant to show', () => {
+  const cfg = defaultConfig();
+  for (const type of ITEM_TYPES) {
+    const html = renderItem(buildItemContext({ id: type, type, data: {} }, cfg), { renderEffects: STUB_EFFECTS });
+    const blocks = blocksOf(html);
+    for (const block of ['details', 'roll', 'cost', 'description', 'effects']) {
+      assert.ok(blocks.includes(block), `${type} renders ${block}`);
+    }
+    const usesBlock = blocks.includes('uses');
+    assert.equal(usesBlock, ['ability', 'spell', 'potion', 'scroll'].includes(type), `${type} uses block`);
+    assert.match(html, /stub-effects/, `${type} shows the effects block`);
+  }
+});
+
+test('hostile tab labels are escaped, never raw markup', () => {
+  const cfg = cfgWithItemTabs([
+    { key: 'a', label: '<img src=x onerror=alert(9)>', columns: 1, blocks: ['details'] },
+    { key: 'b', label: '"><svg onload=alert(8)>', columns: 1, blocks: ['roll', 'cost', 'description'] },
+  ]);
+  const html = renderItem(buildItemContext({ id: 'g', type: 'gear', data: {} }, cfg), { renderEffects: STUB_EFFECTS });
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.doesNotMatch(html, /<svg/);
+  assert.doesNotMatch(html, /onerror=alert\(9\)>/);
+});
+
+test('an unknown active tab falls back to the first tab', () => {
+  const ctx = buildItemContext({ id: 'a', type: 'ability', data: {} }, defaultConfig(), undefined, { activeTab: 'nope' });
+  assert.equal(ctx.activeTab, 'details');
+  const html = renderItem(ctx, { renderEffects: STUB_EFFECTS });
+  assert.match(html, /role="tab"[^>]*aria-selected="true"[^>]*>Details</);
+  assert.doesNotMatch(openTagOf(panelOf(html, 'details')), /\bhidden\b/);
+  assert.match(openTagOf(panelOf(html, 'rules')), /\bhidden\b/);
+});
+
+test('the active tab is kept and the other panels are hidden', () => {
+  const ctx = buildItemContext({ id: 'a', type: 'ability', data: {} }, defaultConfig(), undefined, { activeTab: 'text' });
+  assert.equal(ctx.activeTab, 'text');
+  const html = renderItem(ctx, { renderEffects: STUB_EFFECTS });
+  assert.doesNotMatch(openTagOf(panelOf(html, 'text')), /\bhidden\b/);
+  assert.match(openTagOf(panelOf(html, 'details')), /\bhidden\b/);
+  assert.match(html, /role="tab"[^>]*aria-selected="true"[^>]*>Description</);
+});
+
+test('effects are passed to the renderer with the item owner kind and editable flag', () => {
+  const effects = [{ id: 'e1', name: 'Shield' }];
+  const ctx = buildItemContext({ id: 'i1', type: 'spell', data: {} }, defaultConfig(), undefined, { effects });
+  let seen = null;
+  renderItem(ctx, {
+    renderEffects: (args) => {
+      seen = args;
+      return '';
+    },
+  });
+  assert.equal(seen.ownerKind, 'item');
+  assert.equal(seen.editable, true);
+  assert.deepEqual(seen.effects, effects);
+});
+
+test('a failing effects renderer shows a note instead of breaking the sheet', () => {
+  const html = renderItem(buildItemContext({ id: 'g', type: 'gear', data: {} }, defaultConfig()), {
+    renderEffects: () => {
+      throw new Error('boom');
+    },
+  });
+  assert.match(html, /role="note"[^>]*>The effects block could not be shown\.</);
+  assert.match(html, /data-ldm-block="effects"/);
+});
+
+test('block titles use the localized key and fall back to English', () => {
+  const english = itemBlockTitles((key, fallback) => fallback);
+  assert.equal(english.details, 'Details');
+  assert.equal(english.effects, 'Effects');
+  const localized = itemBlockTitles((key, fallback) => (key === 'sandbox.layout.item.details' ? 'Detalhes' : fallback));
+  assert.equal(localized.details, 'Detalhes');
+  assert.equal(localized.cost, 'Cost');
 });

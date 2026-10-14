@@ -1,0 +1,293 @@
+/* ══════════════════════════════════════════════════════════════
+   Sandbox effects block (lib/effects-view.mjs produces this markup).
+   Every class starts with ldm-fx-. Colours come from --ldm-* variables set on an ancestor
+   (a sheet root or :root); each use carries its own fallback, so the block works unthemed.
+     --ldm-gap        spacing between rows and fields          (fallback 0.5rem)
+     --ldm-pad        inner padding of rows and the form       (fallback 0.6rem)
+     --ldm-radius     corner radius of rows and inputs         (fallback 6px)
+     --ldm-accent     primary button and focus ring            (fallback --color-accent, #7c5cff)
+     --ldm-surface    row and form background                  (fallback rgba(255,255,255,0.04))
+     --ldm-border     row and input borders                    (fallback rgba(255,255,255,0.12))
+     --ldm-text       text colour                              (fallback: inherited colour)
+     --ldm-muted      hints, origins and durations             (fallback --color-text-muted, rgba(255,255,255,0.6))
+     --ldm-danger     delete buttons and error text            (fallback #e5484d)
+   Status is never shown by colour alone: the badge carries the text Active / Off.
+   Works at 360px width: rows wrap, the form grid collapses to one column, nothing scrolls sideways.
+   ══════════════════════════════════════════════════════════════ */
+
+.ldm-fx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ldm-gap, 0.5rem);
+  color: var(--ldm-text, inherit);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ldm-fx *,
+.ldm-fx *::before,
+.ldm-fx *::after {
+  box-sizing: border-box;
+}
+
+.ldm-fx-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ldm-gap, 0.5rem);
+}
+
+.ldm-fx-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ldm-fx--item > .ldm-fx-hint {
+  font-weight: 600;
+}
+
+.ldm-fx-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
+}
+
+.ldm-fx-empty {
+  margin: 0;
+  padding: var(--ldm-pad, 0.6rem);
+  font-style: italic;
+  color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
+}
+
+.ldm-fx-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ldm-gap, 0.5rem);
+}
+
+.ldm-fx-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ldm-gap, 0.5rem);
+  padding: var(--ldm-pad, 0.6rem);
+  border: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--ldm-radius, 6px);
+  background: var(--ldm-surface, rgba(255, 255, 255, 0.04));
+  min-width: 0;
+}
+
+.ldm-fx-row--off .ldm-fx-name,
+.ldm-fx-row--off .ldm-fx-summary {
+  opacity: 0.6;
+}
+
+.ldm-fx-row--editing {
+  display: block;
+}
+
+.ldm-fx-icon {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--ldm-radius, 6px);
+  object-fit: cover;
+  border: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+}
+
+.ldm-fx-icon--empty {
+  display: inline-block;
+  background: var(--ldm-border, rgba(255, 255, 255, 0.12));
+}
+
+.ldm-fx-main {
+  flex: 1 1 10rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ldm-fx-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ldm-fx-origin,
+.ldm-fx-duration {
+  font-size: 0.8rem;
+  color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
+  overflow-wrap: anywhere;
+}
+
+.ldm-fx-summary {
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.ldm-fx-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.ldm-fx-badge {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid currentColor;
+}
+
+.ldm-fx-badge--on {
+  color: var(--ldm-accent, var(--color-accent, #7c5cff));
+}
+
+.ldm-fx-badge--off {
+  color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
+}
+
+.ldm-fx-actions,
+.ldm-fx-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.ldm-fx-btn {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--ldm-radius, 6px);
+  border: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--ldm-text, inherit);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.ldm-fx-btn:hover:not(:disabled) {
+  border-color: var(--ldm-accent, var(--color-accent, #7c5cff));
+}
+
+.ldm-fx-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ldm-fx-btn--primary {
+  background: var(--ldm-accent, var(--color-accent, #7c5cff));
+  border-color: transparent;
+  color: #fff;
+}
+
+.ldm-fx-btn--danger {
+  color: var(--ldm-danger, #e5484d);
+}
+
+.ldm-fx-btn:focus-visible,
+.ldm-fx-field input:focus-visible,
+.ldm-fx-field select:focus-visible,
+.ldm-fx-check input:focus-visible {
+  outline: 2px solid var(--ldm-accent, var(--color-accent, #7c5cff));
+  outline-offset: 2px;
+}
+
+/* ── Form ───────────────────────────────────────────────── */
+
+.ldm-fx-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ldm-gap, 0.5rem);
+  width: 100%;
+  min-width: 0;
+}
+
+.ldm-fx-form-title {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.ldm-fx-errors {
+  margin: 0;
+  padding: 0.4rem 0.6rem 0.4rem 1.2rem;
+  color: var(--ldm-danger, #e5484d);
+  font-size: 0.85rem;
+  border-radius: var(--ldm-radius, 6px);
+  border: 1px solid var(--ldm-danger, #e5484d);
+}
+
+.ldm-fx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--ldm-gap, 0.5rem);
+}
+
+.ldm-fx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+.ldm-fx-field > span {
+  color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
+}
+
+.ldm-fx-field input,
+.ldm-fx-field select {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--ldm-radius, 6px);
+  border: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+  background: var(--ldm-surface, rgba(255, 255, 255, 0.04));
+  color: var(--ldm-text, inherit);
+  font: inherit;
+}
+
+.ldm-fx-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  min-height: 2.25rem;
+}
+
+.ldm-fx-changes {
+  margin: 0;
+  padding: var(--ldm-pad, 0.6rem);
+  border: 1px dashed var(--ldm-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--ldm-radius, 6px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ldm-gap, 0.5rem);
+  min-width: 0;
+}
+
+.ldm-fx-changes legend {
+  font-size: 0.85rem;
+  padding: 0 0.3rem;
+}
+
+.ldm-fx-change {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.4rem;
+  align-items: end;
+}
+
+.ldm-fx-change > .ldm-fx-btn {
+  grid-column: 1 / -1;
+  justify-self: end;
+}

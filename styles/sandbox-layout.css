@@ -1,0 +1,217 @@
+/* ══════════════════════════════════════════════════════════════
+   Sandbox layout standard: tabs + grid + block cards
+   Used by the actor sheet, the item sheet and the rule editor
+   (lib/layout-view.mjs produces this markup).
+
+   THEMING (CSS variables)
+   Set any --ldm-* variable on an ancestor (a sheet root, a window root, or :root) and
+   every .ldm-tabs, .ldm-grid and .ldm-block inside it picks it up. The components never
+   declare these variables themselves: each use carries its own fallback, so the
+   defaults below apply only when nothing is set.
+     --ldm-gap        spacing between grid cells and tab panels   (fallback 0.75rem)
+     --ldm-pad        inner padding of a block card                (fallback 0.75rem)
+     --ldm-radius     corner radius of tabs and blocks             (fallback 6px)
+     --ldm-accent     active tab marker and focus ring             (fallback --color-accent, #7c5cff)
+     --ldm-surface    block and active tab background              (fallback rgba(255,255,255,0.04))
+     --ldm-border     block and tab-bar borders                    (fallback rgba(255,255,255,0.12))
+     --ldm-text       text colour                                  (fallback: inherited colour)
+     --ldm-muted      inactive tab colour                          (fallback --color-text-muted, rgba(255,255,255,0.6))
+
+   --ldm-cols is NOT a theme variable: the markup sets it inline on each grid or tab panel
+   (the column count, an integer 1..4), so it is per element on purpose.
+
+   DENSITY
+   .ldm-density-compact and .ldm-density-comfortable set --ldm-gap and --ldm-pad on the
+   element they are applied to. A density class applied to a descendant sets the values
+   for that subtree and wins over the value set on an ancestor, which is the only place
+   where a class overrides an inherited theme variable.
+
+   STABLE CLASS NAMES (public API)
+     .ldm-tabs          tab set wrapper (container for the responsive grid)
+     .ldm-tablist       tab bar (role=tablist), scrolls sideways on overflow
+     .ldm-tab           one tab button (role=tab); active one has aria-selected="true"
+     .ldm-tabpanel      one panel (role=tabpanel); hidden panels use the hidden attribute
+     .ldm-grid-host     container for a grid that is not inside .ldm-tabs
+     .ldm-grid          responsive grid of blocks
+     .ldm-block         block card (section)
+     .ldm-block-title   block heading (h3)
+     .ldm-block-body    block content
+     .ldm-density-compact      smaller gap and padding
+     .ldm-density-comfortable  larger gap and padding
+
+   I18N KEYS used by the markup (labels are supplied by the caller):
+     sandbox.layout.tablist (tab bar aria-label)
+   ══════════════════════════════════════════════════════════════ */
+
+.ldm-tabs,
+.ldm-grid-host {
+  container-type: inline-size;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ldm-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--ldm-cols, 2), minmax(0, 1fr));
+  gap: var(--ldm-gap, 0.75rem);
+  min-width: 0;
+  max-width: 100%;
+  color: var(--ldm-text, currentColor);
+}
+
+/* One column when the nearest container (sheet root) is narrow. */
+@container (max-width: 560px) {
+  .ldm-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Fallback for engines without container queries. */
+@media (max-width: 560px) {
+  .ldm-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────── */
+
+.ldm-tabs {
+  color: var(--ldm-text, currentColor);
+}
+
+.ldm-tablist {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  border-bottom: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+  margin-bottom: var(--ldm-gap, 0.75rem);
+}
+
+.ldm-tab {
+  flex: 0 0 auto;
+  appearance: none;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: var(--ldm-radius, 6px) var(--ldm-radius, 6px) 0 0;
+  background: transparent;
+  color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ldm-tab:hover {
+  color: var(--ldm-text, currentColor);
+  background: var(--ldm-surface, rgba(255, 255, 255, 0.04));
+}
+
+/* Active tab: accent underline AND bold weight, so it does not rely on colour alone. */
+.ldm-tab[aria-selected="true"] {
+  color: var(--ldm-text, currentColor);
+  font-weight: 700;
+  border-bottom-color: var(--ldm-accent, var(--color-accent, #7c5cff));
+  background: var(--ldm-surface, rgba(255, 255, 255, 0.04));
+}
+
+.ldm-tab:focus-visible,
+.ldm-tabpanel:focus-visible {
+  outline: 2px solid var(--ldm-accent, var(--color-accent, #7c5cff));
+  outline-offset: 2px;
+}
+
+.ldm-tabpanel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ldm-tabpanel[hidden] {
+  display: none !important;
+}
+
+/* ── Blocks ───────────────────────────────────────────────────── */
+
+.ldm-block {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--ldm-pad, 0.75rem);
+  background: var(--ldm-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--ldm-radius, 6px);
+  color: var(--ldm-text, currentColor);
+  overflow-wrap: anywhere;
+}
+
+.ldm-block-title {
+  margin: 0 0 var(--ldm-gap, 0.75rem);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ldm-border, rgba(255, 255, 255, 0.12));
+  font-size: 0.95em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ldm-text, currentColor);
+  overflow-wrap: anywhere;
+}
+
+.ldm-block-body {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ldm-block :focus-visible {
+  outline: 2px solid var(--ldm-accent, var(--color-accent, #7c5cff));
+  outline-offset: 2px;
+}
+
+/* ── Density ──────────────────────────────────────────────────── */
+/* These are the only rules that set --ldm-gap / --ldm-pad on component elements. */
+
+.ldm-density-compact {
+  --ldm-gap: 0.4rem;
+  --ldm-pad: 0.45rem;
+}
+
+.ldm-density-comfortable {
+  --ldm-gap: 1.1rem;
+  --ldm-pad: 1rem;
+}
+
+.ldm-density-compact .ldm-tabs,
+.ldm-density-compact .ldm-grid,
+.ldm-density-compact .ldm-block,
+.ldm-tabs.ldm-density-compact,
+.ldm-grid.ldm-density-compact,
+.ldm-block.ldm-density-compact {
+  --ldm-gap: 0.4rem;
+  --ldm-pad: 0.45rem;
+}
+
+.ldm-density-comfortable .ldm-tabs,
+.ldm-density-comfortable .ldm-grid,
+.ldm-density-comfortable .ldm-block,
+.ldm-tabs.ldm-density-comfortable,
+.ldm-grid.ldm-density-comfortable,
+.ldm-block.ldm-density-comfortable {
+  --ldm-gap: 1.1rem;
+  --ldm-pad: 1rem;
+}
+
+/* ── Narrow screens (360px safe) ──────────────────────────────── */
+
+@media (max-width: 360px) {
+  .ldm-tab {
+    padding: 6px 8px;
+  }
+
+  .ldm-block {
+    padding: calc(var(--ldm-pad, 0.75rem) * 0.75);
+  }
+}

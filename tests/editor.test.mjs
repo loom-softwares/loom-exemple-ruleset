@@ -19,8 +19,18 @@ import {
   isDirty,
   createEditorState,
   setPath,
+  moveBlock,
+  addBlock,
+  removeBlock,
+  addTab,
+  removeTab,
+  moveTab,
+  unplacedBlocks,
+  tabKeyFor,
+  renderLayoutPreview,
+  RuleEditorWindow,
 } from '../windows/rule-editor.mjs';
-import { defaultConfig, PRESETS, validateConfig } from '../lib/config.mjs';
+import { defaultConfig, PRESETS, validateConfig, LAYOUT_BLOCKS, ITEM_LAYOUT_BLOCKS } from '../lib/config.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -296,4 +306,348 @@ test('every sandbox.editor key used in code exists in both language files', () =
     assert.ok(key in pt, `missing in pt-BR: ${key}`);
   }
   assert.deepEqual(Object.keys(pt).sort(), Object.keys(en).sort(), 'both files hold the same keys');
+});
+
+// ---------------------------------------------------------------------------
+// Layout helpers (pure): moveBlock, addBlock, removeBlock, addTab, removeTab, moveTab, unplacedBlocks
+// ---------------------------------------------------------------------------
+
+function tabsOf(...specs) {
+  return specs.map(([key, label, blocks, columns = 2]) => ({ key, label, columns, blocks: [...blocks] }));
+}
+
+const blockKeysOf = (tabs) => tabs.map((tab) => tab.blocks);
+
+test('moveBlock swaps a block with its neighbour inside one tab', () => {
+  const tabs = tabsOf(['a', 'A', ['resources', 'attributes', 'skills']], ['b', 'B', ['notes']]);
+  assert.deepEqual(blockKeysOf(moveBlock(tabs, 0, 0, 1)), [['attributes', 'resources', 'skills'], ['notes']]);
+  assert.deepEqual(blockKeysOf(moveBlock(tabs, 0, 2, -1)), [['resources', 'skills', 'attributes'], ['notes']]);
+});
+
+test('moveBlock ignores first-up, last-down, bad indexes and does not touch other tabs', () => {
+  const tabs = tabsOf(['a', 'A', ['resources', 'skills']], ['b', 'B', ['notes']]);
+  assert.deepEqual(blockKeysOf(moveBlock(tabs, 0, 0, -1)), [['resources', 'skills'], ['notes']]);
+  assert.deepEqual(blockKeysOf(moveBlock(tabs, 0, 1, 1)), [['resources', 'skills'], ['notes']]);
+  assert.deepEqual(blockKeysOf(moveBlock(tabs, 9, 0, 1)), [['resources', 'skills'], ['notes']]);
+  assert.deepEqual(blockKeysOf(moveBlock(tabs, 0, 7, 1)), [['resources', 'skills'], ['notes']]);
+  assert.deepEqual(moveBlock(undefined, 0, 0, 1), []);
+});
+
+test('moveBlock returns a new list and keeps tab identity', () => {
+  const tabs = tabsOf(['a', 'A', ['resources', 'skills']], ['b', 'B', ['notes']]);
+  const next = moveBlock(tabs, 0, 0, 1);
+  assert.notEqual(next, tabs);
+  assert.notEqual(next[0], tabs[0], 'the edited tab is a new object');
+  assert.equal(next[1], tabs[1], 'other tabs keep their identity');
+  assert.deepEqual(tabs[0].blocks, ['resources', 'skills'], 'the input is not mutated');
+});
+
+test('addBlock appends to a tab and refuses a block already placed anywhere in the list', () => {
+  const tabs = tabsOf(['a', 'A', ['resources']], ['b', 'B', ['notes']]);
+  assert.deepEqual(blockKeysOf(addBlock(tabs, 0, 'skills')), [['resources', 'skills'], ['notes']]);
+  assert.deepEqual(blockKeysOf(addBlock(tabs, 0, 'notes')), [['resources'], ['notes']], 'duplicate on the same list refused');
+  assert.deepEqual(blockKeysOf(addBlock(tabs, 1, 'resources')), [['resources'], ['notes']], 'duplicate across tabs refused');
+});
+
+test('addBlock refuses bad tab indexes, empty or non-text blocks and the per-tab maximum', () => {
+  const tabs = tabsOf(['a', 'A', ['resources']]);
+  assert.deepEqual(blockKeysOf(addBlock(tabs, 4, 'skills')), [['resources']]);
+  assert.deepEqual(blockKeysOf(addBlock(tabs, 0, '')), [['resources']]);
+  assert.deepEqual(blockKeysOf(addBlock(tabs, 0, null)), [['resources']]);
+  const full = tabsOf(['a', 'A', Array.from({ length: 12 }, (_, i) => `b${i}`)]);
+  assert.equal(addBlock(full, 0, 'extra')[0].blocks.length, 12, 'the 13th block is refused');
+});
+
+test('removeBlock removes one block and ignores bad indexes', () => {
+  const tabs = tabsOf(['a', 'A', ['resources', 'skills', 'notes']]);
+  assert.deepEqual(blockKeysOf(removeBlock(tabs, 0, 1)), [['resources', 'notes']]);
+  assert.deepEqual(blockKeysOf(removeBlock(tabs, 0, 5)), [['resources', 'skills', 'notes']]);
+  assert.deepEqual(blockKeysOf(removeBlock(tabs, 3, 0)), [['resources', 'skills', 'notes']]);
+});
+
+test('addTab appends an empty two-column tab keyed from the label, with unique keys', () => {
+  const tabs = tabsOf(['main', 'Main', ['resources']]);
+  const once = addTab(tabs, 'New tab');
+  assert.equal(once.length, 2);
+  assert.deepEqual(once[1], { key: 'new_tab', label: 'New tab', columns: 2, blocks: [] });
+  assert.equal(addTab(once, 'New tab')[2].key, 'new_tab_2');
+  assert.equal(addTab(tabs, '   ')[1].label, 'Tab', 'a blank label gets the default name');
+  assert.equal(addTab(tabs, '')[1].key, 'tab');
+});
+
+test('addTab refuses tabs beyond the maximum of 8', () => {
+  let tabs = tabsOf(['main', 'Main', []]);
+  for (let i = 0; i < 20; i++) tabs = addTab(tabs, `Tab ${i}`);
+  assert.equal(tabs.length, 8);
+});
+
+test('removeTab removes one tab and never removes the last one', () => {
+  const tabs = tabsOf(['a', 'A', ['resources']], ['b', 'B', ['notes']]);
+  assert.deepEqual(removeTab(tabs, 0).map((t) => t.key), ['b']);
+  assert.deepEqual(removeTab(removeTab(tabs, 0), 0).map((t) => t.key), ['b'], 'the last tab stays');
+  assert.deepEqual(removeTab(tabs, 5).map((t) => t.key), ['a', 'b']);
+});
+
+test('moveTab reorders tabs and ignores first-up and last-down', () => {
+  const tabs = tabsOf(['a', 'A', []], ['b', 'B', []], ['c', 'C', []]);
+  assert.deepEqual(moveTab(tabs, 2, -1).map((t) => t.key), ['a', 'c', 'b']);
+  assert.deepEqual(moveTab(tabs, 0, -1).map((t) => t.key), ['a', 'b', 'c']);
+  assert.deepEqual(moveTab(tabs, 2, 1).map((t) => t.key), ['a', 'b', 'c']);
+});
+
+test('unplacedBlocks lists the blocks no tab shows, in the order of allBlocks', () => {
+  assert.deepEqual(unplacedBlocks(defaultConfig().layout.tabs, LAYOUT_BLOCKS), [], 'the default actor tabs place every block');
+  assert.deepEqual(unplacedBlocks(defaultConfig().layout.itemTabs, ITEM_LAYOUT_BLOCKS), []);
+  const tabs = tabsOf(['a', 'A', ['resources', 'notes']], ['b', 'B', ['skills']]);
+  assert.deepEqual(unplacedBlocks(tabs, LAYOUT_BLOCKS), ['attributes', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'effects']);
+  assert.deepEqual(unplacedBlocks(undefined, ['notes']), ['notes']);
+  assert.deepEqual(unplacedBlocks(tabs, undefined), []);
+});
+
+test('tabKeyFor builds a valid, unique key and skips the tab being renamed', () => {
+  const tabs = tabsOf(['main', 'Main', []], ['gear_2', 'Gear', []]);
+  assert.equal(tabKeyFor(tabs, 'Main Tab'), 'main_tab');
+  assert.equal(tabKeyFor(tabs, 'Main'), 'main_2');
+  assert.equal(tabKeyFor(tabs, 'Main', 0), 'main', 'renaming tab 0 may keep its own key');
+  assert.equal(tabKeyFor(tabs, '123 !!!'), 'tab');
+  assert.match(tabKeyFor(tabs, 'x'.repeat(60)), /^[a-z][a-z0-9_]{0,23}$/);
+});
+
+// ---------------------------------------------------------------------------
+// Layout section rendering
+// ---------------------------------------------------------------------------
+
+function customLayoutConfig() {
+  const cfg = defaultConfig();
+  cfg.layout = {
+    density: 'compact',
+    skillGrouping: 'group',
+    tabs: [
+      { key: 'core', label: 'Core', columns: 3, blocks: ['resources'] },
+      { key: 'more', label: 'More', columns: 1, blocks: ['notes', 'effects'] },
+    ],
+    itemTabs: defaultConfig().layout.itemTabs,
+  };
+  return cfg;
+}
+
+test('the Layout section renders both sheets with their tabs and blocks for the default config', () => {
+  const html = renderEditor(stateFor());
+  assert.ok(html.includes('data-ldm-layout="actor"'));
+  assert.ok(html.includes('data-ldm-layout="item"'));
+  assert.ok(html.includes('value="Main"'), 'tab label is shown in its input');
+  assert.ok(html.includes('>Resources</span>'), 'a block is shown by its name, not its id');
+  assert.ok(!html.includes('items:gear</span>'), 'raw block ids are never shown as chips');
+  assert.ok(html.includes('No blocks left to add.'), 'every block is placed, so nothing can be added');
+});
+
+test('a custom layout shows its density, grouping and only the blocks that are free to add', () => {
+  const html = renderEditor(stateFor(customLayoutConfig()));
+  assert.match(html, /<option value="compact" selected>/);
+  assert.match(html, /<option value="group" selected>/);
+  assert.match(html, /<option value="skills">Skills<\/option>/);
+  assert.doesNotMatch(html, /<option value="resources">/, 'a placed block is not offered');
+  assert.doesNotMatch(html, /<option value="notes">/, 'a block on another tab is not offered');
+});
+
+test('unplaced blocks are listed in a notice that names the first tab', () => {
+  const cfg = defaultConfig();
+  cfg.layout.tabs[2].blocks = ['items:gear', 'items:other'];
+  const html = renderEditor(stateFor(cfg));
+  assert.ok(html.includes('Not on any tab: Notes.'), 'the notice names the unplaced block');
+  assert.ok(html.includes('&quot;Main&quot;'), 'the notice names the tab that shows it');
+  assert.ok(html.includes('Effects is always shown'), 'the effects note is always shown');
+});
+
+test('a hostile tab label is escaped in the tab bar and the input', () => {
+  const cfg = defaultConfig();
+  cfg.layout.tabs[0].label = '<img src=x onerror=x>';
+  const html = renderEditor(stateFor(cfg));
+  assert.ok(!html.includes('<img src=x'));
+  assert.ok(html.includes('&lt;img src=x onerror=x&gt;'));
+});
+
+test('a hostile attribute and skill group is escaped', () => {
+  const cfg = defaultConfig();
+  cfg.attributes[1].group = '"><script>x</script>';
+  cfg.skills[0].group = '<b onmouseover="x">g</b>';
+  const html = renderEditor(stateFor(cfg));
+  assert.ok(!html.includes('<script>x</script>'));
+  assert.ok(!html.includes('<b onmouseover'));
+  assert.ok(html.includes('&quot;&gt;&lt;script&gt;x&lt;/script&gt;'));
+});
+
+test('group inputs are on every attribute and skill row, bound to that row', () => {
+  const cfg = defaultConfig();
+  const html = renderEditor(stateFor(cfg));
+  for (let i = 0; i < cfg.attributes.length; i++) {
+    assert.match(html, new RegExp(`data-field="group"[^>]*data-list="attributes" data-index="${i}"`));
+  }
+  for (let i = 0; i < cfg.skills.length; i++) {
+    assert.match(html, new RegExp(`data-field="group"[^>]*data-list="skills" data-index="${i}"`));
+  }
+  assert.ok(html.includes('placeholder="optional"'));
+});
+
+test('applying a group edit changes only the row it belongs to', () => {
+  const win = new RuleEditorWindow();
+  const el = (list, index, field, value) => ({ type: 'text', value, dataset: { list, index: String(index), field } });
+  win.applyField(el('attributes', 1, 'group', 'Mind'));
+  win.applyField(el('skills', 2, 'group', 'Field'));
+  assert.equal(win.state.draft.attributes[1].group, 'Mind');
+  assert.equal(win.state.draft.attributes[0].group, '');
+  assert.equal(win.state.draft.skills[2].group, 'Field');
+  assert.equal(win.state.draft.skills[0].group, '');
+  assert.equal(isDirty(win.state), true);
+});
+
+test('validation errors of the layout are shown and disable Save', () => {
+  const dupKey = stateFor();
+  dupKey.draft.layout.tabs[1].key = dupKey.draft.layout.tabs[0].key;
+  assert.ok(draftErrors(dupKey.draft).some((e) => /duplicate key/.test(e)));
+  const dupKeyHtml = renderEditor(dupKey);
+  assert.match(saveButton(dupKeyHtml), /disabled/);
+  assert.ok(dupKeyHtml.includes('duplicate key'), 'the error is listed');
+
+  const dupBlock = stateFor();
+  dupBlock.draft.layout.tabs[1].blocks = ['resources'];
+  assert.ok(draftErrors(dupBlock.draft).length > 0);
+  assert.match(saveButton(renderEditor(dupBlock)), /disabled/);
+});
+
+test('new tabs have an editable key with the auto-slug hint; saved tabs show a fixed key', () => {
+  const saved = renderEditor(stateFor());
+  assert.ok(!saved.includes('data-field="key"'), 'saved tabs expose no editable key');
+  const fresh = stateFor();
+  const tab = fresh.draft.layout.tabs[0];
+  fresh.keyEditable.add(tab);
+  fresh.autoKey.add(tab);
+  const freshHtml = renderEditor(fresh);
+  assert.match(freshHtml, /data-field="key"[^>]*data-tab-list="tabs" data-index="0"/);
+  assert.ok(freshHtml.includes('Created from the label'));
+});
+
+test('the layout preview is a schematic of the effective tabs, escaped and hidden from assistive tech', () => {
+  const cfg = customLayoutConfig();
+  cfg.layout.tabs[0].label = '"><img src=x onerror=x>';
+  const html = renderLayoutPreview(validateConfig(cfg).config.layout.tabs, 'actor');
+  assert.match(html, /aria-hidden="true"/);
+  assert.ok(!html.includes('<img src=x'));
+  assert.match(html, /--ldm-editor-cols:3/);
+  assert.ok(html.includes('Resources'));
+  assert.equal(renderLayoutPreview([], 'actor'), '');
+});
+
+test('the editor section tabs use the shared tabs standard with ARIA wiring', () => {
+  const state = stateFor();
+  state.section = 'layout';
+  const html = renderEditor(state);
+  assert.ok(html.includes('class="ldm-tablist" role="tablist" aria-label="Editor sections"'));
+  assert.equal((html.match(/role="tab"/g) ?? []).length, 10, 'one tab per section');
+  assert.equal((html.match(/role="tabpanel"/g) ?? []).length, 10, 'one panel per section');
+  assert.match(html, /data-ldm-tab="layout"[^>]*aria-selected="true"/);
+  assert.match(html, /data-ldm-tab="dice"[^>]*aria-selected="false"/);
+  const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(controls.length, 10);
+  for (const id of controls) assert.ok(html.includes(`id="${id}"`), `panel ${id} exists`);
+  const active = html.match(/<div class="ldm-tabpanel" role="tabpanel"[^>]*data-ldm-panel="layout"[^>]*>/);
+  assert.ok(active && !active[0].includes(' hidden'), 'the active section panel is visible');
+  const other = html.match(/<div class="ldm-tabpanel" role="tabpanel"[^>]*data-ldm-panel="dice"[^>]*>/);
+  assert.ok(other && other[0].includes(' hidden'), 'other section panels are hidden');
+});
+
+test('section panels stay in the markup, so their fields keep their values across tab changes', () => {
+  const html = renderEditor(stateFor(PRESETS.d6Pool()));
+  assert.ok(html.includes('data-field="dice.pool.faces"'), 'the hidden Dice panel still holds its fields');
+});
+
+// ---------------------------------------------------------------------------
+// Layout actions on the window (no element in Node, so refresh is a no-op)
+// ---------------------------------------------------------------------------
+
+function windowFor(cfg = defaultConfig()) {
+  const win = new RuleEditorWindow();
+  win.state = stateFor(cfg);
+  return win;
+}
+
+test('ed-tab-add adds a tab keyed from its default label, marked new and auto-keyed', () => {
+  const win = windowFor();
+  win.onAction('ed-tab-add', null, { dataset: { tabList: 'tabs' } });
+  const tabs = win.state.draft.layout.tabs;
+  assert.equal(tabs.length, 5);
+  assert.equal(tabs[4].key, 'new_tab');
+  assert.ok(win.state.keyEditable.has(tabs[4]));
+  assert.ok(win.state.autoKey.has(tabs[4]));
+});
+
+test('ed-tab-add refuses a ninth tab and an unknown tab list', () => {
+  const win = windowFor();
+  for (let i = 0; i < 10; i++) win.onAction('ed-tab-add', null, { dataset: { tabList: 'tabs' } });
+  assert.equal(win.state.draft.layout.tabs.length, 8);
+  win.onAction('ed-tab-add', null, { dataset: { tabList: 'nope' } });
+  assert.equal(win.state.draft.layout.tabs.length, 8);
+});
+
+test('ed-tab-remove never removes the last tab', () => {
+  const win = windowFor();
+  win.onAction('ed-tab-remove', null, { dataset: { tabList: 'itemTabs', index: '0' } });
+  assert.equal(win.state.draft.layout.itemTabs.length, 3);
+  for (let i = 0; i < 6; i++) win.onAction('ed-tab-remove', null, { dataset: { tabList: 'itemTabs', index: '0' } });
+  assert.equal(win.state.draft.layout.itemTabs.length, 1);
+});
+
+test('ed-tab-move reorders the tabs of the list it names', () => {
+  const win = windowFor();
+  win.onAction('ed-tab-move', null, { dataset: { tabList: 'tabs', index: '1', dir: '1' } });
+  assert.deepEqual(win.state.draft.layout.tabs.map((t) => t.key), ['main', 'gear', 'powers', 'effects']);
+});
+
+test('ed-block-move and ed-block-remove work on the block of one tab', () => {
+  const win = windowFor();
+  win.onAction('ed-block-move', null, { dataset: { tabList: 'tabs', index: '0', block: '0', dir: '1' } });
+  assert.deepEqual(win.state.draft.layout.tabs[0].blocks, ['attributes', 'resources', 'skills']);
+  win.onAction('ed-block-remove', null, { dataset: { tabList: 'tabs', index: '0', block: '2' } });
+  assert.deepEqual(win.state.draft.layout.tabs[0].blocks, ['attributes', 'resources']);
+});
+
+test('ed-block-add places a free block chosen in the picker and refuses placed or unknown ones', () => {
+  const win = windowFor();
+  // Free "notes": take it off the Gear tab first.
+  win.onAction('ed-block-remove', null, { dataset: { tabList: 'tabs', index: '2', block: '2' } });
+  const target = (index, value) => ({
+    dataset: { tabList: 'tabs', index: String(index) },
+    parentElement: { querySelector: () => ({ value }) },
+  });
+  win.onAction('ed-block-add', null, target(0, 'notes'));
+  assert.deepEqual(win.state.draft.layout.tabs[0].blocks, ['resources', 'attributes', 'skills', 'notes']);
+  win.onAction('ed-block-add', null, target(0, 'resources'));
+  win.onAction('ed-block-add', null, target(0, 'items:gear'));
+  win.onAction('ed-block-add', null, target(0, 'not-a-block'));
+  assert.equal(win.state.draft.layout.tabs[0].blocks.length, 4, 'placed and unknown blocks are refused');
+  const gearCount = win.state.draft.layout.tabs.filter((t) => t.blocks.includes('items:gear')).length;
+  assert.equal(gearCount, 1, 'items:gear stays on exactly one tab');
+});
+
+test('a new tab label types the key until the GM edits the key', () => {
+  const win = windowFor();
+  win.onAction('ed-tab-add', null, { dataset: { tabList: 'tabs' } });
+  const index = win.state.draft.layout.tabs.length - 1;
+  const field = (value, name) => ({ type: 'text', value, dataset: { tabList: 'tabs', index: String(index), field: name } });
+  win.applyField(field('Night Owl', 'label'));
+  assert.equal(win.state.draft.layout.tabs[index].label, 'Night Owl');
+  assert.equal(win.state.draft.layout.tabs[index].key, 'night_owl');
+  win.applyField(field('owls', 'key'));
+  assert.equal(win.state.draft.layout.tabs[index].key, 'owls');
+  win.applyField(field('Dusk', 'label'));
+  assert.equal(win.state.draft.layout.tabs[index].key, 'owls', 'a key the GM edited is not overwritten');
+});
+
+test('columns and density edits reach the draft and the draft stays valid', () => {
+  const win = windowFor();
+  win.applyField({ type: 'select-one', value: '4', dataset: { tabList: 'tabs', index: '0', field: 'columns' } });
+  assert.equal(win.state.draft.layout.tabs[0].columns, 4);
+  win.applyField({ type: 'select-one', value: 'compact', dataset: { field: 'layout.density' } });
+  assert.equal(win.state.draft.layout.density, 'compact');
+  assert.ok(validateConfig(configFromDraft(win.state.draft)).ok);
 });

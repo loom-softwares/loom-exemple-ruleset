@@ -33,5 +33,6 @@
   "sandbox.item.type.weapon": "Arma",
   "sandbox.item.type.armor": "Armadura",
   "sandbox.item.type.potion": "Poção",
-  "sandbox.item.type.scroll": "Pergaminho"
+  "sandbox.item.type.scroll": "Pergaminho",
+  "sandbox.item.effectsUnavailable": "Não foi possível mostrar o bloco de efeitos."
 }
