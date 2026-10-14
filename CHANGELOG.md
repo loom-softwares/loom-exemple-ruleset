@@ -26,8 +26,21 @@ The GM defines the rules from inside the system instead of editing code.
   every 3 seconds for every player, with the turn marker, round, and resource bars, and per-combatant
   resource labels in the tracker.
 - Translations for every visible string (English and Portuguese, Brazil).
+- Sheet layout: the actor and item sheets are built from tabs and blocks set in the rule editor
+  (`layout`), with 1 to 4 columns per tab, a compact or comfortable density, and skills grouped by
+  attribute, by group or not at all. A block that no tab lists is shown in the first tab.
+- Optional `group` text on attributes and skills, used to group them on the sheet.
+- Shared tabs and grid standard for the actor sheet, the item sheet and the rule editor, themed
+  through `--ldm-*` CSS variables.
+- Effects block on the actor and item sheets: name, icon, origin, duration (permanent, or counted
+  down per combat round), an enabled switch, and changes in the add, multiply, override, upgrade
+  and downgrade modes.
+- Using an ability, spell, potion or scroll copies its enabled effects onto the character.
+- Rule editor: a Layout section (sheet tabs and blocks, density, skill grouping) and the Group field
+  on attributes and skills.
 
 ### Changed
+- The rule editor's own sections use the shared tabs.
 - Settings are registered from code: the world configuration is one setting, edited in the rule
   editor. The old "language" and "initiative attribute" manifest settings are removed.
 - The manifest lists every stylesheet of the sandbox; the old hero sheet styles remain as-is.
