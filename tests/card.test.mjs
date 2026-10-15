@@ -664,6 +664,13 @@ test('damage uses the Damage label from the localizer', () => {
   assert.match(html, /<span class="ldm-card-unit">Dano<\/span>/);
 });
 
+test('a separate damage pool shows the configured base plus real pool successes', () => {
+  const roll = damageRoll({ rolls: [2, 6, 8, 1], modifier: 0, total: 2, formula: '4d10cs>=6', terms: [{ kind: 'dice', count: 4, faces: 10, rolls: [2, 6, 8, 1], dropped: [false, false, false, false] }], meta: { damagePool: true, base: 3 } });
+  const html = renderCard(poolCfg({}, { faces: 10, successMin: 6 }), roll, esc);
+  assert.match(html, /<code class="ldm-card-formula">4d10cs&gt;=6<\/code>/);
+  assert.match(html, /<span class="ldm-card-total">5<\/span>/);
+});
+
 test('damage chips are capped with a +N marker', () => {
   const rolls = Array.from({ length: 150 }, () => 3);
   const html = render(d20Cfg(), damageRoll({ rolls, modifier: 0, total: 450, formula: '150d8' }));

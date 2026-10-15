@@ -1,4 +1,9 @@
 {
+  "sandbox.card.hit": "Acerto",
+  "sandbox.card.miss": "Errou",
+  "sandbox.card.defenseNeeded": "Informe a defesa",
+  "sandbox.card.damage": "Dano",
+  "sandbox.card.effectiveSuccesses": "Sucessos efetivos",
   "sandbox.card.untitled": "Rolagem",
   "sandbox.card.target": "Alvo",
   "sandbox.card.pass": "Sucesso",

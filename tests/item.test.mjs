@@ -47,7 +47,7 @@ test('hostile name, description and config labels are escaped', () => {
 test('hostile ability kind label in the header is escaped', () => {
   const cfg = hostileConfig();
   const html = renderItem(buildItemContext({ id: 'a1', type: 'ability', data: {} }, cfg));
-  assert.ok(!html.includes('<svg'));
+  assert.ok(!html.includes('<svg onload=alert(3)>'));
   assert.ok(html.includes('&lt;svg onload=alert(3)&gt;'));
 });
 
@@ -442,7 +442,7 @@ test('hostile tab labels are escaped, never raw markup', () => {
   ]);
   const html = renderItem(buildItemContext({ id: 'g', type: 'gear', data: {} }, cfg), { renderEffects: STUB_EFFECTS });
   assert.doesNotMatch(html, /<img src=x/);
-  assert.doesNotMatch(html, /<svg/);
+  assert.doesNotMatch(html, /<svg onload=alert\(8\)>/);
   assert.doesNotMatch(html, /onerror=alert\(9\)>/);
 });
 

@@ -75,6 +75,16 @@ test('roll mode (d20): one die plus attribute plus bonus', () => {
   assert.equal(computeInitiative(cfg, actor, fixed(0.999)), 25); // die 20 + 4 + 1
 });
 
+test('initiative applies a selected derived d20 modifier', () => {
+  const cfg = cfgFor({ mode: 'roll', attr: 'grace' });
+  cfg.attributes[1].useD20Modifier = true;
+  cfg.attributes[1].max = 20;
+  const actor = { attrs: { grace: 16 } };
+  assert.equal(computeInitiative(cfg, actor, fixed(0)), 4, 'natural 1 plus the derived +3 modifier');
+  cfg.combat.initiative.mode = 'attribute';
+  assert.equal(computeInitiative(cfg, actor, fixed(0)), 3, 'attribute-only initiative uses the same modifier');
+});
+
 test('roll mode with no attribute counts the attribute as 0', () => {
   const cfg = cfgFor({ mode: 'roll', attr: '', bonus: 2 });
   assert.equal(computeInitiative(cfg, { attrs: { grace: 9 } }, fixed(0.5)), 13); // die 11 + 2

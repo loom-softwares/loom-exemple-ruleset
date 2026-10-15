@@ -20,7 +20,7 @@ import { openCombatPanel } from './combat/tracker-window.mjs';
 import { openRuleEditor, registerRuleEditorMenu } from './windows/rule-editor.mjs';
 
 const SYSTEM_ID = 'loom-demo-system';
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 const ACTOR_TYPES = ['hero', 'villain', 'beast'];
 // Keep in sync with ruleset.json "itemTypes". The four legacy types stay so old worlds still load.
 const ITEM_TYPES = ['gear', 'ability', 'spell', 'weapon', 'armor', 'potion', 'scroll'];

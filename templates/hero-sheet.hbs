@@ -1,0 +1,549 @@
+<!--
+  Loom Demo System — hero-sheet.hbs
+  Custom RPG character sheet for the "hero" actor type.
+  Demonstrates proper i18n usage using Loom's native `{{localize "KEY"}}` Handlebars helper.
+-->
+<div class="loom-demo-sheet">
+  <!-- ══════════════════════════════════════════════════════════
+       HERO HEADER: Portrait + Identity + Quick Actions
+       ══════════════════════════════════════════════════════════ -->
+  <header class="loom-hero-header">
+    <!-- Character Portrait (clickable via data-action="pick-portrait") -->
+    <div class="loom-hero-portrait-frame" data-action="pick-portrait" data-edit="avatarUrl" title="{{localize "loom-demo-system.sheet.portrait.clickToChange"}}">
+      <img
+        src="{{portraitUrl}}"
+        alt="{{document.name}}"
+        class="loom-hero-portrait-img{{#unless hasCustomPortrait}} is-default{{/unless}}"
+      />
+      <div class="portrait-hover-overlay">
+        <i class="fa-solid fa-camera"></i>
+        <span>{{localize "loom-demo-system.sheet.portrait.change"}}</span>
+      </div>
+    </div>
+
+    <!-- Identity & Actions -->
+    <div class="loom-hero-identity">
+      <div class="loom-hero-meta-bar">
+        <span class="loom-badge loom-badge-archetype">
+          <i class="fa-solid fa-crown"></i> {{localize "loom-demo-system.hero"}}
+        </span>
+        <div class="loom-header-stats">
+          <div class="loom-header-stat stat-hp" title="{{localize "loom-demo-system.stats.hp"}}">
+            <i class="fa-solid fa-heart"></i>
+            <span>{{document.hp.value}} / {{document.hp.max}} HP</span>
+          </div>
+          <div class="loom-header-stat stat-def" title="{{localize "loom-demo-system.stats.defense"}}">
+            <i class="fa-solid fa-shield"></i>
+            <span>{{document.defense}} DEF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Name -->
+      <div class="loom-hero-name-row">
+        <input
+          type="text"
+          name="name"
+          value="{{document.name}}"
+          placeholder="{{localize "loom-demo-system.sheet.hero.namePlaceholder"}}"
+          class="loom-hero-name-input"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Quick Roll Actions in Header -->
+      <div class="loom-hero-quick-actions">
+        <button type="button" class="loom-quick-btn" data-action="roll-combat" data-type="attack" title="{{localize "loom-demo-system.combat.basicAttack"}}">
+          <i class="fa-solid fa-crosshairs"></i> {{localize "loom-demo-system.actions.attack"}} (+{{document._bonus.attack}})
+        </button>
+        <button type="button" class="loom-quick-btn" data-action="roll-combat" data-type="dodge" title="{{localize "loom-demo-system.combat.quickDodge"}}">
+          <i class="fa-solid fa-person-running"></i> {{localize "loom-demo-system.actions.dodge"}} (+{{document._bonus.dodge}})
+        </button>
+        <button type="button" class="loom-quick-btn" data-action="roll-combat" data-type="initiative" title="{{localize "loom-demo-system.combat.combatInitiative"}}">
+          <i class="fa-solid fa-bolt"></i> {{localize "loom-demo-system.actions.initiative"}} (+{{document._bonus.initiative}})
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════
+       NAVIGATION TABS
+       ══════════════════════════════════════════════════════════ -->
+  <nav class="tabs loom-sheet-tabs" role="tablist">
+    <button type="button" class="tab-button{{#if isAttributesTab}} active{{/if}}" data-action="tab-attributes">
+      <i class="fa-solid fa-chart-simple"></i> {{localize "loom-demo-system.tabs.attributes"}}
+    </button>
+    <button type="button" class="tab-button{{#if isCombatTab}} active{{/if}}" data-action="tab-combat">
+      <i class="fa-solid fa-shield-halved"></i> {{localize "loom-demo-system.tabs.combat"}}
+    </button>
+    <button type="button" class="tab-button{{#if isItemsTab}} active{{/if}}" data-action="tab-items">
+      <i class="fa-solid fa-box-open"></i> {{localize "loom-demo-system.tabs.items"}} ({{items.length}})
+    </button>
+    <button type="button" class="tab-button{{#if isEffectsTab}} active{{/if}}" data-action="tab-effects">
+      <i class="fa-solid fa-wand-magic-sparkles"></i> {{localize "loom-demo-system.tabs.effects"}} ({{buffs.length}})
+    </button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 1: ATTRIBUTES (Grid aligned with card layout)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-content{{#if isAttributesTab}} active{{/if}}" data-tab="attributes">
+    <div class="loom-attributes-grid">
+      <!-- MIGHT -->
+      <div class="loom-attr-card attr-might">
+        <div class="attr-card-header">
+          <div class="attr-icon-wrapper">
+            <i class="fa-solid fa-hand-fist"></i>
+          </div>
+          <div class="attr-title-group">
+            <span class="attr-name">{{localize "loom-demo-system.attributes.might"}}</span>
+            <span class="attr-subtitle">{{localize "loom-demo-system.attributes.mightSubtitle"}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-center">
+          <div class="attr-score-row">
+            <div class="attr-input-wrap">
+              <input
+                type="number"
+                name="sd:attributes:might"
+                value="{{document.rawAttributes.might}}"
+                min="0"
+                max="10"
+                class="attr-score-input"
+              />
+              <span class="attr-denom">/10</span>
+              {{#if document._itemAttrsBonus.might}}
+                <span class="attr-item-bonus" title="Item Bonus">+{{document._itemAttrsBonus.might}}</span>
+              {{/if}}
+            </div>
+          </div>
+          <div class="attr-mod-tag">
+            <span class="tag-title">{{localize "loom-demo-system.attributes.modifier"}}</span>
+            <span class="tag-bonus">+{{document._bonus.attack}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-footer">
+          <button
+            type="button"
+            class="loom-roll-btn"
+            data-action="roll-attribute"
+            data-attr="might"
+            title="{{localize "loom-demo-system.attributes.rollMight"}} (d20 + {{document._bonus.attack}})"
+          >
+            <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.attributes.rollMight"}}
+          </button>
+        </div>
+      </div>
+
+      <!-- SWIFT -->
+      <div class="loom-attr-card attr-swift">
+        <div class="attr-card-header">
+          <div class="attr-icon-wrapper">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div class="attr-title-group">
+            <span class="attr-name">{{localize "loom-demo-system.attributes.swift"}}</span>
+            <span class="attr-subtitle">{{localize "loom-demo-system.attributes.swiftSubtitle"}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-center">
+          <div class="attr-score-row">
+            <div class="attr-input-wrap">
+              <input
+                type="number"
+                name="sd:attributes:swift"
+                value="{{document.rawAttributes.swift}}"
+                min="0"
+                max="10"
+                class="attr-score-input"
+              />
+              <span class="attr-denom">/10</span>
+              {{#if document._itemAttrsBonus.swift}}
+                <span class="attr-item-bonus" title="Item Bonus">+{{document._itemAttrsBonus.swift}}</span>
+              {{/if}}
+            </div>
+          </div>
+          <div class="attr-mod-tag">
+            <span class="tag-title">{{localize "loom-demo-system.attributes.modifier"}}</span>
+            <span class="tag-bonus">+{{document._bonus.dodge}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-footer">
+          <button
+            type="button"
+            class="loom-roll-btn"
+            data-action="roll-attribute"
+            data-attr="swift"
+            title="{{localize "loom-demo-system.attributes.rollSwift"}} (d20 + {{document._bonus.dodge}})"
+          >
+            <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.attributes.rollSwift"}}
+          </button>
+        </div>
+      </div>
+
+      <!-- WITS -->
+      <div class="loom-attr-card attr-wits">
+        <div class="attr-card-header">
+          <div class="attr-icon-wrapper">
+            <i class="fa-solid fa-brain"></i>
+          </div>
+          <div class="attr-title-group">
+            <span class="attr-name">{{localize "loom-demo-system.attributes.wits"}}</span>
+            <span class="attr-subtitle">{{localize "loom-demo-system.attributes.witsSubtitle"}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-center">
+          <div class="attr-score-row">
+            <div class="attr-input-wrap">
+              <input
+                type="number"
+                name="sd:attributes:wits"
+                value="{{document.rawAttributes.wits}}"
+                min="0"
+                max="10"
+                class="attr-score-input"
+              />
+              <span class="attr-denom">/10</span>
+              {{#if document._itemAttrsBonus.wits}}
+                <span class="attr-item-bonus" title="Item Bonus">+{{document._itemAttrsBonus.wits}}</span>
+              {{/if}}
+            </div>
+          </div>
+          <div class="attr-mod-tag">
+            <span class="tag-title">{{localize "loom-demo-system.attributes.modifier"}}</span>
+            <span class="tag-bonus">+{{document._bonus.detect}}</span>
+          </div>
+        </div>
+
+        <div class="attr-card-footer">
+          <button
+            type="button"
+            class="loom-roll-btn"
+            data-action="roll-attribute"
+            data-attr="wits"
+            title="{{localize "loom-demo-system.attributes.rollWits"}} (d20 + {{document._bonus.detect}})"
+          >
+            <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.attributes.rollWits"}}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Derived Bonuses Summary -->
+    <div class="loom-derived-panel">
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-crosshairs"></i> {{localize "loom-demo-system.derived.attackBonus"}}</span>
+        <span class="derived-value">+{{document._bonus.attack}}</span>
+      </div>
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-person-running"></i> {{localize "loom-demo-system.derived.dodgeBonus"}}</span>
+        <span class="derived-value">+{{document._bonus.dodge}}</span>
+      </div>
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-bolt"></i> {{localize "loom-demo-system.derived.initBonus"}}</span>
+        <span class="derived-value">+{{document._bonus.initiative}}</span>
+      </div>
+      <div class="derived-item">
+        <span class="derived-label"><i class="fa-solid fa-eye"></i> {{localize "loom-demo-system.derived.detectBonus"}}</span>
+        <span class="derived-value">+{{document._bonus.detect}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2: COMBAT & STATUS
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-content{{#if isCombatTab}} active{{/if}}" data-tab="combat">
+    <div class="loom-combat-vitals">
+      <!-- Hit Points Card (HP) -->
+      <div class="loom-vital-card vital-hp">
+        <div class="vital-header">
+          <div class="vital-icon-title">
+            <i class="fa-solid fa-heart"></i>
+            <span>{{localize "loom-demo-system.stats.hp"}}</span>
+          </div>
+          <span class="vital-percent">{{hpPercent}}%</span>
+        </div>
+        <div class="vital-inputs-row">
+          <div class="vital-field">
+            <label>{{localize "loom-demo-system.stats.current"}}</label>
+            <input type="number" name="sd:hp:value" value="{{document.hp.value}}" min="0" class="vital-input current" />
+          </div>
+          <span class="vital-separator">/</span>
+          <div class="vital-field">
+            <label>{{localize "loom-demo-system.stats.max"}}</label>
+            <input type="number" name="sd:hp:max" value="{{document.hp.max}}" min="1" class="vital-input max" />
+          </div>
+        </div>
+        <!-- Visual Progress Bar -->
+        <div class="loom-hp-progress-track">
+          <div class="loom-hp-progress-fill" style="width: {{hpPercent}}%;"></div>
+        </div>
+      </div>
+
+      <!-- Defense Card -->
+      <div class="loom-vital-card vital-defense">
+        <div class="vital-header">
+          <div class="vital-icon-title">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>{{localize "loom-demo-system.stats.defense"}}</span>
+          </div>
+          <span class="vital-tag">{{localize "loom-demo-system.stats.armorClass"}}</span>
+        </div>
+        <div class="vital-defense-value-box">
+          <input type="number" name="sd:defense" value="{{document.baseDefense}}" min="0" class="defense-score-input" />
+          {{#if document._itemDefenseBonus}}
+            <span class="defense-bonus-pill" title="{{localize "loom-demo-system.items.defenseBonus"}}">+{{document._itemDefenseBonus}} (Total: {{document.defense}})</span>
+          {{/if}}
+        </div>
+        <p class="vital-hint">{{localize "loom-demo-system.stats.defenseHint"}}</p>
+      </div>
+    </div>
+
+    <!-- Combat Actions and Maneuvers -->
+    <div class="loom-combat-actions-section">
+      <h3 class="section-title"><i class="fa-solid fa-swords"></i> {{localize "loom-demo-system.combat.maneuvers"}}</h3>
+      <div class="loom-combat-actions-grid">
+        <div class="combat-action-card">
+          <div class="action-info">
+            <span class="action-title"><i class="fa-solid fa-hand-fist"></i> {{localize "loom-demo-system.combat.basicAttack"}}</span>
+            <span class="action-formula">1d20 + Might (+{{document._bonus.attack}})</span>
+          </div>
+          <button type="button" class="loom-roll-btn" data-action="roll-combat" data-type="attack">
+            <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.attributes.rollMight"}}
+          </button>
+        </div>
+
+        <div class="combat-action-card">
+          <div class="action-info">
+            <span class="action-title"><i class="fa-solid fa-person-running"></i> {{localize "loom-demo-system.combat.quickDodge"}}</span>
+            <span class="action-formula">1d20 + Swift (+{{document._bonus.dodge}})</span>
+          </div>
+          <button type="button" class="loom-roll-btn" data-action="roll-combat" data-type="dodge">
+            <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.attributes.rollSwift"}}
+          </button>
+        </div>
+
+        <div class="combat-action-card">
+          <div class="action-info">
+            <span class="action-title"><i class="fa-solid fa-bolt"></i> {{localize "loom-demo-system.combat.combatInitiative"}}</span>
+            <span class="action-formula">1d20 + Swift (+{{document._bonus.initiative}})</span>
+          </div>
+          <button type="button" class="loom-roll-btn" data-action="roll-combat" data-type="initiative">
+            <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.dialog.rollInitiative"}}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 3: INVENTORY & ITEMS (Weapons, Armor, Potions)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-content{{#if isItemsTab}} active{{/if}}" data-tab="items">
+    <section class="loom-items-section">
+      <div class="loom-items-toolbar">
+        <div class="items-heading">
+          <h3><i class="fa-solid fa-toolbox"></i> {{localize "loom-demo-system.items.title"}}</h3>
+          <span class="items-counter">{{items.length}} {{localize "loom-demo-system.items.counter"}}</span>
+        </div>
+        <button type="button" class="btn btn-primary loom-add-item-btn" data-action="add-item">
+          <i class="fa-solid fa-plus"></i> {{localize "loom-demo-system.items.newItem"}}
+        </button>
+      </div>
+
+      {{#if items.length}}
+        <div class="loom-items-list">
+          {{#each items}}
+            <div class="loom-item-row" data-id="{{this.id}}" draggable="true">
+              <div class="item-icon-box" data-action="open-item" data-id="{{this.id}}" title="{{localize "loom-demo-system.items.openSheet"}}">
+                {{#if this.imgUrl}}
+                  <img src="{{this.imgUrl}}" alt="{{this.name}}" class="item-thumb" />
+                {{else if this.avatarUrl}}
+                  <img src="{{this.avatarUrl}}" alt="{{this.name}}" class="item-thumb" />
+                {{else}}
+                  <i class="fa-solid fa-shield-halved item-icon-default"></i>
+                {{/if}}
+              </div>
+
+              <div class="item-info-col" data-action="open-item" data-id="{{this.id}}" title="{{localize "loom-demo-system.items.openSheet"}}">
+                <span class="item-row-name">{{this.name}}</span>
+                <div class="item-row-tags">
+                  <span class="item-type-badge">{{this.type}}</span>
+                  {{#if this.systemData.damage}}
+                    <span class="item-stat-badge"><i class="fa-solid fa-hand-fist"></i> {{this.systemData.damage}}</span>
+                  {{/if}}
+                  {{#if this.systemData.attackBonus}}
+                    <span class="item-stat-badge atk"><i class="fa-solid fa-crosshairs"></i> +{{this.systemData.attackBonus}} ATK</span>
+                  {{/if}}
+                  {{#if this.systemData.damageBonus}}
+                    <span class="item-stat-badge dmg"><i class="fa-solid fa-burst"></i> +{{this.systemData.damageBonus}} DMG</span>
+                  {{/if}}
+                  {{#if this.systemData.defenseBonus}}
+                    <span class="item-stat-badge def"><i class="fa-solid fa-shield"></i> +{{this.systemData.defenseBonus}} DEF</span>
+                  {{/if}}
+                  {{#if this.systemData.hpBonus}}
+                    <span class="item-stat-badge hp"><i class="fa-solid fa-heart"></i> +{{this.systemData.hpBonus}} PV</span>
+                  {{/if}}
+                  {{#if this.systemData.mightBonus}}
+                    <span class="item-stat-badge attr"><i class="fa-solid fa-hand-fist"></i> +{{this.systemData.mightBonus}} FOR</span>
+                  {{/if}}
+                  {{#if this.systemData.swiftBonus}}
+                    <span class="item-stat-badge attr"><i class="fa-solid fa-person-running"></i> +{{this.systemData.swiftBonus}} AGI</span>
+                  {{/if}}
+                  {{#if this.systemData.witsBonus}}
+                    <span class="item-stat-badge attr"><i class="fa-solid fa-brain"></i> +{{this.systemData.witsBonus}} AST</span>
+                  {{/if}}
+                  {{#if this.systemData.healAmount}}
+                    <span class="item-stat-badge heal"><i class="fa-solid fa-heart"></i> {{this.systemData.healAmount}}</span>
+                  {{/if}}
+                  {{#if this.systemData.effect}}
+                    <span class="item-stat-badge effect"><i class="fa-solid fa-wand-magic-sparkles"></i> {{this.systemData.effect}}</span>
+                  {{/if}}
+                </div>
+              </div>
+
+              <div class="item-row-actions">
+                {{#if this.systemData.damage}}
+                  <button
+                    type="button"
+                    class="btn btn-small btn-primary item-roll-btn"
+                    data-action="roll-item-attack"
+                    data-id="{{this.id}}"
+                    title="{{localize "loom-demo-system.actions.attack"}}"
+                  >
+                    <i class="fa-solid fa-crosshairs"></i> {{localize "loom-demo-system.actions.attack"}}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-small item-damage-btn"
+                    data-action="roll-item-damage"
+                    data-id="{{this.id}}"
+                    title="{{localize "loom-demo-system.actions.damage"}} ({{this.systemData.damage}})"
+                  >
+                    <i class="fa-solid fa-dice-d20"></i> {{localize "loom-demo-system.actions.damage"}}
+                  </button>
+                {{/if}}
+                {{#if this.systemData.healAmount}}
+                  <button
+                    type="button"
+                    class="btn btn-small btn-success item-use-btn"
+                    data-action="use-item"
+                    data-id="{{this.id}}"
+                    title="{{localize "loom-demo-system.items.healing"}}"
+                  >
+                    <i class="fa-solid fa-heart"></i> {{localize "loom-demo-system.items.healing"}}
+                  </button>
+                {{/if}}
+                <button
+                  type="button"
+                  class="btn btn-small item-edit-btn"
+                  data-action="open-item"
+                  data-id="{{this.id}}"
+                  title="{{localize "loom-demo-system.items.openDetails"}}"
+                >
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small btn-danger item-delete-btn"
+                  data-action="delete-item"
+                  data-id="{{this.id}}"
+                  title="{{localize "loom-demo-system.items.delete"}}"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="loom-items-empty">
+          <i class="fa-solid fa-box-open empty-icon"></i>
+          <h4>{{localize "loom-demo-system.items.emptyTitle"}}</h4>
+          <p>{{localize "loom-demo-system.items.emptyDesc"}}</p>
+          <button type="button" class="btn btn-primary btn-sm" data-action="add-item" style="margin-top: 10px;">
+            <i class="fa-solid fa-plus"></i> {{localize "loom-demo-system.items.addDemo"}}
+          </button>
+        </div>
+      {{/if}}
+    </section>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 4: ACTIVE EFFECTS (BUFFS / DEBUFFS)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="tab-content{{#if isEffectsTab}} active{{/if}}" data-tab="effects">
+    <section class="loom-effects-section">
+      <div class="loom-effects-toolbar">
+        <div class="effects-heading">
+          <h3><i class="fa-solid fa-wand-magic-sparkles"></i> {{localize "loom-demo-system.effects.title"}}</h3>
+          <span class="effects-counter">{{buffs.length}} {{localize "loom-demo-system.effects.counter"}}</span>
+        </div>
+        <button type="button" class="btn btn-primary loom-add-effect-btn" data-action="add-effect">
+          <i class="fa-solid fa-plus"></i> {{localize "loom-demo-system.effects.newEffect"}}
+        </button>
+      </div>
+
+      {{#if buffs.length}}
+        <div class="loom-effects-list">
+          {{#each buffs}}
+            <div class="loom-effect-item{{#if this.disabled}} effect-inactive{{/if}}">
+              <div class="effect-status-badge">
+                {{#if this.disabled}}
+                  <i class="fa-solid fa-circle-xmark status-off" title="{{localize "loom-demo-system.effects.inactive"}}"></i>
+                {{else}}
+                  <i class="fa-solid fa-circle-check status-on" title="{{localize "loom-demo-system.effects.active"}}"></i>
+                {{/if}}
+              </div>
+              <div class="effect-details">
+                <span class="effect-name">{{this.name}}</span>
+                <span class="effect-meta">{{#if this.disabled}}{{localize "loom-demo-system.effects.inactive"}}{{else}}{{localize "loom-demo-system.effects.active"}}{{/if}}</span>
+              </div>
+              <div class="effect-actions">
+                <button
+                  type="button"
+                  class="btn btn-small effect-btn-toggle"
+                  data-action="toggle-effect"
+                  data-id="{{this.id}}"
+                  title="{{#if this.disabled}}{{localize "loom-demo-system.effects.enable"}}{{else}}{{localize "loom-demo-system.effects.disable"}}{{/if}}"
+                >
+                  <i class="fa-solid {{#if this.disabled}}fa-play{{else}}fa-pause{{/if}}"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small effect-btn-edit"
+                  data-action="edit-effect"
+                  data-id="{{this.id}}"
+                  title="{{localize "loom-demo-system.effects.rename"}}"
+                >
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-small btn-danger effect-btn-delete"
+                  data-action="remove-effect"
+                  data-id="{{this.id}}"
+                  title="{{localize "loom-demo-system.effects.delete"}}"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="loom-effects-empty">
+          <i class="fa-solid fa-feather-pointed empty-icon"></i>
+          <h4>{{localize "loom-demo-system.effects.emptyTitle"}}</h4>
+          <p>{{localize "loom-demo-system.effects.emptyDesc"}}</p>
+        </div>
+      {{/if}}
+    </section>
+  </div>
+</div>

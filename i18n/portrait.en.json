@@ -1,0 +1,14 @@
+{
+  "sandbox.portrait.title": "Item image",
+  "sandbox.portrait.hint": "Choose an image, then optionally adjust its square crop. Your original file is kept.",
+  "sandbox.portrait.upload": "Upload image",
+  "sandbox.portrait.library": "Choose from files",
+  "sandbox.portrait.crop": "Adjust square crop",
+  "sandbox.portrait.zoom": "Zoom",
+  "sandbox.portrait.horizontal": "Horizontal position",
+  "sandbox.portrait.vertical": "Vertical position",
+  "sandbox.portrait.saving": "Saving…",
+  "sandbox.portrait.apply": "Apply image",
+  "sandbox.portrait.cropFailed": "This image cannot be cropped. Upload a local image, or apply it without cropping.",
+  "sandbox.portrait.uploadFailed": "Could not upload the image."
+}

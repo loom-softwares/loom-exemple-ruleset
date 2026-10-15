@@ -1,7 +1,7 @@
 {
     "name": "loom-demo-system",
     "title": "Loom Demo System",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "engine": "loom",
     "engineVersion": ">=0.1.0",
     "type": "ruleset",

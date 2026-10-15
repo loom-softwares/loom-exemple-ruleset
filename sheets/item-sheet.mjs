@@ -19,6 +19,7 @@ import { LoomHandlebarsMixin, LoomItemSheet, api, sheets, showToast } from '/_lo
 import { loadConfig, resolveItemLayout } from '../lib/config.mjs';
 import { isPlainObject } from '../lib/helpers.mjs';
 import { attachTabs } from '../lib/layout-view.mjs';
+import { openItemPortraitEditor } from '../windows/item-portrait-editor.mjs';
 import { attachEffects, loadEffects } from '../lib/effects-view.mjs';
 import {
   ITEM_TYPES,
@@ -184,6 +185,27 @@ export class DemoItemSheet extends LoomHandlebarsMixin(LoomItemSheet) {
   }
 
   onAction(action, id, target) {
+    if (action === 'build-damage') {
+      if (!this.document || !this.isEditable) return;
+      const root = target.closest('.ldm-item-damage-builder');
+      const read = (key) => Number(root?.querySelector(`[data-damage="${key}"]`)?.value);
+      const count = read('count'), faces = read('faces'), bonus = read('bonus');
+      if (![count, faces, bonus].every(Number.isInteger) || count < 1 || count > 100 || ![4,6,8,10,12,20,100].includes(faces) || Math.abs(bonus) > 99) return;
+      this._pendingFields.set('roll.damage', `${count}d${faces}${bonus ? (bonus > 0 ? '+' : '') + bonus : ''}`);
+      return this._flushPendingFields();
+    }
+    if (action === 'pick-portrait') {
+      if (!this.document || !this.isEditable) return;
+      return openItemPortraitEditor({
+        itemId: this.document.id, url: this.document.imgUrl || '',
+        canEdit: () => Boolean(this.document && this.isEditable),
+        save: async (url) => {
+          await this._flushPendingFields();
+          await api.put(`${this.apiRoute}/${this.document.id}`, { imgUrl: url });
+          await this._reloadDocument();
+        },
+      });
+    }
     if (action === 'clear-portrait') {
       if (!this.document || !this.isEditable) return;
       this._pendingFields.set('portrait', '');

@@ -399,7 +399,7 @@ test('unplacedBlocks lists the blocks no tab shows, in the order of allBlocks', 
   assert.deepEqual(unplacedBlocks(defaultConfig().layout.tabs, LAYOUT_BLOCKS), [], 'the default actor tabs place every block');
   assert.deepEqual(unplacedBlocks(defaultConfig().layout.itemTabs, ITEM_LAYOUT_BLOCKS), []);
   const tabs = tabsOf(['a', 'A', ['resources', 'notes']], ['b', 'B', ['skills']]);
-  assert.deepEqual(unplacedBlocks(tabs, LAYOUT_BLOCKS), ['attributes', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'effects']);
+  assert.deepEqual(unplacedBlocks(tabs, LAYOUT_BLOCKS), ['attributes', 'saves', 'attacks', 'magic', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'effects']);
   assert.deepEqual(unplacedBlocks(undefined, ['notes']), ['notes']);
   assert.deepEqual(unplacedBlocks(tabs, undefined), []);
 });
@@ -454,7 +454,7 @@ test('unplaced blocks are listed in a notice that names the first tab', () => {
   const cfg = defaultConfig();
   cfg.layout.tabs[2].blocks = ['items:gear', 'items:other'];
   const html = renderEditor(stateFor(cfg));
-  assert.ok(html.includes('Not on any tab: Notes.'), 'the notice names the unplaced block');
+  assert.ok(html.includes('Not on any tab: Magic.'), 'the notice names the unplaced block');
   assert.ok(html.includes('&quot;Main&quot;'), 'the notice names the tab that shows it');
   assert.ok(html.includes('Effects is always shown'), 'the effects note is always shown');
 });
@@ -489,16 +489,65 @@ test('group inputs are on every attribute and skill row, bound to that row', () 
   assert.ok(html.includes('placeholder="optional"'));
 });
 
+test('each attribute has an optional d20 modifier checkbox saved on that row', () => {
+  const win = new RuleEditorWindow();
+  win.editorState.readOnly = false;
+  const html = renderEditor(stateFor());
+  assert.match(html, /data-field="useD20Modifier"[^>]*data-list="attributes" data-index="0"/);
+  win.applyField({ type: 'checkbox', checked: true, dataset: { list: 'attributes', index: '0', field: 'useD20Modifier' } });
+  assert.equal(win.editorState.draft.attributes[0].useD20Modifier, true);
+  assert.equal(win.editorState.draft.attributes[1].useD20Modifier, false);
+});
+
+test('blank optional save difficulty remains null instead of becoming zero', () => {
+  const win = new RuleEditorWindow();
+  win.editorState.readOnly = false;
+  win.editorState.draft.saves.entries.push({ key: 'will', label: 'Will', sources: [], bonus: 0, target: 12, showOnSheet: true });
+  win.applyField({ type: 'number', value: '', dataset: { nestedList: 'saves.entries', index: '0', field: 'target', nullableNumber: 'true' } });
+  assert.equal(win.editorState.draft.saves.entries[0].target, null);
+});
+
+test('attribute display selection is part of the system draft and layout has a visible sheet preview', () => {
+  const win = new RuleEditorWindow();
+  win.editorState.readOnly = false;
+  win.applyField({ type: 'select-one', value: 'dots', dataset: { field: 'attributeDisplay' } });
+  assert.equal(win.editorState.draft.attributeDisplay, 'dots');
+  const html = renderEditor(stateFor());
+  assert.match(html, /data-field="attributeDisplay"/);
+  assert.match(html, /Sheet preview/);
+  assert.match(html, /ldm-editor-layout-preview/);
+});
+
 test('applying a group edit changes only the row it belongs to', () => {
   const win = new RuleEditorWindow();
+  win.editorState.readOnly = false;
   const el = (list, index, field, value) => ({ type: 'text', value, dataset: { list, index: String(index), field } });
   win.applyField(el('attributes', 1, 'group', 'Mind'));
   win.applyField(el('skills', 2, 'group', 'Field'));
-  assert.equal(win.state.draft.attributes[1].group, 'Mind');
-  assert.equal(win.state.draft.attributes[0].group, '');
-  assert.equal(win.state.draft.skills[2].group, 'Field');
-  assert.equal(win.state.draft.skills[0].group, '');
-  assert.equal(isDirty(win.state), true);
+  assert.equal(win.editorState.draft.attributes[1].group, 'Mind');
+  assert.equal(win.editorState.draft.attributes[0].group, '');
+  assert.equal(win.editorState.draft.skills[2].group, 'Field');
+  assert.equal(win.editorState.draft.skills[0].group, '');
+  assert.equal(isDirty(win.editorState), true);
+});
+
+test('a blur/change fired during refresh cannot start a nested editor update', () => {
+  const win = new RuleEditorWindow();
+  win.editorState.readOnly = false;
+  win.element = {};
+  const previous = win.editorState.draft.attributes[0].label;
+  let renderCount = 0;
+  win.rerenderBody = () => {
+    renderCount++;
+    win.onFieldEvent({
+      target: { type: 'text', value: 'stale blur value', dataset: { list: 'attributes', index: '0', field: 'label' } },
+    }, true);
+  };
+
+  win.refresh();
+
+  assert.equal(renderCount, 1, 'the blur event must not re-enter the render');
+  assert.equal(win.editorState.draft.attributes[0].label, previous, 'a detached field must not overwrite the draft');
 });
 
 test('validation errors of the layout are shown and disable Save', () => {
@@ -543,12 +592,12 @@ test('the editor section tabs use the shared tabs standard with ARIA wiring', ()
   state.section = 'layout';
   const html = renderEditor(state);
   assert.ok(html.includes('class="ldm-tablist" role="tablist" aria-label="Editor sections"'));
-  assert.equal((html.match(/role="tab"/g) ?? []).length, 10, 'one tab per section');
-  assert.equal((html.match(/role="tabpanel"/g) ?? []).length, 10, 'one panel per section');
+  assert.equal((html.match(/role="tab"/g) ?? []).length, 13, 'one tab per section');
+  assert.equal((html.match(/role="tabpanel"/g) ?? []).length, 13, 'one panel per section');
   assert.match(html, /data-ldm-tab="layout"[^>]*aria-selected="true"/);
   assert.match(html, /data-ldm-tab="dice"[^>]*aria-selected="false"/);
   const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
-  assert.equal(controls.length, 10);
+  assert.equal(controls.length, 13);
   for (const id of controls) assert.ok(html.includes(`id="${id}"`), `panel ${id} exists`);
   const active = html.match(/<div class="ldm-tabpanel" role="tabpanel"[^>]*data-ldm-panel="layout"[^>]*>/);
   assert.ok(active && !active[0].includes(' hidden'), 'the active section panel is visible');
@@ -567,87 +616,87 @@ test('section panels stay in the markup, so their fields keep their values acros
 
 function windowFor(cfg = defaultConfig()) {
   const win = new RuleEditorWindow();
-  win.state = stateFor(cfg);
+  win.editorState = stateFor(cfg);
   return win;
 }
 
 test('ed-tab-add adds a tab keyed from its default label, marked new and auto-keyed', () => {
   const win = windowFor();
   win.onAction('ed-tab-add', null, { dataset: { tabList: 'tabs' } });
-  const tabs = win.state.draft.layout.tabs;
-  assert.equal(tabs.length, 5);
-  assert.equal(tabs[4].key, 'new_tab');
-  assert.ok(win.state.keyEditable.has(tabs[4]));
-  assert.ok(win.state.autoKey.has(tabs[4]));
+  const tabs = win.editorState.draft.layout.tabs;
+  assert.equal(tabs.length, 7);
+  assert.equal(tabs[6].key, 'new_tab');
+  assert.ok(win.editorState.keyEditable.has(tabs[6]));
+  assert.ok(win.editorState.autoKey.has(tabs[6]));
 });
 
 test('ed-tab-add refuses a ninth tab and an unknown tab list', () => {
   const win = windowFor();
   for (let i = 0; i < 10; i++) win.onAction('ed-tab-add', null, { dataset: { tabList: 'tabs' } });
-  assert.equal(win.state.draft.layout.tabs.length, 8);
+  assert.equal(win.editorState.draft.layout.tabs.length, 8);
   win.onAction('ed-tab-add', null, { dataset: { tabList: 'nope' } });
-  assert.equal(win.state.draft.layout.tabs.length, 8);
+  assert.equal(win.editorState.draft.layout.tabs.length, 8);
 });
 
 test('ed-tab-remove never removes the last tab', () => {
   const win = windowFor();
   win.onAction('ed-tab-remove', null, { dataset: { tabList: 'itemTabs', index: '0' } });
-  assert.equal(win.state.draft.layout.itemTabs.length, 3);
+  assert.equal(win.editorState.draft.layout.itemTabs.length, 3);
   for (let i = 0; i < 6; i++) win.onAction('ed-tab-remove', null, { dataset: { tabList: 'itemTabs', index: '0' } });
-  assert.equal(win.state.draft.layout.itemTabs.length, 1);
+  assert.equal(win.editorState.draft.layout.itemTabs.length, 1);
 });
 
 test('ed-tab-move reorders the tabs of the list it names', () => {
   const win = windowFor();
   win.onAction('ed-tab-move', null, { dataset: { tabList: 'tabs', index: '1', dir: '1' } });
-  assert.deepEqual(win.state.draft.layout.tabs.map((t) => t.key), ['main', 'gear', 'powers', 'effects']);
+  assert.deepEqual(win.editorState.draft.layout.tabs.map((t) => t.key), ['main', 'magic', 'attacks', 'powers', 'gear', 'effects']);
 });
 
 test('ed-block-move and ed-block-remove work on the block of one tab', () => {
   const win = windowFor();
   win.onAction('ed-block-move', null, { dataset: { tabList: 'tabs', index: '0', block: '0', dir: '1' } });
-  assert.deepEqual(win.state.draft.layout.tabs[0].blocks, ['attributes', 'resources', 'skills']);
+  assert.deepEqual(win.editorState.draft.layout.tabs[0].blocks, ['attributes', 'resources', 'skills', 'saves']);
   win.onAction('ed-block-remove', null, { dataset: { tabList: 'tabs', index: '0', block: '2' } });
-  assert.deepEqual(win.state.draft.layout.tabs[0].blocks, ['attributes', 'resources']);
+  assert.deepEqual(win.editorState.draft.layout.tabs[0].blocks, ['attributes', 'resources', 'saves']);
 });
 
 test('ed-block-add places a free block chosen in the picker and refuses placed or unknown ones', () => {
   const win = windowFor();
   // Free "notes": take it off the Gear tab first.
-  win.onAction('ed-block-remove', null, { dataset: { tabList: 'tabs', index: '2', block: '2' } });
+  win.onAction('ed-block-remove', null, { dataset: { tabList: 'tabs', index: '4', block: '2' } });
   const target = (index, value) => ({
     dataset: { tabList: 'tabs', index: String(index) },
     parentElement: { querySelector: () => ({ value }) },
   });
   win.onAction('ed-block-add', null, target(0, 'notes'));
-  assert.deepEqual(win.state.draft.layout.tabs[0].blocks, ['resources', 'attributes', 'skills', 'notes']);
+  assert.deepEqual(win.editorState.draft.layout.tabs[0].blocks, ['resources', 'attributes', 'skills', 'saves', 'notes']);
   win.onAction('ed-block-add', null, target(0, 'resources'));
   win.onAction('ed-block-add', null, target(0, 'items:gear'));
   win.onAction('ed-block-add', null, target(0, 'not-a-block'));
-  assert.equal(win.state.draft.layout.tabs[0].blocks.length, 4, 'placed and unknown blocks are refused');
-  const gearCount = win.state.draft.layout.tabs.filter((t) => t.blocks.includes('items:gear')).length;
+  assert.equal(win.editorState.draft.layout.tabs[0].blocks.length, 5, 'placed and unknown blocks are refused');
+  const gearCount = win.editorState.draft.layout.tabs.filter((t) => t.blocks.includes('items:gear')).length;
   assert.equal(gearCount, 1, 'items:gear stays on exactly one tab');
 });
 
 test('a new tab label types the key until the GM edits the key', () => {
   const win = windowFor();
   win.onAction('ed-tab-add', null, { dataset: { tabList: 'tabs' } });
-  const index = win.state.draft.layout.tabs.length - 1;
+  const index = win.editorState.draft.layout.tabs.length - 1;
   const field = (value, name) => ({ type: 'text', value, dataset: { tabList: 'tabs', index: String(index), field: name } });
   win.applyField(field('Night Owl', 'label'));
-  assert.equal(win.state.draft.layout.tabs[index].label, 'Night Owl');
-  assert.equal(win.state.draft.layout.tabs[index].key, 'night_owl');
+  assert.equal(win.editorState.draft.layout.tabs[index].label, 'Night Owl');
+  assert.equal(win.editorState.draft.layout.tabs[index].key, 'night_owl');
   win.applyField(field('owls', 'key'));
-  assert.equal(win.state.draft.layout.tabs[index].key, 'owls');
+  assert.equal(win.editorState.draft.layout.tabs[index].key, 'owls');
   win.applyField(field('Dusk', 'label'));
-  assert.equal(win.state.draft.layout.tabs[index].key, 'owls', 'a key the GM edited is not overwritten');
+  assert.equal(win.editorState.draft.layout.tabs[index].key, 'owls', 'a key the GM edited is not overwritten');
 });
 
 test('columns and density edits reach the draft and the draft stays valid', () => {
   const win = windowFor();
   win.applyField({ type: 'select-one', value: '4', dataset: { tabList: 'tabs', index: '0', field: 'columns' } });
-  assert.equal(win.state.draft.layout.tabs[0].columns, 4);
+  assert.equal(win.editorState.draft.layout.tabs[0].columns, 4);
   win.applyField({ type: 'select-one', value: 'compact', dataset: { field: 'layout.density' } });
-  assert.equal(win.state.draft.layout.density, 'compact');
-  assert.ok(validateConfig(configFromDraft(win.state.draft)).ok);
+  assert.equal(win.editorState.draft.layout.density, 'compact');
+  assert.ok(validateConfig(configFromDraft(win.editorState.draft)).ok);
 });

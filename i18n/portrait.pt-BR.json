@@ -1,0 +1,14 @@
+{
+  "sandbox.portrait.title": "Imagem do item",
+  "sandbox.portrait.hint": "Escolha uma imagem e, se quiser, ajuste o recorte quadrado. O arquivo original é preservado.",
+  "sandbox.portrait.upload": "Enviar imagem",
+  "sandbox.portrait.library": "Escolher nos arquivos",
+  "sandbox.portrait.crop": "Ajustar recorte quadrado",
+  "sandbox.portrait.zoom": "Zoom",
+  "sandbox.portrait.horizontal": "Posição horizontal",
+  "sandbox.portrait.vertical": "Posição vertical",
+  "sandbox.portrait.saving": "Salvando…",
+  "sandbox.portrait.apply": "Aplicar imagem",
+  "sandbox.portrait.cropFailed": "Não foi possível recortar esta imagem. Envie uma imagem local ou aplique sem recortar.",
+  "sandbox.portrait.uploadFailed": "Não foi possível enviar a imagem."
+}

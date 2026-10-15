@@ -12,6 +12,7 @@
 // hostile: a GM account or an imported file can put anything there.
 
 import { esc, deepClone, isPlainObject } from '../lib/helpers.mjs';
+import { portraitMedia } from '../lib/portrait.mjs';
 import {
   ITEM_LAYOUT_BLOCKS,
   abilityKindLabel,
@@ -52,11 +53,29 @@ const IMG_URL_RE = /^(\/(?!\/)[^\s"'<>\\]*|https?:\/\/[^\s"'<>\\]+)$/;
 const LABEL_DEFAULTS = Object.freeze({
   name: 'Name',
   portrait: 'Image URL',
+  editPortrait: 'Edit item image',
+  imageAdvanced: 'Image address (advanced)',
   portraitHelp: 'A path starting with / or an http(s) URL.',
   portraitInvalid: 'That image URL is not allowed. It was not saved.',
   clearPortrait: 'Clear image',
   effectsUnavailable: 'The effects block could not be shown.',
   category: 'Category',
+  kind: 'Ability or spell kind',
+  damageBuilder: 'Build a damage roll',
+  diceCount: 'Number of dice',
+  dieSize: 'Die',
+  damageBonus: 'Damage bonus',
+  attackProfile: 'Attack profile',
+  attackBonus: 'Attack bonus',
+  attackDamageBonus: 'Damage bonus',
+  castingMethod: 'Casting method',
+  castingLevel: 'Spell level',
+  castingResource: 'Resource',
+  castingCost: 'Cost',
+  castingUses: 'Uses per spell',
+  castingCheck: 'Casting check',
+  applyDamage: 'Use this damage roll',
+  advancedDamage: 'Damage formula (advanced)',
   none: 'None',
   description: 'Description',
   quantity: 'Quantity',
@@ -164,6 +183,7 @@ export function normalizeItemName(value) {
 export function normalizeItemData(data, cfg, type) {
   const src = isPlainObject(data) ? data : {};
   const out = {};
+  if (typeof src.kind === 'string') out.kind = refOf(src.kind);
 
   if (typeof src.category === 'string') out.category = refOf(src.category);
   else out.category = categoryList(cfg)[0]?.key ?? '';
@@ -192,6 +212,18 @@ export function normalizeItemData(data, cfg, type) {
     res: refOf(cost.res),
     amount: intOf(cost.amount, 0, COST_MAX, 0),
   };
+
+  const casting = isPlainObject(src.casting) ? src.casting : {};
+  out.casting = {
+    method: ['inherit', 'free', 'resource', 'spontaneous', 'prepared', 'uses', 'check'].includes(casting.method) ? casting.method : 'inherit',
+    levelKey: refOf(casting.levelKey),
+    resourceKey: refOf(casting.resourceKey),
+    cost: intOf(casting.cost, 0, COST_MAX, 0),
+    usesMax: intOf(casting.usesMax, 0, USES_MAX, 0),
+    checkProfileKey: refOf(casting.checkProfileKey),
+  };
+  const attack = isPlainObject(src.attack) ? src.attack : {};
+  out.attack = { profileKey: refOf(attack.profileKey), bonus: intOf(attack.bonus, -BONUS_LIMIT, BONUS_LIMIT, 0), damageBonus: intOf(attack.damageBonus, -BONUS_LIMIT, BONUS_LIMIT, 0) };
 
   return out;
 }
@@ -291,6 +323,7 @@ export function buildItemContext(item, cfg, t, opts = {}) {
     showQuantity: !NO_QUANTITY.has(type),
     showUses: USES_TYPES.has(type),
     category,
+    kind: refField(Object.entries(cfg.abilityKinds ?? {}).map(([key, label]) => ({ key, label })), data.kind || '', L),
     quantity: data.quantity,
     uses: data.uses ?? { value: 0, max: 0 },
     description: data.description,
@@ -313,6 +346,13 @@ export function buildItemContext(item, cfg, t, opts = {}) {
     translate,
     labels: L,
     data,
+    castingOptions: {
+      methods: (cfg?.magic?.methods ?? ['free', 'resource', 'spontaneous', 'prepared', 'uses', 'check']).map((key) => ({ key, label: key })),
+      levels: (cfg?.magic?.levels ?? []).map((level) => ({ key: level.key, label: level.label })),
+      resources: resourceList(cfg),
+      attacks: cfg?.attacks?.profiles ?? [],
+      checkProfiles: cfg?.magic?.checkProfiles ?? [],
+    },
   };
 }
 
@@ -348,8 +388,8 @@ function fieldLabel(text, control) {
 function detailsBody(c, L, dis) {
   const initial = String(c.typeLabel || '?').charAt(0).toUpperCase();
   const img = c.portrait
-    ? `<img class="ldm-item-img" src="${esc(c.portrait)}" alt="">`
-    : `<span class="ldm-item-img ldm-item-img--empty" aria-hidden="true">${esc(initial)}</span>`;
+    ? portraitMedia(c.portrait, 'ldm-item-img')
+    : `<span class="ldm-item-img ldm-item-img--empty" aria-hidden="true"><svg viewBox="0 0 48 48" focusable="false"><path d="M10 8h19l9 9v22H10z"/><path d="M29 8v10h9M16 25h16M16 31h16"/></svg><span>${esc(initial)}</span></span>`;
   const clear = c.editable && c.imgUrl
     ? `<button type="button" class="ldm-item-btn" data-action="clear-portrait">${esc(L.clearPortrait)}</button>`
     : '';
@@ -361,17 +401,18 @@ function detailsBody(c, L, dis) {
 
   return `<div class="ldm-item-details">
   <div class="ldm-item-head">
-    <div class="ldm-item-portrait">${img}</div>
+    <button type="button" class="ldm-item-portrait" data-action="pick-portrait" title="${esc(L.editPortrait)}" aria-label="${esc(L.editPortrait)}"${dis}>${img}</button>
     <div class="ldm-item-head-fields">
       <span class="ldm-item-type">${esc(c.typeLabel)}</span>
       ${fieldLabel(L.name, name)}
     </div>
   </div>
-  ${fieldLabel(L.portrait, portrait)}
+  <details><summary>${esc(L.imageAdvanced)}</summary>${fieldLabel(L.portrait, portrait)}
   <span class="ldm-item-help" id="ldm-item-portrait-help">${esc(L.portraitHelp)}</span>
-  ${clear}
+  ${clear}</details>
   <div class="ldm-item-row">
     ${fieldLabel(L.category, selectHtml('category', c.category, dis, L.category))}
+    ${NO_QUANTITY.has(c.type) ? fieldLabel(L.kind, selectHtml('kind', c.kind, dis, L.kind)) : ''}
     ${quantity}
   </div>
 </div>`;
@@ -388,15 +429,34 @@ function rollBody(c, L, dis) {
     ? `<span class="ldm-item-error" id="ldm-item-damage-error" role="alert">${esc(L.damageInvalid)} (${esc(r.damageError)})</span>`
     : '';
   const damage = `<input type="text" class="ldm-item-input" data-field="roll.damage" value="${esc(r.damage)}" maxlength="${DAMAGE_MAX}" autocomplete="off" aria-describedby="${describedBy}"${r.damageError ? ' aria-invalid="true"' : ''}${dis}>`;
+  const simple = /^(\d+)d(\d+)([+-]\d+)?$/.exec(r.damage.replace(/\s/g, ''));
+  const builder = `<fieldset class="ldm-item-damage-builder"><legend>${esc(L.damageBuilder)}</legend><div class="ldm-item-row">
+    ${fieldLabel(L.diceCount, `<input class="ldm-item-input" type="number" data-damage="count" min="1" max="100" value="${simple ? Number(simple[1]) : 1}"${dis}>`)}
+    ${fieldLabel(L.dieSize, `<select class="ldm-item-input" data-damage="faces"${dis}>${[4,6,8,10,12,20,100].map((n) => `<option value="${n}"${n === Number(simple?.[2] || 6) ? ' selected' : ''}>D${n}</option>`).join('')}</select>`)}
+    ${fieldLabel(L.damageBonus, `<input class="ldm-item-input" type="number" data-damage="bonus" min="-99" max="99" value="${simple ? Number(simple[3] || 0) : 0}"${dis}>`)}
+    </div><button type="button" class="ldm-item-btn" data-action="build-damage"${dis}>${esc(L.applyDamage)}</button></fieldset>`;
+  const casting = c.type === 'spell' ? `<fieldset class="ldm-item-damage-builder"><legend>${esc(L.castingMethod ?? 'Casting method')}</legend><div class="ldm-item-row">
+    ${fieldLabel(L.castingMethod ?? 'Casting method', `<select class="ldm-item-input" data-field="casting.method"${dis}>${[['inherit','Use system default'],...c.castingOptions.methods.map((m)=>[m.key,m.label])].map(([key,label])=>`<option value="${esc(key)}"${c.data.casting.method===key?' selected':''}>${esc(label)}</option>`).join('')}</select>`)}
+    ${fieldLabel(L.castingLevel ?? 'Spell level', `<select class="ldm-item-input" data-field="casting.levelKey"${dis}>${[['','—'],...c.castingOptions.levels.map((m)=>[m.key,m.label])].map(([key,label])=>`<option value="${esc(key)}"${c.data.casting.levelKey===key?' selected':''}>${esc(label)}</option>`).join('')}</select>`)}
+    ${fieldLabel(L.castingResource ?? 'Resource', `<select class="ldm-item-input" data-field="casting.resourceKey"${dis}>${[['','—'],...c.castingOptions.resources.map((m)=>[m.key,m.label])].map(([key,label])=>`<option value="${esc(key)}"${c.data.casting.resourceKey===key?' selected':''}>${esc(label)}</option>`).join('')}</select>`)}
+    ${fieldLabel(L.castingCost ?? 'Cost', numberHtml('casting.cost', c.data.casting.cost, 0, COST_MAX, dis, L.castingCost ?? 'Cost'))}
+    ${fieldLabel(L.castingUses ?? 'Uses per spell', numberHtml('casting.usesMax', c.data.casting.usesMax, 0, USES_MAX, dis, L.castingUses ?? 'Uses per spell'))}
+    ${fieldLabel(L.castingCheck ?? 'Casting check', `<select class="ldm-item-input" data-field="casting.checkProfileKey"${dis}>${[['','—'],...c.castingOptions.checkProfiles.map((m)=>[m.key,m.label])].map(([key,label])=>`<option value="${esc(key)}"${c.data.casting.checkProfileKey===key?' selected':''}>${esc(label)}</option>`).join('')}</select>`)}
+  </div></fieldset>` : '';
+  const weapon = c.type === 'weapon' ? `<fieldset class="ldm-item-damage-builder"><legend>${esc(L.attackProfile)}</legend><div class="ldm-item-row">
+    ${fieldLabel(L.attackProfile, `<select class="ldm-item-input" data-field="attack.profileKey"${dis}>${[['','—'],...c.castingOptions.attacks.map((p)=>[p.key,p.label])].map(([key,label])=>`<option value="${esc(key)}"${c.data.attack.profileKey===key?' selected':''}>${esc(label)}</option>`).join('')}</select>`)}
+    ${fieldLabel(L.attackBonus, numberHtml('attack.bonus', c.data.attack.bonus, -BONUS_LIMIT, BONUS_LIMIT, dis, L.attackBonus))}
+    ${fieldLabel(L.attackDamageBonus, numberHtml('attack.damageBonus', c.data.attack.damageBonus, -BONUS_LIMIT, BONUS_LIMIT, dis, L.attackDamageBonus))}
+  </div></fieldset>` : '';
   return `<label class="ldm-item-check"><input type="checkbox" data-field="roll.enabled"${r.enabled ? ' checked' : ''}${dis}> <span>${esc(L.rollEnabled)}</span></label>
   <div class="ldm-item-row">
     ${fieldLabel(L.rollAttr, selectHtml('roll.attr', r.attr, dis, L.rollAttr))}
     ${fieldLabel(L.rollSkill, selectHtml('roll.skill', r.skill, dis, L.rollSkill))}
     ${fieldLabel(L.rollBonus, numberHtml('roll.bonus', r.bonus, -BONUS_LIMIT, BONUS_LIMIT, dis, L.rollBonus))}
   </div>
-  ${fieldLabel(L.damage, damage)}
+  ${casting}${weapon}${builder}<details${r.damageError ? ' open' : ''}><summary>${esc(L.advancedDamage)}</summary>${fieldLabel(L.damage, damage)}
   <span class="ldm-item-help" id="ldm-item-damage-help">${esc(L.damageHelp)}</span>
-  ${error}`;
+  ${error}</details><output class="ldm-item-help">${esc(L.damage)}: ${esc(r.damage || L.none)}</output>`;
 }
 
 function costBody(c, L, dis) {

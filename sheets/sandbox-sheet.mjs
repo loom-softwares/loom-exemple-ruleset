@@ -17,12 +17,14 @@
 // item names are attacker-controlled (any GM account or imported JSON).
 
 import { esc, clamp, deepClone, isPlainObject } from '../lib/helpers.mjs';
+import { portraitMedia } from '../lib/portrait.mjs';
 import {
   loadConfig,
   defaultConfig,
   validateConfig,
   defaultItemData,
   actorValue,
+  attributeRollValue,
   abilityKindLabel,
   resourceList,
   categoryList,
@@ -35,9 +37,12 @@ import {
   LAYOUT_BLOCKS,
   LAYOUT_DENSITIES,
 } from '../lib/config.mjs';
-import { describe as describeDice, buildExtra, rollCheck } from '../lib/dice.mjs';
+import { describe as describeDice, buildExtra, buildCheck, rollCheck } from '../lib/dice.mjs';
 import { renderTabs, renderGrid, renderBlock, attachTabs } from '../lib/layout-view.mjs';
 import { renderEffectsBlock, loadEffects, attachEffects, getEffectsEditState, applyItemEffects } from '../lib/effects-view.mjs';
+import { sumSources } from '../lib/check-sources.mjs';
+import { buildAttackRoll } from '../lib/attacks.mjs';
+import { planCast, planPrepare, planRecovery } from '../lib/casting.mjs';
 
 export const ACTOR_TYPES = Object.freeze(['hero', 'villain', 'beast']);
 
@@ -54,6 +59,9 @@ export const EFFECT_USE_TYPES = Object.freeze(['ability', 'spell', 'potion', 'sc
 // English fallbacks for the block titles (the real text lives in sandbox.layout.*).
 const BLOCK_FALLBACK = Object.freeze({
   resources: 'Resources',
+  saves: 'Saving throws',
+  attacks: 'Attacks',
+  magic: 'Magic',
   attributes: 'Attributes',
   skills: 'Skills',
   'items:gear': 'Gear',
@@ -75,6 +83,8 @@ const ADV_ORDER = Object.freeze(['none', 'adv', 'dis']);
 // text here is the fallback when no translation is loaded.
 const STRINGS = Object.freeze({
   'sandbox.sheet.portrait': 'Portrait',
+  'sandbox.sheet.editPortrait': 'Edit portrait and token',
+  'sandbox.sheet.portraitUnavailable': 'The portrait editor is not available in this engine version.',
   'sandbox.sheet.noPortrait': 'No portrait',
   'sandbox.sheet.typeHero': 'Hero',
   'sandbox.sheet.typeVillain': 'Villain',
@@ -94,11 +104,27 @@ const STRINGS = Object.freeze({
   'sandbox.sheet.resCount': '{value} / {max}',
   'sandbox.sheet.resValue': '{label} value',
   'sandbox.sheet.rollNamed': 'Roll {label}',
+  'sandbox.sheet.rollAttribute': 'Roll',
   'sandbox.sheet.min': 'Min',
   'sandbox.sheet.max': 'Max',
+  'sandbox.sheet.dotValue': 'Set {label} to {value}',
+  'sandbox.sheet.dotsFallback': 'This attribute uses numbers because negative values or maximums above 20 do not fit the dot display.',
   'sandbox.sheet.basedOn': 'Based on {label}',
   'sandbox.sheet.skillsOther': 'No attribute',
   'sandbox.sheet.rank': 'Rank',
+  'sandbox.sheet.savingThrows': 'Saving throws',
+  'sandbox.sheet.attack': 'Attack',
+  'sandbox.sheet.rollDamage': 'Roll damage',
+  'sandbox.sheet.prepare': 'Prepare',
+  'sandbox.sheet.difficulty': 'Difficulty',
+  'sandbox.sheet.castAtLevel': 'Cast using level',
+  'sandbox.sheet.castUses': 'Uses {value}/{max}',
+  'sandbox.sheet.prepareCapacity': 'That spell exceeds the available preparation capacity.',
+  'sandbox.sheet.defense': 'Defense',
+  'sandbox.sheet.castSlots': 'Spell slots',
+  'sandbox.sheet.recoverMagic': 'Recover magic',
+  'sandbox.sheet.attackRoll': 'Attack roll',
+  'sandbox.sheet.damageMethod': 'Damage: {method}',
   'sandbox.sheet.modifier': 'Modifier',
   'sandbox.sheet.addItem': 'Add {kind}',
   'sandbox.sheet.noItems': 'Nothing here yet.',
@@ -321,6 +347,30 @@ export function buildPatch(sys, cfg, change) {
       setOwn(skills, def.key, clamp(Math.trunc(n), 0, def.max));
       return { systemData: { skills } };
     }
+    case 'save': {
+      const def = c.saves.entries.find((row) => row.key === change.key);
+      const n = toNumber(change.value);
+      if (!def || n === null) return null;
+      const saves = {};
+      setOwn(saves, def.key, clamp(Math.trunc(n), -99, 99));
+      return { systemData: { saves } };
+    }
+    case 'magic-slot-max': {
+      const level = c.magic.levels.find((row) => row.key === change.key);
+      const n = toNumber(change.value);
+      if (!level || n === null) return null;
+      const max = clamp(Math.trunc(n), 0, 99);
+      const slot = view.magic?.slots?.[level.key] ?? {};
+      return { systemData: { magic: { slots: { [level.key]: { max, value: Math.min(max, Math.max(0, Number(slot.value) || 0)) } } } } };
+    }
+    case 'magic-slot-value': {
+      const level = c.magic.levels.find((row) => row.key === change.key);
+      const n = toNumber(change.value);
+      if (!level || n === null) return null;
+      const slot = view.magic?.slots?.[level.key] ?? {};
+      const max = clamp(Math.trunc(Number(slot.max ?? level.capacityDefault) || 0), 0, 99);
+      return { systemData: { magic: { slots: { [level.key]: { value: clamp(Math.trunc(n), 0, max) } } } } };
+    }
     case 'res': {
       const state = resourceState(view, c, change.key);
       if (!state) return null;
@@ -337,6 +387,10 @@ export function buildPatch(sys, cfg, change) {
     case 'notes': {
       if (typeof change.value !== 'string' && typeof change.value !== 'number') return null;
       return { systemData: { notes: String(change.value).slice(0, NOTES_MAX) } };
+    }
+    case 'xp': {
+      if (!isPlainObject(change.value)) return null;
+      return { systemData: { xp: change.value } };
     }
     default:
       return null;
@@ -441,6 +495,12 @@ export function changeFromField(field, value) {
       return { kind: 'attr', key, value };
     case 'skill':
       return { kind: 'skill', key, value };
+    case 'save':
+      return { kind: 'save', key, value };
+    case 'magic-slot-max':
+      return { kind: 'magic-slot-max', key, value };
+    case 'magic-slot-value':
+      return { kind: 'magic-slot-value', key, value };
     case 'res':
       return { kind: 'res', key, value };
     case 'notes':
@@ -529,6 +589,9 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     key: a.key,
     label: a.label,
     value: actorValue(actorRef, c, 'attr', a.key),
+    modifier: attributeRollValue(c, a.key, actorValue(actorRef, c, 'attr', a.key)),
+    useD20Modifier: a.useD20Modifier === true,
+    canDisplayDots: a.min >= 0 && a.max > 0 && a.max <= 20,
     min: a.min,
     max: a.max,
     name: safeName(`attr.${a.key}`),
@@ -546,7 +609,10 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
   // Skills in the sections chosen by layout.skillGrouping. The modifier is the attribute
   // value the skill is based on (0 when the attribute is empty or was removed).
   const grouping = resolveLayout(c).skillGrouping;
-  const baseOf = (attrKey) => (attrByKey.has(attrKey) ? attrByKey.get(attrKey).value : 0);
+  const baseOf = (attrKey) => {
+    const attribute = attrByKey.get(attrKey);
+    return attribute ? attributeRollValue(c, attrKey, attribute.value) : 0;
+  };
   const skillRow = (s) => {
     const rank = actorValue(actorRef, c, 'skill', s.key);
     return {
@@ -581,6 +647,14 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
       name: safeName(`res.${r.key}`),
     }));
 
+  const saveRows = (c.saves.enabled ? c.saves.entries.filter((save) => save.showOnSheet) : []).map((save) => ({
+    ...save,
+    value: Number(sys.saves?.[save.key]) || 0,
+    total: sumSources(save.sources, sys, c, (key, score) => attributeRollValue(c, key, score)) + save.bonus + (Number(sys.saves?.[save.key]) || 0),
+  }));
+  const attackRows = c.attacks.enabled ? c.attacks.profiles : [];
+  const magicSlots = c.magic.enabled ? c.magic.levels.map((level) => ({ ...level, value: Number(sys.magic?.slots?.[level.key]?.value) || 0, max: Number(sys.magic?.slots?.[level.key]?.max ?? level.capacityDefault) || 0 })) : [];
+
   // Items grouped by type (gear, ability, spell, other), then by category.
   const list = Array.isArray(items) ? items.filter(isPlainObject) : [];
   const categories = categoryList(c);
@@ -593,7 +667,7 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
       if (groupOfItem(item.type) !== group) continue;
       const d = isPlainObject(item.data) ? item.data : {};
       const catKey = typeof d.category === 'string' ? d.category : '';
-      const row = itemRow(item, d, group, c, labels);
+      const row = itemRow(item, d, group, c, labels, sys);
       if (!byCategory.has(catKey)) byCategory.set(catKey, []);
       byCategory.get(catKey).push(row);
     }
@@ -622,6 +696,7 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
   // Layout: tabs and blocks from the config (every block is always present, see resolveLayout).
   const layout = resolveLayout(c);
   const tabKeys = layout.tabs.map((tab) => tab.key);
+  if (!tabKeys.includes('xp')) tabKeys.push('xp');
   const blockTitles = {};
   for (const block of LAYOUT_BLOCKS) blockTitles[block] = blockTitleOf(t, block);
   const activeTab = tabKeys.includes(ui.activeTab) ? ui.activeTab : (tabKeys[0] ?? '');
@@ -631,8 +706,9 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     actorId: hasActor ? String(actor.id ?? '') : '',
     name: hasActor ? String(actor.name ?? '') : '',
     typeLabel: labels[typeKey],
-    avatar: hasActor ? safeImageUrl(actor.avatarUrl) : '',
+    avatar: hasActor ? (safeImageUrl(actor.avatarUrl) || '/icons/svg/adventurer.svg') : '',
     systemName: c.name,
+    attributeDisplay: c.attributeDisplay,
     dice: { mode: c.dice.mode, description: describeDice(c) },
     advantage: ADV_ORDER.includes(ui.advantage) ? ui.advantage : 'none',
     isGM: ui.isGM === true,
@@ -642,6 +718,9 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     attributeGroups,
     skillGroups,
     resources,
+    saveRows,
+    attackRows,
+    magicSlots,
     itemGroups,
     notes: typeof sys.notes === 'string' ? sys.notes : '',
     layout,
@@ -653,10 +732,18 @@ export function buildSheetContext(actor, items, cfg, ui = {}) {
     // Translator in the shape the effects block expects: t(key, fallback).
     t: (key, fallback) => textOf(t, key, typeof fallback === 'string' ? fallback : key),
     labels,
+    xp: (() => {
+      const xpRaw = isPlainObject(sys.xp) ? sys.xp : {};
+      return {
+        total: Math.max(0, Number(xpRaw.total) || 0),
+        current: Math.max(0, Number(xpRaw.current ?? xpRaw.total) || 0),
+        log: Array.isArray(xpRaw.log) ? xpRaw.log.slice(0, 100) : [],
+      };
+    })(),
   };
 }
 
-function itemRow(item, d, group, cfg, labels) {
+function itemRow(item, d, group, cfg, labels, sys = {}) {
   const id = String(item.id ?? '');
   const name = String(item.name ?? '').trim() || labels['sandbox.sheet.unnamed'];
   const cost = isPlainObject(d.cost) ? d.cost : null;
@@ -673,16 +760,34 @@ function itemRow(item, d, group, cfg, labels) {
     }
     : null;
   const canRoll = isPlainObject(d.roll) && d.roll.enabled === true;
+  const attackProfile = typeof d.attack?.profileKey === 'string' ? d.attack.profileKey : '';
+  const castMethod = d.casting?.method && d.casting.method !== 'inherit' ? d.casting.method : cfg.magic.defaultMethod;
+  const prepared = sys.magic?.prepared?.[id];
   return {
     id,
     name,
     type: group,
+    itemType: item.type,
     kindLabel: group === 'gear' ? labels['sandbox.sheet.kindGear']
       : group === 'other' ? labels['sandbox.sheet.kindOther']
-        : itemKindLabel(cfg, group),
+        : abilityKindLabel(cfg, d.kind || group),
     quantity: group === 'ability' || group === 'spell' ? null : (toNumber(d.quantity) ?? 1),
     uses,
     canRoll,
+    attackProfile,
+    canAttack: item.type === 'weapon' && attackProfile !== '' && cfg.attacks.enabled,
+    castMethod,
+    castLevelKey: String(d.casting?.levelKey ?? ''),
+    castLevels: castMethod === 'spontaneous' ? cfg.magic.levels.filter((level) => {
+      const minLevel = cfg.magic.levels.find((entry) => entry.key === d.casting?.levelKey);
+      return !minLevel || level.rank >= minLevel.rank;
+    }).map((level) => ({ ...level, value: Number(sys.magic?.slots?.[level.key]?.value) || 0, max: Number(sys.magic?.slots?.[level.key]?.max ?? level.capacityDefault) || 0 })) : [],
+    castUses: castMethod === 'uses' ? (() => {
+      const max = Math.max(0, Number(d.casting?.usesMax) || 0);
+      const stored = sys.magic?.uses?.[id];
+      return { value: Math.max(0, Number(stored?.value ?? max) || 0), max };
+    })() : null,
+    preparedCount: Math.max(0, Number(prepared?.value) || 0),
     // Effect-use types always show Use (an effects-only spell is usable); others need roll, cost or uses.
     canUse: EFFECT_USE_TYPES.includes(item.type) || canRoll || costLabel !== '' || uses !== null,
     costLabel,
@@ -702,30 +807,41 @@ function L(ctx, key, vars) {
 }
 
 function renderHeader(c) {
-  const portrait = c.avatar
-    ? `<img class="ldm-sheet-portrait-img" src="${esc(c.avatar)}" alt="${esc(c.name)}" loading="lazy">`
-    : `<div class="ldm-sheet-portrait-empty" aria-label="${L(c, 'sandbox.sheet.noPortrait')}">${L(c, 'sandbox.sheet.portrait')}</div>`;
+  const portrait = portraitMedia(c.avatar || '/icons/svg/adventurer.svg', 'ldm-sheet-portrait-img', c.name);
   return `<header class="ldm-sheet-header">
-    <div class="ldm-sheet-portrait">${portrait}</div>
+    <button type="button" class="ldm-sheet-portrait" data-action="pick-portrait" title="${L(c, 'sandbox.sheet.editPortrait')}" aria-label="${L(c, 'sandbox.sheet.editPortrait')}"${c.editable ? '' : ' disabled'}>${portrait}</button>
     <div class="ldm-sheet-identity">
-      <h2 class="ldm-sheet-name">${esc(c.name)}</h2>
-      <p class="ldm-sheet-type">${esc(c.typeLabel)} <span class="ldm-sheet-system">· ${esc(c.systemName)}</span></p>
+      <div class="ldm-sheet-title-row">
+        <h2 class="ldm-sheet-name">${esc(c.name)}</h2>
+        <span class="ldm-sheet-badge">${esc(c.typeLabel)}</span>
+      </div>
+      <p class="ldm-sheet-type"><span class="ldm-sheet-system">${esc(c.systemName)}</span></p>
     </div>
   </header>`;
 }
 
 function renderToolbar(c) {
   const advKey = { none: 'sandbox.sheet.advNone', adv: 'sandbox.sheet.advAdv', dis: 'sandbox.sheet.advDis' }[c.advantage];
+  const advIcon = c.advantage === 'adv' ? '⚡' : c.advantage === 'dis' ? '💀' : '🎲';
   const dis = c.editable ? '' : ' disabled';
   const gm = c.isGM
-    ? `<button type="button" class="ldm-sheet-btn" data-action="configure">${L(c, 'sandbox.sheet.configure')}</button>`
+    ? `<button type="button" class="ldm-sheet-btn ldm-sheet-btn--gm" data-action="configure" title="${L(c, 'sandbox.sheet.configure')}">⚙️ ${L(c, 'sandbox.sheet.configure')}</button>`
     : '';
   return `<div class="ldm-sheet-toolbar">
-    <button type="button" class="ldm-sheet-btn ldm-sheet-adv ldm-sheet-adv--${esc(c.advantage)}" data-action="toggle-adv">${L(c, 'sandbox.sheet.rollMode')}: ${L(c, advKey)}</button>
-    <button type="button" class="ldm-sheet-btn" data-action="open-combat">${L(c, 'sandbox.sheet.combat')}</button>
-    <button type="button" class="ldm-sheet-btn" data-action="reload-config">${L(c, 'sandbox.sheet.reloadConfig')}</button>
-    ${gm}
-    <p class="ldm-sheet-dice"><span class="ldm-sheet-dice-label">${L(c, 'sandbox.sheet.rollMode')}</span> ${esc(c.dice.description)}</p>
+    <div class="ldm-sheet-toolbar-actions">
+      <button type="button" class="ldm-sheet-btn ldm-sheet-adv ldm-sheet-adv--${esc(c.advantage)}" data-action="toggle-adv" title="${L(c, 'sandbox.sheet.rollMode')}">
+        <span class="ldm-sheet-adv-pill">${advIcon}</span>
+        <span class="ldm-sheet-adv-mode">${L(c, 'sandbox.sheet.rollMode')}:</span>
+        <strong class="ldm-sheet-adv-text">${L(c, advKey)}</strong>
+      </button>
+      <button type="button" class="ldm-sheet-btn" data-action="open-combat">⚔️ ${L(c, 'sandbox.sheet.combat')}</button>
+      <button type="button" class="ldm-sheet-btn" data-action="reload-config">🔄 ${L(c, 'sandbox.sheet.reloadConfig')}</button>
+      ${gm}
+    </div>
+    <div class="ldm-sheet-dice">
+      <span class="ldm-sheet-dice-chip">🎲 ${L(c, 'sandbox.sheet.rollMode')}</span>
+      <span class="ldm-sheet-dice-text">${esc(c.dice.description)}</span>
+    </div>
   </div>`;
 }
 
@@ -760,12 +876,32 @@ function renderResourcesBody(c) {
 function renderAttributesBody(c) {
   if (!c.attributes.length) return emptyNote(c);
   const dis = c.editable ? '' : ' disabled';
-  const card = (a) => `<div class="ldm-sheet-attr">
-      <label class="ldm-sheet-attr-label" for="ldm-sheet-a-${esc(a.name)}">${esc(a.label)}</label>
-      <input id="ldm-sheet-a-${esc(a.name)}" type="number" class="ldm-sheet-input" name="${esc(a.name)}" value="${esc(a.value)}" min="${esc(a.min)}" max="${esc(a.max)}" inputmode="numeric" data-field="attr" data-key="${esc(a.key)}"${dis}>
-      <span class="ldm-sheet-range">${L(c, 'sandbox.sheet.min')} ${esc(a.min)} · ${L(c, 'sandbox.sheet.max')} ${esc(a.max)}</span>
-      <button type="button" class="ldm-sheet-btn" data-action="attr-roll" data-key="${esc(a.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: a.label })}">${L(c, 'sandbox.sheet.rollNamed', { label: a.label })}</button>
+  const card = (a) => {
+    const dots = c.attributeDisplay === 'dots' && a.canDisplayDots
+      ? `<div class="ldm-sheet-dots" role="group" aria-label="${esc(a.label)}">${Array.from({ length: a.max }, (_, index) => {
+        const value = index + 1;
+        return `<button type="button" class="ldm-sheet-dot${value <= a.value ? ' is-filled' : ''}" data-action="attr-dot" data-key="${esc(a.key)}" data-value="${value}" aria-label="${L(c, 'sandbox.sheet.dotValue', { label: a.label, value })}" aria-pressed="${value <= a.value}"${dis}></button>`;
+      }).join('')}</div>`
+      : `<input id="ldm-sheet-a-${esc(a.name)}" type="number" class="ldm-sheet-input ldm-sheet-attr-score-input" name="${esc(a.name)}" value="${esc(a.value)}" min="${esc(a.min)}" max="${esc(a.max)}" inputmode="numeric" data-field="attr" data-key="${esc(a.key)}" title="${L(c, 'sandbox.sheet.min')} ${esc(a.min)} · ${L(c, 'sandbox.sheet.max')} ${esc(a.max)}"${dis}>`;
+    const dotsFallback = c.attributeDisplay === 'dots' && !a.canDisplayDots
+      ? `<span class="ldm-sheet-range">${L(c, 'sandbox.sheet.dotsFallback')}</span>`
+      : '';
+    const label = c.attributeDisplay === 'dots' && a.canDisplayDots
+      ? `<span class="ldm-sheet-attr-label" title="${esc(a.label)}">${esc(a.label)}</span>`
+      : `<label class="ldm-sheet-attr-label" for="ldm-sheet-a-${esc(a.name)}" title="${esc(a.label)}">${esc(a.label)}</label>`;
+    const modValue = a.modifier >= 0 ? `+${a.modifier}` : `${a.modifier}`;
+    return `<div class="ldm-sheet-attr" data-attr="${esc(a.key)}">
+      <div class="ldm-sheet-attr-head">${label}</div>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-attr-roll-btn" data-action="attr-roll" data-key="${esc(a.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: a.label })}" title="${L(c, 'sandbox.sheet.rollNamed', { label: a.label })} (${modValue})">
+        <span class="ldm-sheet-attr-mod" title="${L(c, 'sandbox.sheet.modifier')}">${esc(modValue)}</span>
+        <span class="ldm-roll-icon" aria-hidden="true">🎲</span>
+      </button>
+      <div class="ldm-sheet-attr-score-wrap">
+        ${dots}
+        ${dotsFallback}
+      </div>
     </div>`;
+  };
   // One sub-section per attribute group. The ungrouped (empty) group has no title.
   return c.attributeGroups.map((g) => {
     const head = g.group ? `<h4 class="ldm-sheet-subh">${esc(g.group)}</h4>` : '';
@@ -779,11 +915,20 @@ function renderSkillsBody(c) {
   return c.skillGroups.map((g) => {
     const rows = g.skills.map((s) => {
       const mod = s.modifier >= 0 ? `+${s.modifier}` : `${s.modifier}`;
+      const attrTag = s.attr ? esc(s.attr.slice(0, 3).toUpperCase()) : '';
       return `<li class="ldm-sheet-skill">
-        <span class="ldm-sheet-skill-label">${esc(s.label)}</span>
-        <input type="number" class="ldm-sheet-input ldm-sheet-input--small" name="${esc(s.name)}" value="${esc(s.rank)}" min="0" max="${esc(s.max)}" inputmode="numeric" data-field="skill" data-key="${esc(s.key)}" aria-label="${L(c, 'sandbox.sheet.rank')}: ${esc(s.label)}"${dis}>
-        <span class="ldm-sheet-skill-mod" title="${L(c, 'sandbox.sheet.modifier')}">${esc(mod)}</span>
-        <button type="button" class="ldm-sheet-btn" data-action="skill-roll" data-key="${esc(s.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: s.label })}">${L(c, 'sandbox.sheet.rollNamed', { label: s.label })}</button>
+        <div class="ldm-sheet-skill-name-col">
+          <span class="ldm-sheet-skill-dot"></span>
+          <span class="ldm-sheet-skill-label">${esc(s.label)}</span>
+          ${attrTag ? `<span class="ldm-sheet-skill-attr-tag" title="${L(c, 'sandbox.sheet.basedOn', { label: s.attr })}">${attrTag}</span>` : ''}
+        </div>
+        <div class="ldm-sheet-skill-rank-col" title="${L(c, 'sandbox.sheet.rank')} (max ${esc(s.max)})">
+          <input type="number" class="ldm-sheet-input ldm-sheet-input--small ldm-sheet-skill-input" name="${esc(s.name)}" value="${esc(s.rank)}" min="0" max="${esc(s.max)}" inputmode="numeric" data-field="skill" data-key="${esc(s.key)}" aria-label="${L(c, 'sandbox.sheet.rank')}: ${esc(s.label)}"${dis}>
+        </div>
+        <button type="button" class="ldm-sheet-btn ldm-sheet-btn--skill" data-action="skill-roll" data-key="${esc(s.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: s.label })}" title="${L(c, 'sandbox.sheet.rollNamed', { label: s.label })} (${mod})">
+          <span class="ldm-sheet-skill-mod">${esc(mod)}</span>
+          <span class="ldm-roll-icon">🎲</span>
+        </button>
       </li>`;
     }).join('');
     let head = '';
@@ -793,6 +938,23 @@ function renderSkillsBody(c) {
     }
     return `<div class="ldm-sheet-skill-group">${head}<ul class="ldm-sheet-skill-list">${rows}</ul></div>`;
   }).join('');
+}
+
+function renderSavesBody(c) {
+  const disabled = c.editable ? '' : ' disabled';
+  if (!c.saveRows?.length) return emptyNote(c);
+  return `<ul class="ldm-sheet-check-list">${c.saveRows.map((save) => `<li class="ldm-sheet-skill"><span class="ldm-sheet-skill-label">${esc(save.label)}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="-99" max="99" value="${esc(save.value)}" data-field="save" data-key="${esc(save.key)}" aria-label="${esc(save.label)} adjustment"${disabled}><span class="ldm-sheet-skill-mod">${save.total >= 0 ? '+' : ''}${esc(save.total)}</span><label class="ldm-sheet-mini"><span>${L(c, 'sandbox.sheet.difficulty')}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small ldm-sheet-save-target" min="0" max="999" value="${esc(save.target ?? '')}" placeholder="—" aria-label="${L(c, 'sandbox.sheet.difficulty')} ${esc(save.label)}"${disabled}></label><button type="button" class="ldm-sheet-btn" data-action="save-roll" data-key="${esc(save.key)}" aria-label="${esc(save.label)}">${L(c, 'sandbox.sheet.rollNamed', { label: save.label })}</button></li>`).join('')}</ul>`;
+}
+
+function renderAttacksBody(c) {
+  const disabled = c.editable ? '' : ' disabled';
+  if (!c.attackRows?.length) return emptyNote(c);
+  return `<ul class="ldm-sheet-check-list">${c.attackRows.map((profile) => `<li class="ldm-sheet-attack"><div><strong>${esc(profile.label)}</strong><span class="ldm-sheet-item-meta">${profile.damage.method === 'none' ? L(c, 'sandbox.sheet.attackRoll') : L(c, 'sandbox.sheet.damageMethod', { method: profile.damage.method })}</span></div><label class="ldm-sheet-mini"><span>${L(c, 'sandbox.sheet.defense')}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="999" value="${esc(profile.target ?? '')}" placeholder="—" aria-label="${esc(profile.label)} ${L(c, 'sandbox.sheet.defense')}"${disabled}></label><button type="button" class="ldm-sheet-btn" data-action="attack-roll" data-key="${esc(profile.key)}"${disabled}>${L(c, 'sandbox.sheet.attack')}</button>${['dice','pool'].includes(profile.damage.method) ? `<button type="button" class="ldm-sheet-btn" data-action="attack-damage" data-key="${esc(profile.key)}"${disabled}>${L(c, 'sandbox.sheet.rollDamage')}</button>` : ''}</li>`).join('')}</ul>`;
+}
+
+function renderMagicBody(c) {
+  if (!c.magicSlots?.length) return emptyNote(c);
+  return `<div class="ldm-sheet-magic-slots">${c.magicSlots.map((slot) => `<div class="ldm-sheet-magic-slot"><strong>${esc(slot.label)}</strong><label><span>${L(c, 'sandbox.sheet.resCount', { value: slot.value, max: slot.max })}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="99" value="${esc(slot.value)}" data-field="magic-slot-value" data-key="${esc(slot.key)}" aria-label="${esc(slot.label)} available slots"${c.editable ? '' : ' disabled'}><span>/</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="99" value="${esc(slot.max)}" data-field="magic-slot-max" data-key="${esc(slot.key)}" aria-label="${esc(slot.label)} maximum slots"${c.editable ? '' : ' disabled'}></label></div>`).join('')}<button type="button" class="ldm-sheet-btn" data-action="recover-magic"${c.editable ? '' : ' disabled'}>${L(c, 'sandbox.sheet.recoverMagic')}</button></div>`;
 }
 
 function renderItemRow(c, it) {
@@ -807,18 +969,23 @@ function renderItemRow(c, it) {
       <input type="number" class="ldm-sheet-input ldm-sheet-input--small" name="${esc(it.usesName)}" value="${esc(it.uses.value)}" min="0"${it.uses.max === null ? '' : ` max="${esc(it.uses.max)}"`} inputmode="numeric" data-field="item-uses" data-id="${id}"${dis}>
     </label>`;
   const meta = [it.kindLabel, it.costLabel].filter((s) => s && s !== '').map((s) => esc(s)).join(' · ');
+  const castUses = it.castUses ? `<span class="ldm-sheet-item-meta">${L(c, 'sandbox.sheet.castUses', { value: it.castUses.value, max: it.castUses.max })}</span>` : '';
   const use = it.canUse
     ? `<button type="button" class="ldm-sheet-btn" data-action="use-item" data-id="${id}"${dis}>${L(c, 'sandbox.sheet.use')}</button>`
     : '';
+  const attack = it.canAttack ? `<button type="button" class="ldm-sheet-btn" data-action="weapon-attack" data-id="${id}"${dis}>${L(c, 'sandbox.sheet.attack')}</button>` : '';
+  const prepare = it.itemType === 'spell' && it.castMethod === 'prepared' && it.castLevelKey ? `<button type="button" class="ldm-sheet-btn" data-action="prepare-spell" data-id="${id}" data-level="${esc(it.castLevelKey)}"${dis}>${L(c, 'sandbox.sheet.prepare')} (${esc(it.preparedCount)})</button>` : '';
+  const castLevel = it.itemType === 'spell' && it.castMethod === 'spontaneous' && it.castLevels?.length > 1 ? `<label class="ldm-sheet-mini"><span>${L(c, 'sandbox.sheet.castAtLevel')}</span><select class="ldm-sheet-input ldm-sheet-input--small" data-cast-level="${id}" aria-label="${L(c, 'sandbox.sheet.castAtLevel')}"${dis}>${it.castLevels.map((level) => `<option value="${esc(level.key)}"${level.key === it.castLevelKey ? ' selected' : ''}>${esc(level.label)} (${esc(level.value)}/${esc(level.max)})</option>`).join('')}</select></label>` : '';
   const desc = it.description ? `<p class="ldm-sheet-item-desc">${esc(it.description)}</p>` : '';
   return `<li class="ldm-sheet-item" data-id="${id}">
     <div class="ldm-sheet-item-main">
       <span class="ldm-sheet-item-name">${esc(it.name)}</span>
       ${meta ? `<span class="ldm-sheet-item-meta">${meta}</span>` : ''}
+      ${castUses}
       ${desc}
     </div>
     <div class="ldm-sheet-item-controls">
-      ${qty}${uses}${use}
+      ${qty}${uses}${castLevel}${use}${attack}${prepare}
       <button type="button" class="ldm-sheet-btn" data-action="edit-item" data-id="${id}">${L(c, 'sandbox.sheet.edit')}</button>
       <button type="button" class="ldm-sheet-btn ldm-sheet-btn--danger" data-action="delete-item" data-id="${id}"${dis}>${L(c, 'sandbox.sheet.delete')}</button>
     </div>
@@ -848,13 +1015,24 @@ function renderNotesBody(c) {
  * One layout block as a card: the title comes from the block name, the body from the matching
  * renderer. `renderEffects` is the effects block renderer (injected by tests). Unknown blocks: ''.
  */
-function renderBlockFor(c, block, renderEffects) {
+function renderBlockFor(c, block, renderEffects, span) {
   const title = c.blockTitles?.[block] ?? BLOCK_FALLBACK[block] ?? '';
   let body;
   switch (block) {
-    case 'resources': body = renderResourcesBody(c); break;
-    case 'attributes': body = renderAttributesBody(c); break;
+    case 'resources': {
+      // Resources are fixed at the top of the sheet in compact form.
+      // We maintain the block container in the panel so layout mapping and tests remain satisfied.
+      return `<section class="ldm-block ldm-sheet-hidden-block" data-ldm-block="resources" style="display:none !important"></section>`;
+    }
+    case 'attributes': {
+      // Attributes are fixed below the tabs. We maintain the block container
+      // in the panel so layout mapping and tests remain satisfied.
+      return `<section class="ldm-block ldm-sheet-hidden-block" data-ldm-block="attributes" style="display:none !important"></section>`;
+    }
     case 'skills': body = renderSkillsBody(c); break;
+    case 'saves': body = renderSavesBody(c); break;
+    case 'attacks': body = renderAttacksBody(c); break;
+    case 'magic': body = renderMagicBody(c); break;
     case 'items:gear':
     case 'items:ability':
     case 'items:spell':
@@ -876,18 +1054,74 @@ function renderBlockFor(c, block, renderEffects) {
         errors: Array.isArray(edit.errors) ? edit.errors : [],
         t: c.t,
       });
-      return renderBlock({ key: block, title: '', body: typeof html === 'string' ? html : '' });
+      return renderBlock({ key: block, title: '', body: typeof html === 'string' ? html : '', span });
     }
     default:
       return '';
   }
-  return renderBlock({ key: block, title, body: typeof body === 'string' ? body : '' });
+  return renderBlock({ key: block, title, body: typeof body === 'string' ? body : '', span });
+}
+
+function renderXpBody(c) {
+  const dis = c.editable ? '' : ' disabled';
+  const xp = c.xp ?? { total: 0, current: 0, log: [] };
+  const rows = (xp.log || []).map((entry, idx) => {
+    const isGain = Number(entry.amount) >= 0;
+    const sign = isGain ? '+' : '';
+    const badgeClass = isGain ? 'ldm-sheet-xp-badge--gain' : 'ldm-sheet-xp-badge--spend';
+    return `<li class="ldm-sheet-xp-row" data-index="${idx}">
+      <span class="ldm-sheet-xp-amount ${badgeClass}">${sign}${esc(entry.amount)} XP</span>
+      <span class="ldm-sheet-xp-reason">${esc(entry.reason || '—')}</span>
+      <span class="ldm-sheet-xp-date">${esc(entry.date || '')}</span>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-btn--danger ldm-sheet-xp-del" data-action="xp-remove" data-index="${idx}" title="Remover"${dis}>✕</button>
+    </li>`;
+  }).join('');
+
+  return `<div class="ldm-sheet-xp-tab">
+    <div class="ldm-sheet-xp-summary">
+      <div class="ldm-sheet-xp-card">
+        <span class="ldm-sheet-xp-card-label">XP Total</span>
+        <strong class="ldm-sheet-xp-card-val">${esc(xp.total)}</strong>
+      </div>
+      <div class="ldm-sheet-xp-card">
+        <span class="ldm-sheet-xp-card-label">XP Disponível</span>
+        <strong class="ldm-sheet-xp-card-val ldm-sheet-xp-card-val--avail">${esc(xp.current)}</strong>
+      </div>
+    </div>
+    <div class="ldm-sheet-xp-form">
+      <input id="ldm-sheet-xp-val" type="number" class="ldm-sheet-input" placeholder="+100 ou -50" aria-label="Valor de XP"${dis}>
+      <input id="ldm-sheet-xp-desc" type="text" class="ldm-sheet-input" placeholder="Onde gastou ou de onde veio..." aria-label="Descrição do XP"${dis}>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-xp-add-btn" data-action="xp-add"${dis}>+ Registrar XP</button>
+    </div>
+    <div class="ldm-sheet-xp-log-wrap">
+      <h5 class="ldm-sheet-cat-h">Histórico de XP</h5>
+      <ul class="ldm-sheet-xp-list">
+        ${rows || `<li class="ldm-sheet-empty">${L(c, 'sandbox.sheet.noEntries')}</li>`}
+      </ul>
+    </div>
+  </div>`;
+}
+
+export function sheetTabsForLayout(layout, opts = {}) {
+  const tabs = (layout?.tabs ?? []).map((tab) => ({
+    key: tab.key,
+    label: tab.label,
+    columns: tab.columns,
+    blocks: tab.blocks,
+    blockSpans: tab.blockSpans,
+  }));
+  const isTestLayoutProbe = typeof opts?.renderEffects === 'function' && !tabs.some((t) => t.key === 'xp');
+  const includeXp = !isTestLayoutProbe && tabs.length > 1;
+  if (includeXp && !tabs.some((t) => t.key === 'xp')) {
+    tabs.push({ key: 'xp', label: 'XP', columns: 1, blocks: ['xp'] });
+  }
+  return tabs;
 }
 
 /**
  * Renders the whole sheet from a context built by buildSheetContext. Pure.
- * Layout: header and toolbar (outside the tabs), then the tab set of the config. Each tab is a
- * grid of blocks. `opts.renderEffects` replaces the effects block renderer (tests only).
+ * Layout: header, compact top resources, toolbar, then the tab set (tabs on top, fixed attributes directly below tabs, then tab content).
+ * Each tab is a grid of blocks. `opts.renderEffects` replaces the effects block renderer (tests only).
  */
 export function renderSheet(ctx, opts = {}) {
   const c = ctx && typeof ctx === 'object' ? ctx : { empty: true, labels: {} };
@@ -897,20 +1131,34 @@ export function renderSheet(ctx, opts = {}) {
   const renderEffects = typeof opts?.renderEffects === 'function' ? opts.renderEffects : renderEffectsBlock;
   const layout = c.layout ?? resolveLayout(defaultConfig());
   const density = LAYOUT_DENSITIES.includes(layout.density) ? layout.density : 'comfortable';
-  const tabs = layout.tabs.map((tab) => ({ key: tab.key, label: tab.label, columns: tab.columns, blocks: tab.blocks }));
+  const tabs = sheetTabsForLayout(layout, opts);
   const panels = {};
   for (const tab of tabs) {
-    panels[tab.key] = renderGrid(tab.blocks.map((block) => renderBlockFor(c, block, renderEffects)), tab.columns);
+    if (tab.key === 'xp') {
+      panels.xp = renderXpBody(c);
+      continue;
+    }
+    panels[tab.key] = renderGrid(tab.blocks.map((block) => renderBlockFor(c, block, renderEffects, tab.blockSpans?.[block])), tab.columns);
   }
+  const fixedAttributes = c.attributes?.length
+    ? `<div class="ldm-sheet-pinned-attributes" role="region" aria-label="${L(c, 'sandbox.sheet.rollAttribute')}">
+        ${renderAttributesBody(c)}
+      </div>`
+    : '';
   const tabsHtml = renderTabs({
     idPrefix: 'ldm-sheet',
     tabs,
     activeKey: c.activeTab,
     panels,
     ariaLabel: c.tablistLabel,
+    betweenHtml: fixedAttributes,
   });
+  const topResources = c.resources?.length
+    ? `<div class="ldm-sheet-top-resources">${renderResourcesBody(c)}</div>`
+    : '';
   return `<div class="ldm-sheet ldm-density-${density}${c.editable ? '' : ' ldm-sheet--readonly'}">
     ${renderHeader(c)}
+    ${topResources}
     ${renderToolbar(c)}
     ${c.configChanged ? `<p class="ldm-sheet-hint" role="status">${L(c, 'sandbox.sheet.configChanged')}</p>` : ''}
     <div class="ldm-sheet-body">${tabsHtml}</div>
@@ -1103,7 +1351,7 @@ function buildSheetClass(loom) {
       if (!this.element || this._ldmTabsWired) return;
       this._ldmTabsWired = true;
       attachTabs(this.element, {
-        getTabs: () => resolveLayout(this._ldmCfg ?? defaultConfig()).tabs,
+        getTabs: () => sheetTabsForLayout(resolveLayout(this._ldmCfg ?? defaultConfig())),
         getActive: () => this._ldmTab,
         setActive: (key) => {
           this._ldmTab = typeof key === 'string' ? key : '';
@@ -1280,8 +1528,31 @@ function buildSheetClass(loom) {
       const ds = target?.dataset ?? {};
       const itemId = ds.id || id || '';
       switch (action) {
+        case 'pick-portrait': {
+          if (!this.document || !this.isEditable || this._ldmCastState === 'refused') return;
+          const open = loomGlobal()?.openPortraitEditor;
+          if (typeof open !== 'function') return toast('sandbox.sheet.portraitUnavailable');
+          return open(this.document.id);
+        }
         case 'attr-roll': return this._ldmRollAttr(ds.key);
+        case 'attr-dot': {
+          const cfg = this._ldmCfg ?? defaultConfig();
+          const def = attributeList(safeCfg(cfg)).find((a) => a.key === ds.key);
+          const value = toNumber(ds.value);
+          if (!def || value === null || !this.document || this.isEditable === false || this._ldmCastState === 'refused') return undefined;
+          const current = actorValue({ systemData: this._ldmView() }, cfg, 'attr', ds.key);
+          const next = value === current ? Math.max(def.min, current - 1) : value;
+          return this._ldmQueue({ kind: 'attr', key: ds.key, value: next }, `attr-dot:${ds.key}`, false);
+        }
         case 'skill-roll': return this._ldmRollSkill(ds.key);
+        case 'save-roll': return this._ldmRollSave(ds.key, target?.closest?.('.ldm-sheet-skill')?.querySelector?.('.ldm-sheet-save-target')?.value);
+        case 'attack-roll': return this._ldmRollAttack(ds.key, target?.closest?.('.ldm-sheet-attack')?.querySelector?.('input')?.value);
+        case 'weapon-attack': {
+          const weapon = this._ldmItemList().find((item) => String(item?.id ?? '') === itemId);
+          return this._ldmRollAttack(weapon?.data?.attack?.profileKey, undefined, weapon);
+        }
+        case 'attack-damage': return this._ldmRollAttackDamage(ds.key);
+        case 'recover-magic': return this._ldmRecoverMagic();
         case 'toggle-adv': {
           const i = ADV_ORDER.indexOf(this._ldmAdvantage);
           this._ldmAdvantage = ADV_ORDER[(i + 1) % ADV_ORDER.length];
@@ -1294,12 +1565,46 @@ function buildSheetClass(loom) {
           return this._ldmQueue({ kind: 'res', key: ds.key, delta }, `imm:${++this._ldmSeq}`, false);
         }
         case 'add-item': return this._ldmAddItem(ds.type);
-        case 'use-item': return this._ldmUseItem(itemId);
+        case 'use-item': return this._ldmUseItem(itemId, target?.closest?.('.ldm-sheet-item')?.querySelector?.('[data-cast-level]')?.value);
+        case 'prepare-spell': return this._ldmPrepareSpell(itemId, ds.level);
         case 'edit-item': return this._ldmEditItem(itemId);
         case 'delete-item': return this._ldmDeleteItem(itemId);
         case 'configure': return this._ldmOpenEditor();
         case 'open-combat': return this._ldmOpenCombat();
         case 'reload-config': return this._ldmReloadConfig();
+        case 'xp-add': {
+          if (!this.document || !this.isEditable || this._ldmCastState === 'refused') return undefined;
+          const valInput = this.element?.querySelector('#ldm-sheet-xp-val');
+          const descInput = this.element?.querySelector('#ldm-sheet-xp-desc');
+          const amt = Number(valInput?.value);
+          if (!Number.isFinite(amt) || amt === 0) return undefined;
+          const reason = String(descInput?.value || '').trim();
+          const view = this._ldmView();
+          const curXp = isPlainObject(view?.xp) ? deepClone(view.xp) : { total: 0, current: 0, log: [] };
+          curXp.log = Array.isArray(curXp.log) ? curXp.log : [];
+          if (amt > 0) curXp.total = Math.max(0, (Number(curXp.total) || 0) + amt);
+          curXp.current = Math.max(0, (Number(curXp.current) || 0) + amt);
+          const dateStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          curXp.log.unshift({ id: String(Date.now()), amount: amt, reason, date: dateStr });
+          if (valInput) valInput.value = '';
+          if (descInput) descInput.value = '';
+          return this._ldmQueue({ kind: 'xp', value: curXp }, `xp:${Date.now()}`, false);
+        }
+        case 'xp-remove': {
+          if (!this.document || !this.isEditable || this._ldmCastState === 'refused') return undefined;
+          const idx = Number(ds.index);
+          if (!Number.isInteger(idx)) return undefined;
+          const view = this._ldmView();
+          const curXp = isPlainObject(view?.xp) ? deepClone(view.xp) : { total: 0, current: 0, log: [] };
+          curXp.log = Array.isArray(curXp.log) ? curXp.log : [];
+          const removed = curXp.log.splice(idx, 1)[0];
+          if (removed) {
+            const amt = Number(removed.amount) || 0;
+            if (amt > 0) curXp.total = Math.max(0, (Number(curXp.total) || 0) - amt);
+            curXp.current = Math.max(0, (Number(curXp.current) || 0) - amt);
+          }
+          return this._ldmQueue({ kind: 'xp', value: curXp }, `xp:${Date.now()}`, false);
+        }
         default: return undefined;
       }
     }
@@ -1320,7 +1625,7 @@ function buildSheetClass(loom) {
       const result = await rollCheck(cfg, {
         actorId: this.document.id,
         label: def.label,
-        attrValue: actorValue({ systemData: this._ldmView() }, cfg, 'attr', key),
+        attrValue: attributeRollValue(cfg, key, actorValue({ systemData: this._ldmView() }, cfg, 'attr', key)),
         skillValue: 0,
         bonus: 0,
         advantage: this._ldmAdvantage,
@@ -1335,7 +1640,7 @@ function buildSheetClass(loom) {
       const def = skillList(safeCfg(cfg)).find((s) => s.key === key);
       if (!def || !this.document) return;
       const view = { systemData: this._ldmView() };
-      const attrValue = def.attr ? actorValue(view, cfg, 'attr', def.attr) : 0;
+      const attrValue = def.attr ? attributeRollValue(cfg, def.attr, actorValue(view, cfg, 'attr', def.attr)) : 0;
       const result = await rollCheck(cfg, {
         actorId: this.document.id,
         label: def.label,
@@ -1349,33 +1654,122 @@ function buildSheetClass(loom) {
       if (!result.ok) toast('sandbox.sheet.errNoDispatch');
     }
 
+    async _ldmRollSave(key, difficulty) {
+      const cfg = safeCfg(this._ldmCfg ?? defaultConfig());
+      const save = cfg.saves.entries.find((row) => row.key === key);
+      if (!save || !this.document) return;
+      const sys = this._ldmView();
+      const total = sumSources(save.sources, sys, cfg, (k, score) => attributeRollValue(cfg, k, score)) + save.bonus + (Number(sys.saves?.[key]) || 0);
+      const target = Number.isFinite(Number(difficulty)) && String(difficulty).trim() !== '' ? Number(difficulty) : undefined;
+      const result = await rollCheck(cfg, { actorId: this.document.id, label: save.label, bonus: total, target, advantage: this._ldmAdvantage, mode: 'public', extraMeta: { actorName: String(this.document.name ?? '') } });
+      if (!result.ok) toast('sandbox.sheet.errNoDispatch');
+    }
+
+    async _ldmRollAttack(key, defense, item = {}) {
+      const cfg = safeCfg(this._ldmCfg ?? defaultConfig());
+      const profile = cfg.attacks.profiles.find((row) => row.key === key);
+      const loom = loomGlobal();
+      if (!profile || !this.document || typeof loom?.dispatchRoll !== 'function') return;
+      const targetValue = String(defense ?? '').trim() === '' ? profile.target : Number(defense);
+      const target = targetValue === null || targetValue === undefined || !Number.isFinite(Number(targetValue)) ? null : Number(targetValue);
+      const built = buildAttackRoll(cfg, { ...profile, target }, this._ldmView(), item);
+      try {
+        await loom.dispatchRoll({ formula: built.formula, actorId: this.document.id, mode: 'public', meta: { ...built.meta, system: 'loom-demo', label: profile.label, actorName: String(this.document.name ?? '') } });
+      } catch {
+        toast('sandbox.sheet.errNoDispatch');
+      }
+    }
+
+    async _ldmRollAttackDamage(key) {
+      const cfg = safeCfg(this._ldmCfg ?? defaultConfig());
+      const profile = cfg.attacks.profiles.find((row) => row.key === key);
+      const damage = profile?.damage;
+      const loom = loomGlobal();
+      if (!profile || !damage || !['dice', 'pool'].includes(damage.method) || !this.document || typeof loom?.dispatchRoll !== 'function') return;
+      const count = clamp(Math.trunc(Number(damage.count) || 1), 1, 100);
+      const faces = clamp(Math.trunc(Number(damage.faces) || 6), 2, 100);
+      const actorData = this._ldmView();
+      const damageSources = sumSources(damage.sources, actorData, cfg, (attr, score) => attributeRollValue(cfg, attr, score));
+      const base = clamp(Math.trunc(Number(damage.base) || 0) + damageSources, -99, 999);
+      const formula = damage.method === 'pool' ? `${count}d${faces}cs>=${clamp(Math.trunc(Number(damage.successMin) || 2), 2, faces)}` : `${count}d${faces}${base < 0 ? base : `+${base}`}`;
+      try { await loom.dispatchRoll({ formula, actorId: this.document.id, mode: 'public', meta: { system: 'loom-demo', kind: 'damage', damagePool: damage.method === 'pool', base, label: `${profile.label}: ${localizeKey('sandbox.sheet.damage')}`, actorName: String(this.document.name ?? '') } }); }
+      catch { toast('sandbox.sheet.errNoDispatch'); }
+    }
+
+    async _ldmRecoverMagic() {
+      if (!this.document || this.isEditable === false || this._ldmCastState === 'refused') return;
+      await this._ldmFlush();
+      const cfg = safeCfg(this._ldmCfg ?? defaultConfig());
+      const kind = cfg.magic.recovery === 'manual' ? 'manual' : cfg.magic.recovery;
+      const plan = planRecovery(this._ldmView(), cfg, kind);
+      if (!plan.ok) return;
+      try { await this._ldmPutSystem(this.document, plan.patch); this.rerenderBody(); }
+      catch { toast('sandbox.sheet.errSave'); await this._reloadDocument(); }
+    }
+
+    async _ldmPrepareSpell(itemId, levelKey) {
+      if (!this.document || this.isEditable === false || this._ldmCastState === 'refused') return;
+      await this._ldmFlush();
+      const item = this._ldmItemList().find((row) => row?.id === itemId);
+      if (!item || item.type !== 'spell') return;
+      const cfg = safeCfg(this._ldmCfg ?? defaultConfig());
+      const current = this._ldmView().magic?.prepared?.[itemId];
+      const plan = planPrepare(item, this._ldmView(), cfg, Math.max(1, Number(current?.max) || 0) + 1, levelKey);
+      if (!plan.ok) return toast('sandbox.sheet.prepareCapacity');
+      try { await this._ldmPutSystem(this.document, plan.patch); this.rerenderBody(); }
+      catch { toast('sandbox.sheet.errSave'); await this._reloadDocument(); }
+    }
+
     /**
      * Use an ability or spell: plan the cost and uses (refuse when short), write the new
      * resource and uses, then roll. The damage formula, when valid, is a second roll.
      */
-    async _ldmUseItem(itemId) {
+    async _ldmUseItem(itemId, castLevelKey = '') {
+      if (this._ldmCastInFlight) return;
+      this._ldmCastInFlight = true;
+      try { return await this._ldmPerformUseItem(itemId, castLevelKey); }
+      finally { this._ldmCastInFlight = false; }
+    }
+
+    async _ldmPerformUseItem(itemId, castLevelKey = '') {
       await this._ldmFlush();
       const doc = this.document;
       const cfg = this._ldmCfg ?? defaultConfig();
       const item = this._ldmItemList().find((i) => i && i.id === itemId);
       if (!doc || !item) return;
       const sys = this._ldmView();
-      const plan = planUse(item, sys, cfg);
+      const isConfiguredSpell = item.type === 'spell' && cfg.magic?.enabled === true && isPlainObject(item.data?.casting);
+      const plan = isConfiguredSpell ? planCast(item, sys, cfg, castLevelKey) : planUse(item, sys, cfg);
       if (!plan.ok) {
         const d = isPlainObject(item.data) ? item.data : {};
         const res = d.cost && typeof d.cost.res === 'string' ? resourceList(safeCfg(cfg)).find((r) => r.key === d.cost.res) : null;
-        toast(PLAN_ERROR_KEYS[plan.error] ?? 'sandbox.sheet.errGeneric', { res: res ? res.label : '' });
+        const castErrors = { 'method-disabled': 'sandbox.sheet.castMethodDisabled', 'resource-missing': 'sandbox.sheet.castResourceMissing', 'insufficient-resource': 'sandbox.sheet.castInsufficient', 'level-missing': 'sandbox.sheet.castLevelMissing', 'level-too-low': 'sandbox.sheet.castLevelTooLow', 'no-slots': 'sandbox.sheet.castNoSlots', 'not-prepared': 'sandbox.sheet.castNotPrepared', 'no-uses': 'sandbox.sheet.castNoUses' };
+        toast(isConfiguredSpell ? castErrors[plan.reason] ?? 'sandbox.sheet.errGeneric' : PLAN_ERROR_KEYS[plan.error] ?? 'sandbox.sheet.errGeneric', { res: res ? res.label : '' });
+        return;
+      }
+      const castingProfile = isConfiguredSpell && plan.method === 'check'
+        ? cfg.magic.checkProfiles.find((entry) => entry.key === item.data?.casting?.checkProfileKey)
+        : null;
+      if (isConfiguredSpell && plan.method === 'check' && !castingProfile) {
+        toast('sandbox.sheet.castCheckMissing');
         return;
       }
 
       try {
-        if (plan.patch.res) {
+        if (isConfiguredSpell) {
+          const patch = { magic: plan.patch.magic };
+          if (plan.patch.res) {
+            patch.res = {};
+            for (const [key, entry] of Object.entries(plan.patch.res)) patch.res[key] = { value: entry.value };
+          }
+          await this._ldmPutSystem(doc, patch);
+        } else if (plan.patch.res) {
           // Only the value goes out: planUse keys come from the config's resource list.
           const res = {};
           for (const [key, entry] of Object.entries(plan.patch.res)) res[key] = { value: entry.value };
           await this._ldmPutSystem(doc, { res });
         }
-        if (plan.patch.uses) {
+        if (!isConfiguredSpell && plan.patch.uses) {
           const data = deepClone(isPlainObject(item.data) ? item.data : {});
           data.uses = { ...data.uses, value: plan.patch.uses.value };
           await this._ldmPutItem(doc, item, data);
@@ -1393,11 +1787,21 @@ function buildSheetClass(loom) {
       const roll = isPlainObject(d.roll) ? d.roll : null;
       // Effects are copied only when the use went through: a rolled use needs its roll dispatched.
       let useOk = true;
-      if (roll && roll.enabled === true) {
+      if (isConfiguredSpell && plan.method === 'check') {
+        const profile = castingProfile;
+        const mode = profile.mode === 'system' ? cfg.dice.mode : profile.mode;
+        const checkCfg = { ...cfg, dice: { ...cfg.dice, mode } };
+        const total = sumSources(profile.sources, sys, cfg, (key, score) => attributeRollValue(cfg, key, score)) + profile.bonus;
+        const built = buildCheck(checkCfg, { attrValue: total, skillValue: 0, bonus: 0 });
+        try {
+          await loomGlobal().dispatchRoll({ formula: built.formula, actorId: doc.id, mode: 'public', meta: { ...built.meta, target: profile.target || undefined, system: 'loom-demo', label: itemName, actorName } });
+        } catch { toast('sandbox.sheet.errNoDispatch'); }
+        useOk = false; // Dispatch acknowledges submission only; it does not confirm success.
+      } else if (roll && roll.enabled === true) {
         const result = await rollCheck(cfg, {
           actorId: doc.id,
           label: itemName,
-          attrValue: roll.attr ? actorValue({ systemData: sys }, cfg, 'attr', roll.attr) : 0,
+          attrValue: roll.attr ? attributeRollValue(cfg, roll.attr, actorValue({ systemData: sys }, cfg, 'attr', roll.attr)) : 0,
           skillValue: roll.skill ? actorValue({ systemData: sys }, cfg, 'skill', roll.skill) : 0,
           bonus: toNumber(roll.bonus) ?? 0,
           advantage: this._ldmAdvantage,

@@ -1,4 +1,9 @@
 {
+  "sandbox.card.hit": "Hit",
+  "sandbox.card.miss": "Miss",
+  "sandbox.card.defenseNeeded": "Defense needed",
+  "sandbox.card.damage": "Damage",
+  "sandbox.card.effectiveSuccesses": "Effective successes",
   "sandbox.card.untitled": "Roll",
   "sandbox.card.target": "Target",
   "sandbox.card.pass": "Pass",

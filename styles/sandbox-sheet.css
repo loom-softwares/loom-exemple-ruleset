@@ -1,27 +1,58 @@
 /* ══════════════════════════════════════════════════════════════
-   Sandbox actor sheet (.ldm-sheet-*)
-   Dark UI first. Every colour has a fallback so the sheet still reads
-   when the system tokens are missing. Works down to 360px wide.
+   Loom Demo System — Character Sheet (.ldm-sheet-*)
+   Tactical Dark Fantasy RPG Theme with Glassmorphism and Amber/Gold Highlights.
    ══════════════════════════════════════════════════════════════ */
 
+/* ── Loom Window Container Integration ─────────────────────────── */
+
+.loom-window:has(.ldm-sheet) {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.loom-window:has(.ldm-sheet) .loom-window-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 8px 12px 10px 12px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 .ldm-sheet {
-  --ldm-sheet-bg: var(--rpg-surface, #1c1e24);
-  --ldm-sheet-bg-2: var(--rpg-surface-elevated, #242730);
-  --ldm-sheet-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
-  --ldm-sheet-text: var(--rpg-text, #f3f4f6);
-  --ldm-sheet-muted: var(--rpg-text-muted, #9ca3af);
-  --ldm-sheet-accent: var(--rpg-gold, #e5a93c);
-  --ldm-sheet-danger: var(--rpg-red, #ef4444);
-  --ldm-sheet-focus: var(--rpg-border-focus, rgba(229, 169, 60, 0.6));
+  --ldm-sheet-bg: #11131a;
+  --ldm-sheet-bg-surface: #161924;
+  --ldm-sheet-bg-elevated: #1e2230;
+  --ldm-sheet-border: rgba(255, 255, 255, 0.08);
+  --ldm-sheet-border-light: rgba(255, 255, 255, 0.12);
+  --ldm-sheet-border-gold: rgba(229, 169, 60, 0.35);
+  --ldm-sheet-text: #f8fafc;
+  --ldm-sheet-text-secondary: #cbd5e1;
+  --ldm-sheet-muted: #94a3b8;
+  --ldm-sheet-accent: #f59e0b;
+  --ldm-sheet-gold: #e5a93c;
+  --ldm-sheet-gold-glow: rgba(229, 169, 60, 0.25);
+  --ldm-sheet-danger: #ef4444;
+  --ldm-sheet-success: #10b981;
+  --ldm-sheet-focus: rgba(229, 169, 60, 0.65);
 
   color: var(--ldm-sheet-text);
-  background: var(--ldm-sheet-bg);
-  padding: 12px 16px 20px;
+  background: transparent;
+  padding: 0;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
-  font-size: 14px;
-  line-height: 1.4;
+  overflow: hidden;
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
 .ldm-sheet *,
@@ -36,28 +67,50 @@
 }
 
 .ldm-sheet--empty {
-  padding: 24px 16px;
+  padding: 36px 16px;
   text-align: center;
+  color: var(--ldm-sheet-muted);
 }
 
-/* ── Header ───────────────────────────────────────────────────── */
+/* ── Character Banner (Header) ────────────────────────────────── */
 
 .ldm-sheet-header {
   display: flex;
   gap: 14px;
   align-items: center;
-  padding-bottom: 12px;
+  padding: 4px 4px 12px;
   border-bottom: 1px solid var(--ldm-sheet-border);
 }
 
 .ldm-sheet-portrait {
   flex: 0 0 auto;
-  width: 84px;
-  height: 84px;
+  width: 58px;
+  height: 58px;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--ldm-sheet-bg-2);
-  border: 1px solid var(--ldm-sheet-border);
+  background: var(--ldm-sheet-bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  transition: all 160ms ease-out;
+}
+
+.ldm-sheet-portrait:hover:not(:disabled) {
+  border-color: rgba(223, 184, 120, 0.5);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.ldm-sheet-portrait:focus-visible {
+  outline: 2px solid var(--ldm-sheet-gold);
+  outline-offset: 2px;
+}
+
+.ldm-sheet-portrait:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .ldm-sheet-portrait-img {
@@ -75,116 +128,371 @@
   height: 100%;
   padding: 4px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ldm-sheet-muted);
 }
 
 .ldm-sheet-identity {
   min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ldm-sheet-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .ldm-sheet-name {
   margin: 0;
-  font-size: 1.35em;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f8fafc;
+  line-height: 1.2;
   overflow-wrap: anywhere;
+}
+
+.ldm-sheet-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(223, 184, 120, 0.1);
+  border: 1px solid rgba(223, 184, 120, 0.25);
+  color: #dfb878;
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
 }
 
 .ldm-sheet-type {
   margin: 2px 0 0;
-  color: var(--ldm-sheet-muted);
+  font-size: 11.5px;
+  color: #64748b;
 }
 
 .ldm-sheet-system {
-  font-size: 0.9em;
+  color: #64748b;
 }
 
-/* ── Toolbar ──────────────────────────────────────────────────── */
+/* ── Compact Top Resources Bar ────────────────────────────────── */
 
-.ldm-sheet-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 0;
+.ldm-sheet-top-resources {
+  flex-shrink: 0;
+  padding: 4px 0 6px;
   border-bottom: 1px solid var(--ldm-sheet-border);
 }
 
-.ldm-sheet-dice {
-  flex: 1 1 100%;
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--ldm-sheet-muted);
-  overflow-wrap: anywhere;
+.ldm-sheet-top-resources .ldm-sheet-res-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  gap: 6px;
 }
 
-.ldm-sheet-dice-label {
-  font-weight: 600;
+.ldm-sheet-top-resources .ldm-sheet-res {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #141722;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  min-height: 26px;
 }
 
-.ldm-sheet-hint {
-  margin: 8px 0 0;
-  padding: 6px 10px;
-  border-left: 3px solid var(--ldm-sheet-accent);
-  background: var(--ldm-sheet-bg-2);
-  font-size: 13px;
+.ldm-sheet-top-resources .ldm-sheet-res-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 0 0 auto;
 }
 
-/* ── Buttons and inputs ───────────────────────────────────────── */
-
-.ldm-sheet-btn {
-  appearance: none;
-  min-height: 32px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--ldm-sheet-border);
-  background: var(--ldm-sheet-bg-2);
-  color: var(--ldm-sheet-text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
+.ldm-sheet-top-resources .ldm-sheet-res-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f1f5f9;
   white-space: nowrap;
 }
 
+.ldm-sheet-top-resources .ldm-sheet-res-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-bar {
+  flex: 1 1 auto;
+  min-width: 35px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--ldm-sheet-res-color, #ef4444);
+  border-radius: 3px;
+  transition: width 160ms ease;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-res-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-btn--step {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-btn--step:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-input {
+  width: 36px;
+  height: 20px;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  color: #f8fafc;
+  appearance: textfield;
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+}
+
+.ldm-sheet-top-resources .ldm-sheet-input::-webkit-inner-spin-button,
+.ldm-sheet-top-resources .ldm-sheet-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Tactical Action HUD (Toolbar) ────────────────────────────── */
+
+.ldm-sheet-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-toolbar-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  width: 100%;
+}
+
+.ldm-sheet-toolbar-actions .ldm-sheet-btn {
+  flex: 1 1 0;
+  min-height: 26px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ldm-sheet-dice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--ldm-sheet-muted);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ldm-sheet-dice-chip {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--ldm-sheet-gold);
+}
+
+.ldm-sheet-dice-text {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ldm-sheet-hint {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ldm-sheet-gold);
+  background: rgba(229, 169, 60, 0.08);
+  font-size: 12px;
+  color: var(--ldm-sheet-text);
+}
+
+/* ── Tactile Buttons & Inputs ──────────────────────────────────── */
+
+.ldm-sheet-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--ldm-sheet-border-light);
+  background: var(--ldm-sheet-bg-surface);
+  color: var(--ldm-sheet-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 140ms ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
 .ldm-sheet-btn:hover:not(:disabled) {
-  border-color: var(--ldm-sheet-accent);
+  border-color: var(--ldm-sheet-border-gold);
+  background: var(--ldm-sheet-bg-elevated);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.ldm-sheet-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .ldm-sheet-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
+.ldm-sheet-btn--gm {
+  border-color: var(--ldm-sheet-border-gold);
+  color: var(--ldm-sheet-gold);
+}
+
+/* Roll mode button states */
+.ldm-sheet-adv {
+  font-weight: 700;
+}
+.ldm-sheet-adv-pill {
+  font-size: 13px;
+}
+.ldm-sheet-adv-mode {
+  color: var(--ldm-sheet-muted);
+  font-weight: 500;
+}
+.ldm-sheet-adv-text {
+  font-weight: 700;
+}
+
+.ldm-sheet-adv--none {
+  border-color: var(--ldm-sheet-border-gold);
+  color: var(--ldm-sheet-text);
+}
+
+.ldm-sheet-adv--adv {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--ldm-sheet-success);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+.ldm-sheet-adv--adv:hover:not(:disabled) {
+  border-color: var(--ldm-sheet-success);
+  background: rgba(16, 185, 129, 0.22);
+  color: #fff;
+}
+
+.ldm-sheet-adv--dis {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--ldm-sheet-danger);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+.ldm-sheet-adv--dis:hover:not(:disabled) {
+  border-color: var(--ldm-sheet-danger);
+  background: rgba(239, 68, 68, 0.22);
+  color: #fff;
+}
+
 .ldm-sheet-btn--step {
-  min-width: 36px;
-  font-size: 18px;
+  min-width: 30px;
+  min-height: 26px;
+  font-size: 16px;
   line-height: 1;
-  padding: 2px 10px;
+  padding: 1px 6px;
+  font-weight: 800;
 }
 
 .ldm-sheet-btn--danger {
   color: var(--ldm-sheet-danger);
+  border-color: rgba(239, 68, 68, 0.3);
 }
-
-.ldm-sheet-adv--adv {
-  border-color: #10b981;
-}
-
-.ldm-sheet-adv--dis {
+.ldm-sheet-btn--danger:hover:not(:disabled) {
   border-color: var(--ldm-sheet-danger);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fff;
 }
 
 .ldm-sheet-input {
   appearance: textfield;
   -moz-appearance: textfield;
-  width: 72px;
-  min-height: 32px;
-  padding: 4px 6px;
-  border-radius: 6px;
+  width: 60px;
+  min-height: 28px;
+  padding: 3px 6px;
+  border-radius: 5px;
   border: 1px solid var(--ldm-sheet-border);
-  background: #0f1014;
+  background: #0d0f16;
   color: var(--ldm-sheet-text);
   font: inherit;
+  font-size: 13px;
   text-align: center;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.ldm-sheet-input:focus {
+  border-color: var(--ldm-sheet-gold);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ldm-sheet-focus);
 }
 
 .ldm-sheet-input::-webkit-outer-spin-button,
@@ -194,76 +502,515 @@
 }
 
 .ldm-sheet-input--small {
-  width: 56px;
+  width: 50px;
 }
 
 .ldm-sheet-input:disabled,
 .ldm-sheet-notes:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .ldm-sheet-notes {
   width: 100%;
   min-height: 90px;
-  padding: 8px;
+  padding: 10px;
   border-radius: 6px;
   border: 1px solid var(--ldm-sheet-border);
-  background: #0f1014;
+  background: #0d0f16;
   color: var(--ldm-sheet-text);
   font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
   resize: vertical;
 }
 
-/* ── Sections ─────────────────────────────────────────────────── */
+/* ── Fixed Top Navigation Strip & Attributes ───────────────────── */
 
 .ldm-sheet-body {
-  margin-top: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: 2px;
   min-width: 0;
   max-width: 100%;
 }
 
-/* Block titles (layout standard) take the sheet accent; the card itself is styled by sandbox-layout.css. */
-.ldm-sheet .ldm-block-title {
-  margin: 0 0 8px;
+.ldm-sheet-body > .ldm-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ldm-sheet .ldm-tablist {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 4px 0 0;
+  margin: 0 0 6px 0;
+  background: rgba(16, 18, 24, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ldm-sheet .ldm-tablist::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.ldm-sheet .ldm-tab {
+  flex: 0 0 auto;
+  appearance: none;
+  margin: 0;
+  padding: 6px 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  color: var(--ldm-sheet-muted);
+  font: inherit;
   font-size: 13px;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.ldm-sheet .ldm-tab:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ldm-sheet .ldm-tab[aria-selected="true"] {
+  color: var(--ldm-sheet-gold);
+  font-weight: 700;
+  border-bottom-color: var(--ldm-sheet-gold);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+/* ── Fixed Stat Array (Directly Below Tabs) ───────────────────────── */
+
+.ldm-sheet-pinned-attributes {
+  flex: 0 0 auto;
+  margin: 0 0 8px 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* ── Scrolling Tab Panel (Only Content Scrolls) ─────────────────── */
+
+.ldm-sheet .ldm-tabpanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 2px 6px 12px 0;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(223, 184, 120, 0.35) transparent;
+}
+
+.ldm-sheet .ldm-tabpanel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ldm-sheet .ldm-tabpanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ldm-sheet .ldm-tabpanel::-webkit-scrollbar-thumb {
+  background: rgba(223, 184, 120, 0.3);
+  border-radius: 3px;
+}
+
+.ldm-sheet .ldm-tabpanel::-webkit-scrollbar-thumb:hover {
+  background: rgba(223, 184, 120, 0.5);
+}
+
+/* ── Section Block Headings (Clean Typography, No Side-Stripes) ── */
+
+.ldm-sheet .ldm-block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0 0 4px 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ldm-sheet-accent);
+  color: var(--ldm-sheet-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ldm-sheet .ldm-block-title::before {
+  display: none !important;
 }
 
 .ldm-sheet-subh {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ldm-sheet-subh::before {
+  display: none !important;
+}
+
+.ldm-sheet .ldm-grid > .ldm-block[data-ldm-block="resources"],
+.ldm-sheet .ldm-grid > .ldm-block[data-ldm-block="attributes"],
+.ldm-sheet .ldm-block.ldm-sheet-hidden-block {
+  display: none !important;
+}
+
+.ldm-sheet .ldm-grid > .ldm-block[data-ldm-block="skills"],
+.ldm-sheet .ldm-grid > .ldm-block[data-ldm-block="saves"],
+.ldm-sheet .ldm-grid > .ldm-block[data-ldm-block="attacks"],
+.ldm-sheet .ldm-grid > .ldm-block[data-ldm-block="magic"] {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  padding: 0 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ldm-sheet-attr-group + .ldm-sheet-attr-group {
+  margin-top: 8px;
+}
+
+.ldm-sheet-attr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(76px, 100%), 1fr));
+  gap: 6px;
+}
+
+.ldm-sheet-attr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  min-width: 0;
+  height: 68px;
+  padding: 5px 4px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: #151822;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all 140ms ease;
+}
+
+.ldm-sheet-attr:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: #1a1e2a;
+}
+
+.ldm-sheet-attr-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.ldm-sheet-attr-label {
+  min-width: 0;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.ldm-sheet-attr-roll-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #f8fafc;
+  transition: transform 120ms ease;
+}
+
+.ldm-sheet-attr-roll-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.ldm-sheet-attr-mod {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: color 140ms ease;
+}
+
+.ldm-sheet-attr:hover .ldm-sheet-attr-mod {
+  color: var(--ldm-sheet-gold);
+}
+
+.ldm-sheet-attr-roll-btn .ldm-roll-icon {
+  font-size: 10px;
+  color: var(--ldm-sheet-gold);
+  opacity: 0.45;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.ldm-sheet-attr:hover .ldm-sheet-attr-roll-btn .ldm-roll-icon {
+  opacity: 1;
+  transform: rotate(15deg);
+}
+
+.ldm-sheet-attr-score-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.ldm-sheet-attr-score-input {
+  width: 36px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  transition: all 120ms ease;
+}
+
+.ldm-sheet-attr-score-input:focus {
+  background: #000;
+  color: #fff;
+  outline: 1px solid var(--ldm-sheet-gold);
+}
+
+.ldm-sheet-attr .ldm-sheet-range {
+  font-size: 9px;
+  font-weight: 500;
   color: var(--ldm-sheet-muted);
 }
 
-.ldm-sheet-empty {
-  margin: 4px 0;
-  font-size: 13px;
-  color: var(--ldm-sheet-muted);
+/* Dots mode */
+.ldm-sheet-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+}
+
+.ldm-sheet-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.ldm-sheet-dot.is-filled {
+  border-color: var(--ldm-sheet-gold);
+  background: var(--ldm-sheet-gold);
+}
+
+/* ── Clean Skills Ledger (Single Column, Line Below Line) ──────── */
+
+.ldm-sheet-skill-group + .ldm-sheet-skill-group {
+  margin-top: 2px !important;
+}
+
+.ldm-sheet-skill-group > .ldm-sheet-subh {
+  display: none !important;
+}
+
+.ldm-sheet-skill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  width: 100% !important;
+}
+
+.ldm-sheet-skill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100% !important;
+  min-height: 28px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background-color 120ms ease;
+}
+
+.ldm-sheet-skill:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ldm-sheet-skill-name-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ldm-sheet-skill-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.ldm-sheet-skill-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ldm-sheet-skill-attr-tag {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ldm-sheet-skill-rank-col {
+  flex-shrink: 0;
+}
+
+.ldm-sheet-skill-input {
+  width: 30px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  color: #cbd5e1;
+}
+
+.ldm-sheet-skill-input:focus {
+  border-color: var(--ldm-sheet-gold);
+  background: #000;
+  color: #fff;
+  outline: none;
+}
+
+.ldm-sheet-skill .ldm-sheet-btn,
+.ldm-sheet-btn--skill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 46px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+  color: #f59e0b;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 120ms ease;
+}
+
+.ldm-sheet-skill .ldm-sheet-btn:hover:not(:disabled),
+.ldm-sheet-btn--skill:hover:not(:disabled) {
+  border-color: #f59e0b;
+  background: #f59e0b;
+  color: #0f1117;
+}
+
+.ldm-sheet-skill-mod {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.ldm-sheet-btn--skill .ldm-roll-icon {
+  font-size: 10px;
+  transition: transform 140ms ease;
+}
+
+.ldm-sheet-btn--skill:hover:not(:disabled) .ldm-roll-icon {
+  transform: rotate(15deg);
 }
 
 /* ── Resources ────────────────────────────────────────────────── */
 
 .ldm-sheet-res-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
-  gap: var(--ldm-gap, 10px);
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 8px;
 }
 
 .ldm-sheet-res {
-  padding: 8px;
+  padding: 8px 10px;
   border-radius: 8px;
-  background: var(--ldm-sheet-bg-2);
+  background: var(--ldm-sheet-bg-surface);
   border: 1px solid var(--ldm-sheet-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .ldm-sheet-res-head {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 700;
 }
 
 .ldm-sheet-res-count {
@@ -272,11 +1019,11 @@
 }
 
 .ldm-sheet-bar {
-  height: 10px;
+  height: 8px;
   margin: 6px 0 8px;
   border-radius: 999px;
   overflow: hidden;
-  background: #0f1014;
+  background: #0d0f16;
   border: 1px solid var(--ldm-sheet-border);
 }
 
@@ -284,7 +1031,7 @@
   display: block;
   height: 100%;
   background: var(--ldm-sheet-res-color, #7c5cff);
-  transition: width 0.2s ease;
+  transition: width 200ms ease;
 }
 
 .ldm-sheet-res-controls {
@@ -294,83 +1041,7 @@
   gap: 6px;
 }
 
-/* ── Attributes ───────────────────────────────────────────────── */
-
-.ldm-sheet-attr-group + .ldm-sheet-attr-group {
-  margin-top: 10px;
-}
-
-.ldm-sheet-attr-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-  gap: var(--ldm-gap, 10px);
-}
-
-.ldm-sheet-attr {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--ldm-sheet-bg-2);
-  border: 1px solid var(--ldm-sheet-border);
-}
-
-.ldm-sheet-attr-label {
-  font-weight: 600;
-}
-
-.ldm-sheet-attr .ldm-sheet-input {
-  width: 100%;
-  font-size: 18px;
-}
-
-.ldm-sheet-range {
-  font-size: 11px;
-  color: var(--ldm-sheet-muted);
-}
-
-/* ── Skills ───────────────────────────────────────────────────── */
-
-.ldm-sheet-skill-group + .ldm-sheet-skill-group {
-  margin-top: 10px;
-}
-
-.ldm-sheet-skill-list {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ldm-sheet-skill {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--ldm-sheet-bg-2);
-  border: 1px solid var(--ldm-sheet-border);
-}
-
-.ldm-sheet-skill-label {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.ldm-sheet-skill-mod {
-  min-width: 40px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--ldm-sheet-accent);
-  font-weight: 600;
-}
-
-/* ── Items ────────────────────────────────────────────────────── */
+/* ── Inventory & Items ────────────────────────────────────────── */
 
 .ldm-sheet-item-group {
   margin-bottom: 12px;
@@ -386,9 +1057,11 @@
 
 .ldm-sheet-cat-h {
   margin: 8px 0 4px;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ldm-sheet-muted);
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .ldm-sheet-item-list {
@@ -407,9 +1080,15 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--ldm-sheet-bg-2);
+  border-radius: 6px;
+  background: var(--ldm-sheet-bg-surface);
   border: 1px solid var(--ldm-sheet-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: border-color 140ms ease;
+}
+
+.ldm-sheet-item:hover {
+  border-color: var(--ldm-sheet-border-gold);
 }
 
 .ldm-sheet-item-main {
@@ -418,13 +1097,14 @@
 }
 
 .ldm-sheet-item-name {
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--ldm-sheet-text);
   overflow-wrap: anywhere;
 }
 
 .ldm-sheet-item-meta {
   display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ldm-sheet-muted);
 }
 
@@ -450,23 +1130,342 @@
   color: var(--ldm-sheet-muted);
 }
 
-/* ── Narrow windows (360px phone landscape and up) ─────────────── */
+/* ── Attacks, Saves & Magic ───────────────────────────────────── */
 
-@media (max-width: 480px) {
-  .ldm-sheet-header {
-    align-items: flex-start;
-  }
+.ldm-sheet-check-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
 
-  .ldm-sheet-portrait {
-    width: 64px;
-    height: 64px;
-  }
+.ldm-sheet-check-list .ldm-sheet-skill {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 32px !important;
+  padding: 3px 10px !important;
+  border-radius: 5px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
 
+.ldm-sheet-check-list .ldm-sheet-skill:hover {
+  background: rgba(255, 255, 255, 0.045) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ldm-sheet-check-list .ldm-sheet-skill-label {
+  flex: 1 1 auto;
+  min-width: 60px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.ldm-sheet-check-list .ldm-sheet-input--small {
+  width: 38px;
+  height: 22px;
+  padding: 0 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #f8fafc;
+}
+
+.ldm-sheet-check-list .ldm-sheet-skill-mod {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ldm-sheet-gold);
+  min-width: 28px;
+  text-align: center;
+}
+
+.ldm-sheet-check-list .ldm-sheet-mini {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.ldm-sheet-check-list .ldm-sheet-mini span {
+  white-space: nowrap;
+}
+
+.ldm-sheet-check-list .ldm-sheet-btn {
+  height: 24px !important;
+  padding: 0 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #f59e0b !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 120ms ease;
+}
+
+.ldm-sheet-check-list .ldm-sheet-btn:hover:not(:disabled) {
+  background: #f59e0b !important;
+  color: #0f1117 !important;
+}
+
+.ldm-sheet-attack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 112px) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ldm-sheet-border);
+}
+
+.ldm-sheet-attack > div {
+  min-width: 0;
+}
+
+.ldm-sheet-attack strong {
+  display: block;
+  font-size: 13px;
+  color: var(--ldm-sheet-text);
+  overflow-wrap: anywhere;
+}
+
+.ldm-sheet-magic-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ldm-sheet-magic-slot {
+  display: flex;
+  min-width: 140px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--ldm-sheet-border);
+  border-radius: 6px;
+  background: var(--ldm-sheet-bg-surface);
+}
+
+.ldm-sheet-magic-slot label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ldm-grid > .ldm-block[data-span='full'] {
+  grid-column: 1 / -1;
+}
+
+/* ── Responsive & Compact breakpoints ─────────────────────────── */
+
+@media (max-width: 560px) {
   .ldm-sheet-skill {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) 52px 40px auto;
+    gap: 6px;
   }
-
-  .ldm-sheet-skill .ldm-sheet-btn {
+  .ldm-sheet-attack {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ldm-sheet-attack > div {
     grid-column: 1 / -1;
   }
+  .ldm-sheet-attack .ldm-sheet-mini {
+    grid-column: 1;
+  }
 }
+
+@container (max-width: 440px) {
+  .ldm-sheet-portrait {
+    width: 52px;
+    height: 52px;
+  }
+  .ldm-sheet-attr-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(80px, 100%), 1fr));
+  }
+  .ldm-sheet-skill {
+    grid-template-columns: minmax(0, 1fr) 50px 38px;
+  }
+  .ldm-sheet-skill-label {
+    grid-column: 1 / -1;
+  }
+  .ldm-sheet-skill .ldm-sheet-btn {
+    grid-column: 3;
+  }
+}
+
+/* ── XP Tab & Ledger ───────────────────────────────────────────── */
+
+.ldm-sheet-xp-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 12px;
+}
+
+.ldm-sheet-xp-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  gap: 8px;
+}
+
+.ldm-sheet-xp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #151822;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ldm-sheet-xp-card-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.ldm-sheet-xp-card-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.ldm-sheet-xp-card-val--avail {
+  color: #dfb878;
+}
+
+.ldm-sheet-xp-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ldm-sheet-xp-form #ldm-sheet-xp-val {
+  width: 110px;
+  flex-shrink: 0;
+  height: 28px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.ldm-sheet-xp-form #ldm-sheet-xp-desc {
+  flex: 1 1 auto;
+  height: 28px;
+  font-size: 12px;
+  text-align: left;
+  padding: 0 8px;
+}
+
+.ldm-sheet-xp-add-btn {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #dfb878;
+  background: rgba(223, 184, 120, 0.12);
+  border: 1px solid rgba(223, 184, 120, 0.3);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.ldm-sheet-xp-add-btn:hover:not(:disabled) {
+  background: rgba(223, 184, 120, 0.25);
+  border-color: #dfb878;
+  color: #fff;
+}
+
+.ldm-sheet-xp-log-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ldm-sheet-xp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ldm-sheet-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ldm-sheet-xp-amount {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.ldm-sheet-xp-badge--gain {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.ldm-sheet-xp-badge--spend {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.ldm-sheet-xp-reason {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+
+.ldm-sheet-xp-date {
+  font-size: 10px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.ldm-sheet-xp-del {
+  padding: 1px 6px;
+  height: 20px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldm-sheet *,
+  .ldm-sheet *::before,
+  .ldm-sheet *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

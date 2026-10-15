@@ -18,6 +18,7 @@ import {
   defaultActorData,
   defaultItemData,
   actorValue,
+  attributeRollValue,
   loadConfig,
   saveConfig,
   onConfigSaved,
@@ -64,9 +65,9 @@ test('module constants identify the setting', () => {
   assert.equal(CONFIG_KEY, 'ruleConfig');
 });
 
-test('defaultConfig is a valid v1 config with zero validation errors', () => {
+test('defaultConfig is a valid v2 config with zero validation errors', () => {
   const cfg = expectClean(defaultConfig());
-  assert.equal(cfg.version, 1);
+  assert.equal(cfg.version, 2);
   assert.equal(cfg.dice.mode, 'd20');
 });
 
@@ -264,6 +265,35 @@ describe('keys and labels', () => {
     const result = validateConfig(withCfg({ attributes: [{ key: 'grit', label: 'Gr\u0000it\n', min: 0, max: 5, default: 1 }] }));
     assert.equal(result.config.attributes[0].label, 'Gr it');
   });
+});
+
+describe('optional d20 attribute modifiers', () => {
+  test('uses floor((score - 10) / 2) only when enabled', () => {
+    const cfg = defaultConfig();
+    cfg.attributes[0].useD20Modifier = true;
+    assert.equal(attributeRollValue(cfg, 'might', 16), 3);
+    assert.equal(attributeRollValue(cfg, 'might', 9), -1);
+    assert.equal(attributeRollValue(cfg, 'might', 8), -1);
+    assert.equal(attributeRollValue(cfg, 'grace', 16), 16, 'other attributes keep their raw value');
+  });
+
+  test('missing and malformed flags safely default to disabled', () => {
+    const cfg = defaultConfig();
+    delete cfg.attributes[0].useD20Modifier;
+    assert.equal(validateConfig(cfg).config.attributes[0].useD20Modifier, false);
+    cfg.attributes[0].useD20Modifier = 'yes';
+    assert.equal(validateConfig(cfg).config.attributes[0].useD20Modifier, false);
+    assert.equal(attributeRollValue(cfg, 'might', 16), 16);
+  });
+});
+
+test('attribute display mode is dots or numbers and defaults to numbers', () => {
+  const cfg = defaultConfig();
+  assert.equal(cfg.attributeDisplay, 'number');
+  cfg.attributeDisplay = 'dots';
+  assert.equal(validateConfig(cfg).config.attributeDisplay, 'dots');
+  cfg.attributeDisplay = 'bars';
+  assert.equal(validateConfig(cfg).config.attributeDisplay, 'number');
 });
 
 describe('list sizes', () => {
@@ -535,9 +565,9 @@ describe('migrateConfig', () => {
   test('a config with no version keeps its known keys', () => {
     const base = defaultConfig();
     const { version, ...noVersion } = base;
-    assert.equal(version, 1);
+    assert.equal(version, 2);
     const migrated = migrateConfig(noVersion);
-    assert.equal(migrated.version, 1);
+    assert.equal(migrated.version, 2);
     assert.deepEqual(migrated, base);
   });
 
@@ -545,7 +575,7 @@ describe('migrateConfig', () => {
     const base = PRESETS.d6Pool();
     const future = { ...deepClone(base), version: 9, futureField: { deep: true } };
     const migrated = migrateConfig(future);
-    assert.equal(migrated.version, 1);
+    assert.equal(migrated.version, 2);
     assert.deepEqual(migrated.attributes, base.attributes);
     assert.deepEqual(migrated.skills, base.skills);
     assert.deepEqual(migrated.resources, base.resources);
@@ -553,9 +583,21 @@ describe('migrateConfig', () => {
     assert.equal('futureField' in migrated, false);
   });
 
-  test('a valid v1 config is unchanged by migration', () => {
-    assert.deepEqual(migrateConfig(defaultConfig()), defaultConfig());
-    assert.deepEqual(migrateConfig(PRESETS.d20Classic()), PRESETS.d20Classic());
+  test('a v1 config retains old data and disables newly introduced optional mechanics', () => {
+    const old = deepClone(PRESETS.d20Classic());
+    old.version = 1;
+    delete old.saves;
+    delete old.attacks;
+    delete old.magic;
+    const migrated = migrateConfig(old);
+    assert.equal(migrated.version, 2);
+    assert.deepEqual(migrated.attributes, old.attributes);
+    assert.deepEqual(migrated.skills, old.skills);
+    assert.deepEqual(migrated.resources, old.resources);
+    assert.deepEqual(migrated.saves, { enabled: false, entries: [] });
+    assert.equal(migrated.attacks.enabled, true);
+    assert.equal(migrated.attacks.profiles[0].key, 'basic');
+    assert.equal(migrated.magic.enabled, true);
   });
 
   test('non-object input returns the defaults and never throws', () => {
@@ -800,7 +842,7 @@ describe('engine boundary with a fake Loom', () => {
     };
     const cfg = await loadConfig();
     assert.deepEqual(calls.whenReady, [CONFIG_MODULE]);
-    assert.deepEqual(calls.api, [`/module-settings/world-1/${CONFIG_MODULE}`]);
+    assert.deepEqual(calls.api, [`/module-settings/world-1/${encodeURIComponent(CONFIG_MODULE)}`]);
     assert.deepEqual(cfg, stored);
     assert.equal(calls.get.length, 0, 'fresh load must not use the cache');
   });
@@ -1023,17 +1065,19 @@ function flatBlocks(tabs) {
 }
 
 const ACTOR_DEFAULT_TABS = [
-  { key: 'main', label: 'Main', columns: 2, blocks: ['resources', 'attributes', 'skills'] },
-  { key: 'powers', label: 'Powers', columns: 1, blocks: ['items:ability', 'items:spell'] },
-  { key: 'gear', label: 'Gear', columns: 1, blocks: ['items:gear', 'items:other', 'notes'] },
-  { key: 'effects', label: 'Effects', columns: 1, blocks: ['effects'] },
+  { key: 'main', label: 'Main', columns: 1, blocks: ['resources', 'attributes', 'skills', 'saves'], blockSpans: {} },
+  { key: 'attacks', label: 'Attacks', columns: 1, blocks: ['attacks'], blockSpans: {} },
+  { key: 'magic', label: 'Magic', columns: 1, blocks: ['magic'], blockSpans: {} },
+  { key: 'powers', label: 'Powers', columns: 1, blocks: ['items:ability', 'items:spell'], blockSpans: {} },
+  { key: 'gear', label: 'Gear', columns: 1, blocks: ['items:gear', 'items:other', 'notes'], blockSpans: {} },
+  { key: 'effects', label: 'Effects', columns: 1, blocks: ['effects'], blockSpans: {} },
 ];
 
 const ITEM_DEFAULT_TABS = [
-  { key: 'details', label: 'Details', columns: 2, blocks: ['details', 'uses'] },
-  { key: 'rules', label: 'Rules', columns: 2, blocks: ['roll', 'cost'] },
-  { key: 'effects', label: 'Effects', columns: 1, blocks: ['effects'] },
-  { key: 'text', label: 'Description', columns: 1, blocks: ['description'] },
+  { key: 'details', label: 'Details', columns: 2, blocks: ['details', 'uses'], blockSpans: {} },
+  { key: 'rules', label: 'Rules', columns: 2, blocks: ['roll', 'cost'], blockSpans: {} },
+  { key: 'effects', label: 'Effects', columns: 1, blocks: ['effects'], blockSpans: {} },
+  { key: 'text', label: 'Description', columns: 1, blocks: ['description'], blockSpans: {} },
 ];
 
 describe('layout defaults', () => {
@@ -1058,7 +1102,7 @@ describe('layout defaults', () => {
     assert.ok(Object.isFrozen(ITEM_LAYOUT_BLOCKS));
     assert.deepEqual(
       [...LAYOUT_BLOCKS],
-      ['resources', 'attributes', 'skills', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'notes', 'effects'],
+      ['resources', 'attributes', 'skills', 'saves', 'attacks', 'magic', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'notes', 'effects'],
     );
     assert.deepEqual([...ITEM_LAYOUT_BLOCKS], ['details', 'uses', 'roll', 'cost', 'description', 'effects']);
     assert.equal(LAYOUT_LIMITS.maxTabs, 8);
@@ -1269,15 +1313,17 @@ describe('resolveLayout and resolveItemLayout', () => {
     });
     const layout = resolveLayout(cfg);
     assert.deepEqual(layout.tabs, [
-      { key: 'a', label: 'A', columns: 1, blocks: ['notes', 'resources', 'attributes', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'effects'] },
-      { key: 'b', label: 'B', columns: 3, blocks: ['skills'] },
+      { key: 'a', label: 'A', columns: 1, blocks: ['notes', 'resources', 'attributes', 'items:gear', 'items:ability', 'items:spell', 'items:other', 'effects'], blockSpans: {} },
+      { key: 'b', label: 'B', columns: 3, blocks: ['skills'], blockSpans: {} },
     ]);
   });
 
   test('every actor block is shown exactly once for any valid layout', () => {
     const configs = [defaultConfig(), PRESETS.d6Pool(), withLayout({ tabs: [{ key: 'only', label: 'Only', columns: 4, blocks: [] }] })];
     for (const cfg of configs) {
-      assert.deepEqual(flatBlocks(resolveLayout(cfg).tabs).sort(), [...LAYOUT_BLOCKS].sort());
+      const optional = flatBlocks(cfg.layout.tabs).filter((key) => ['saves', 'attacks', 'magic'].includes(key));
+      const allowed = optional.filter((key) => key === 'saves' ? cfg.saves.enabled && cfg.saves.entries.some((entry) => entry.showOnSheet) : key === 'attacks' ? cfg.attacks.enabled && cfg.attacks.profiles.length : cfg.magic.enabled);
+      assert.deepEqual(flatBlocks(resolveLayout(cfg).tabs).sort(), [...LAYOUT_BLOCKS.filter((key) => !['saves', 'attacks', 'magic'].includes(key)), ...allowed].sort());
     }
   });
 
@@ -1305,13 +1351,13 @@ describe('resolveLayout and resolveItemLayout', () => {
     });
     const { tabs } = resolveItemLayout(cfg);
     assert.deepEqual(tabs[0].blocks, ['cost', 'details', 'uses', 'roll', 'effects']);
-    assert.deepEqual(tabs[1], { key: 'y', label: 'Y', columns: 2, blocks: ['description'] });
+    assert.deepEqual(tabs[1], { key: 'y', label: 'Y', columns: 2, blocks: ['description'], blockSpans: {} });
   });
 
   test('empty tab lists resolve to the default layout with every block', () => {
     const actor = resolveLayout(withLayout({ tabs: [] }));
-    assert.deepEqual(actor.tabs.map((t) => t.key), ['main', 'powers', 'gear', 'effects']);
-    assert.deepEqual(flatBlocks(actor.tabs).sort(), [...LAYOUT_BLOCKS].sort());
+    assert.deepEqual(actor.tabs.map((t) => t.key), ['main', 'attacks', 'magic', 'powers', 'gear', 'effects']);
+    assert.deepEqual(flatBlocks(actor.tabs).sort(), [...LAYOUT_BLOCKS.filter((key) => key !== 'saves')].sort());
     assert.deepEqual(resolveItemLayout(withLayout({ itemTabs: [] })), { tabs: defaultLayout().itemTabs });
   });
 

@@ -45,12 +45,15 @@ export const LIST_NAMES = Object.freeze(['attributes', 'skills', 'resources', 'i
 export const LAYOUT_TAB_LISTS = Object.freeze(['tabs', 'itemTabs']);
 /** Editor sections in navigation order. Each key is a panel of the section tabs. */
 export const SECTION_KEYS = Object.freeze([
-  'dice', 'attributes', 'skills', 'resources', 'categories', 'kinds', 'layout', 'card', 'combat', 'io',
+  'dice', 'attributes', 'skills', 'saves', 'attacks', 'magic', 'resources', 'categories', 'kinds', 'layout', 'card', 'combat', 'io',
 ]);
 const SAMPLE_FACES = [6, 5, 2, 1, 4, 3];
 
 /** English names of the layout blocks, used only when the language file has no entry. */
 const BLOCK_FALLBACK = Object.freeze({
+  saves: 'Saving throws',
+  attacks: 'Attacks',
+  magic: 'Magic',
   resources: 'Resources',
   attributes: 'Attributes',
   skills: 'Skills',
@@ -150,7 +153,7 @@ export function updateRow(list, index, field, value) {
 export function newRowTemplate(listName, draft) {
   switch (listName) {
     case 'attributes':
-      return { key: '', label: '', min: 0, max: 10, default: 0, group: '' };
+      return { key: '', label: '', min: 0, max: 10, default: 0, useD20Modifier: false, group: '' };
     case 'skills': {
       const first = Array.isArray(draft?.attributes) && draft.attributes[0] ? draft.attributes[0].key : '';
       return { key: '', label: '', attr: first, max: 10, default: 0, group: '' };
@@ -320,6 +323,47 @@ export function configFromDraft(draft) {
   return out;
 }
 
+function sourceSelect(draft, collection, index, sources = [], nestedPath = '') {
+  const selected = new Set((sources ?? []).map((s) => `${s.kind}:${s.key}:${s.value ?? (s.kind === 'skill' ? 'rank' : 'configured')}`));
+  const options = [['', T('sandbox.editor.sourceNone', 'No source')]];
+  const valid = new Set();
+  for (const row of draft.attributes ?? []) {
+    for (const [value, label] of [['configured', T('sandbox.editor.attributeValue', 'attribute or modifier')], ['score', T('sandbox.editor.attributeScore', 'full value')], ['modifier', T('sandbox.editor.attributeModifier', 'd20 modifier')]]) {
+      const key = `attr:${row.key}:${value}`; valid.add(key); options.push([key, `${esc(row.label)} (${label})`]);
+    }
+  }
+  for (const row of draft.skills ?? []) { const key = `skill:${row.key}:rank`; valid.add(key); options.push([key, `${esc(row.label)} (${T('sandbox.editor.skillRank', 'skill rank')})`]); }
+  const opts = options.map(([value, label]) => `<option value="${esc(value)}"${selected.has(value) ? ' selected' : ''}>${label}</option>`).join('');
+  const hint = T('sandbox.editor.sourceHint', 'Select the attributes and skills that contribute. A skill never adds its linked attribute automatically.');
+  return field(T('sandbox.editor.rollSources', 'Roll sources'), `<select class="ldm-editor-input" title="${esc(hint)}" data-field="sources" data-nested-list="${collection}" data-source-list="${collection}"${nestedPath ? ` data-nested-path="${nestedPath}"` : ''} data-index="${index}">${opts}</select>`);
+}
+
+function mechanicSection(draft, name) {
+  const root = draft[name] ?? {};
+  const saves = name === 'saves';
+  const attacks = name === 'attacks';
+  const prop = saves ? 'entries' : attacks ? 'profiles' : 'levels';
+  const rows = Array.isArray(root[prop]) ? root[prop] : [];
+  const attrs = (index) => ` data-nested-list="${name}.${prop}" data-index="${index}"`;
+  const remove = (index) => `<button type="button" class="ldm-editor-btn ldm-editor-danger" data-action="ed-nested-remove" data-collection="${name}.${prop}" data-index="${index}">${T('sandbox.editor.remove', 'Remove')}</button>`;
+  const content = rows.map((row, i) => {
+    const fields = textField('label', T('sandbox.editor.fieldLabel', 'Name'), row.label ?? '', LIMITS.label, attrs(i));
+    if (saves) return `<li class="ldm-editor-row"><div class="ldm-editor-row-body ldm-editor-grid">${fields}${numberField('bonus', T('sandbox.editor.bonus', 'Bonus'), row.bonus ?? 0, -99, 99, attrs(i))}${numberField('target', T('sandbox.editor.target', 'Default difficulty'), row.target ?? '', 0, 999, `${attrs(i)} data-nullable-number="true"`)}${sourceSelect(draft, `${name}.${prop}`, i, row.sources)}${checkField('showOnSheet', T('sandbox.editor.showOnSheet', 'Show on character sheet'), row.showOnSheet !== false, attrs(i))}</div>${remove(i)}</li>`;
+    if (attacks) return `<li class="ldm-editor-row"><div class="ldm-editor-row-body ldm-editor-grid">${fields}${selectField('mode', T('sandbox.editor.attackDice', 'Attack dice'), [['system', T('sandbox.editor.followSystem', 'Follow system')], ['d20', 'D20'], ['pool', T('sandbox.editor.dicePool', 'Dice pool')]], row.mode ?? 'system', attrs(i))}${numberField('faces', T('sandbox.editor.dieFaces', 'Attack die faces'), row.faces ?? 10, 2, 100, attrs(i))}${numberField('successMin', T('sandbox.editor.attackPoolSuccessOn', 'Attack pool success on'), row.successMin ?? 5, 2, 100, attrs(i))}${numberField('bonus', T('sandbox.editor.bonus', 'Attack bonus'), row.bonus ?? 0, -99, 99, attrs(i))}${numberField('target', T('sandbox.editor.target', 'Default defense'), row.target ?? null, 0, 999, `${attrs(i)} data-nullable-number="true"`)}${sourceSelect(draft, `${name}.${prop}`, i, row.sources)}${selectField('method', T('sandbox.editor.damageMethod', 'Damage method'), [['none', T('sandbox.editor.damageNone', 'No damage')], ['fixed', T('sandbox.editor.damageFixed', 'Fixed value')], ['dice', T('sandbox.editor.damageDice', 'Separate dice roll')], ['successes', T('sandbox.editor.damageSuccesses', 'Attack successes')], ['margin', T('sandbox.editor.damageMargin', 'Margin over defense')], ['pool', T('sandbox.editor.damagePool', 'Separate damage pool')]], row.damage?.method ?? 'none', ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}${numberField('base', T('sandbox.editor.damageBase', 'Base damage'), row.damage?.base ?? 0, -99, 999, ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}${sourceSelect(draft, `${name}.${prop}`, i, row.damage?.sources, 'damage')}${numberField('count', T('sandbox.editor.damageDiceCount', 'Damage dice'), row.damage?.count ?? 1, 1, 100, ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}${numberField('faces', T('sandbox.editor.damageDieFaces', 'Damage die faces'), row.damage?.faces ?? 6, 2, 100, ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}${numberField('successMin', T('sandbox.editor.successMin', 'Pool success on'), row.damage?.successMin ?? 5, 2, 100, ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}${checkField('critPairs', T('sandbox.editor.critPairs', 'Critical pairs add two successes'), row.damage?.critPairs === true, ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}${numberField('critFace', T('sandbox.editor.critFace', 'Critical face'), row.damage?.critFace ?? 10, 2, 100, ` data-nested-list="${name}.${prop}" data-index="${i}" data-nested-path="damage"`)}</div>${remove(i)}</li>`;
+    return `<li class="ldm-editor-row"><div class="ldm-editor-row-body ldm-editor-grid">${fields}${numberField('rank', T('sandbox.editor.level', 'Level'), row.rank ?? 0, 0, 20, attrs(i))}${numberField('capacityDefault', T('sandbox.editor.capacity', 'Default slots'), row.capacityDefault ?? 0, 0, 99, attrs(i))}${checkField('free', T('sandbox.editor.freeLevel', 'Free level'), row.free === true, attrs(i))}</div>${remove(i)}</li>`;
+  }).join('');
+  let body = checkField(`${name}.enabled`, T('sandbox.editor.moduleEnabled', 'Enable this section'), root.enabled !== false);
+  if (saves) body += `<ol class="ldm-editor-rows">${content}</ol><button type="button" class="ldm-editor-btn ldm-editor-add" data-action="ed-nested-add" data-collection="saves.entries">${T('sandbox.editor.addSave', 'Add saving throw')}</button>`;
+  if (attacks) body += `<ol class="ldm-editor-rows">${content}</ol><button type="button" class="ldm-editor-btn ldm-editor-add" data-action="ed-nested-add" data-collection="attacks.profiles">${T('sandbox.editor.addAttack', 'Add attack')}</button>`;
+  if (name === 'magic') {
+    const checkRows = (root.checkProfiles ?? []).map((row, i) => `<li class="ldm-editor-row"><div class="ldm-editor-row-body ldm-editor-grid">${textField('label', T('sandbox.editor.fieldLabel', 'Name'), row.label ?? '', LIMITS.label, ` data-nested-list="magic.checkProfiles" data-index="${i}"`)}${selectField('mode', T('sandbox.editor.attackDice', 'Dice mode'), [['system', T('sandbox.editor.followSystem', 'Follow system')], ['d20', 'D20'], ['pool', T('sandbox.editor.dicePool', 'Dice pool')]], row.mode ?? 'system', ` data-nested-list="magic.checkProfiles" data-index="${i}"`)}${numberField('bonus', T('sandbox.editor.bonus', 'Bonus'), row.bonus ?? 0, -99, 99, ` data-nested-list="magic.checkProfiles" data-index="${i}"`)}${numberField('target', T('sandbox.editor.target', 'Difficulty / defense'), row.target ?? null, 0, 999, ` data-nested-list="magic.checkProfiles" data-index="${i}" data-nullable-number="true"`)}${sourceSelect(draft, 'magic.checkProfiles', i, row.sources)}</div><button type="button" class="ldm-editor-btn ldm-editor-danger" data-action="ed-nested-remove" data-collection="magic.checkProfiles" data-index="${i}">${T('sandbox.editor.remove', 'Remove')}</button></li>`).join('');
+    body += `${selectField('magic.defaultMethod', T('sandbox.editor.defaultCastingMethod', 'Default casting method'), [['free', T('sandbox.editor.methodFree', 'Free')], ['resource', T('sandbox.editor.methodResource', 'Resource points')], ['spontaneous', T('sandbox.editor.methodSpontaneous', 'Spontaneous slots')], ['prepared', T('sandbox.editor.methodPrepared', 'Prepared / Vancian')], ['uses', T('sandbox.editor.methodUses', 'Uses per spell')], ['check', T('sandbox.editor.methodCheck', 'Casting check')]], root.defaultMethod ?? 'resource')}${selectField('magic.recovery', T('sandbox.editor.recovery', 'Recovery'), [['manual', T('sandbox.editor.recoveryManual', 'Manual')], ['shortRest', T('sandbox.editor.recoveryShort', 'Short rest')], ['longRest', T('sandbox.editor.recoveryLong', 'Long rest')]], root.recovery ?? 'manual')}<fieldset class="ldm-editor-subsection"><legend>${T('sandbox.editor.enabledMethods', 'Methods available to spells')}</legend>${[['free','methodFree','Free'],['resource','methodResource','Resource points'],['spontaneous','methodSpontaneous','Spontaneous slots'],['prepared','methodPrepared','Prepared / Vancian'],['uses','methodUses','Uses per spell'],['check','methodCheck','Casting check']].map(([method,key,fallback])=>`<label class="ldm-editor-check"><input type="checkbox" data-field="magic.methods" data-method="${method}"${(root.methods ?? []).includes(method) ? ' checked' : ''}><span>${T(`sandbox.editor.${key}`,fallback)}</span></label>`).join('')}</fieldset><ol class="ldm-editor-rows">${content}</ol><button type="button" class="ldm-editor-btn ldm-editor-add" data-action="ed-nested-add" data-collection="magic.levels">${T('sandbox.editor.addLevel', 'Add spell level')}</button><h4 class="ldm-editor-h4">${T('sandbox.editor.castingProfiles', 'Casting check profiles')}</h4><ol class="ldm-editor-rows">${checkRows}</ol><button type="button" class="ldm-editor-btn ldm-editor-add" data-action="ed-nested-add" data-collection="magic.checkProfiles">${T('sandbox.editor.addCastingProfile', 'Add casting check')}</button>`;
+  }
+  const title = saves ? T('sandbox.editor.sectionSaves', 'Saving throws') : attacks ? T('sandbox.editor.sectionAttacks', 'Attacks and damage') : T('sandbox.editor.sectionMagic', 'Magic');
+  const hint = saves ? T('sandbox.editor.savesHint', 'Choose attributes and skills for each save; character adjustments are stored separately.') : attacks ? T('sandbox.editor.attacksHint', 'Configure attack sources and damage behavior. Result-based damage is calculated from the actual chat roll.') : T('sandbox.editor.magicHint', 'Choose how spells consume resources and how recovery works.');
+  return section(name, title, hint, body);
+}
+
 /** Errors that stop saving: every validateConfig message plus editor-only checks. */
 export function draftErrors(draft) {
   const errors = [];
@@ -468,8 +512,9 @@ function rowTools(listName, index, count) {
 }
 
 function keyField(listName, index, row, state) {
+  const summary = `<summary>${T('sandbox.editor.internalId', 'Internal identifier (advanced)')}</summary>`;
   if (!state.keyEditable?.has(row)) {
-    return `<div class="ldm-editor-field"><span class="ldm-editor-label">${T('sandbox.editor.fieldKey', 'Key')}</span><code class="ldm-editor-key">${esc(row.key)}</code><span class="ldm-editor-hint">${T('sandbox.editor.keyFixed', 'Key is fixed once saved; actors store values under it.')}</span></div>`;
+    return `<details class="ldm-editor-key-details">${summary}<div class="ldm-editor-field"><span class="ldm-editor-label">${T('sandbox.editor.fieldKey', 'Key')}</span><code class="ldm-editor-key">${esc(row.key)}</code><span class="ldm-editor-hint">${T('sandbox.editor.keyFixed', 'Key is fixed once saved; actors store values under it.')}</span></div></details>`;
   }
   const hint = state.autoKey?.has(row) ? T('sandbox.editor.keyHint', 'Created from the label; you can change it until you save.') : '';
   const attrs = attrString({
@@ -481,7 +526,7 @@ function keyField(listName, index, row, state) {
     spellcheck: 'false',
     autocomplete: 'off',
   });
-  return field(T('sandbox.editor.fieldKey', 'Key'), `<input${attrs}${rowAttrs(listName, index)}>`, hint);
+  return `<details class="ldm-editor-key-details">${summary}${field(T('sandbox.editor.fieldKey', 'Key'), `<input${attrs}${rowAttrs(listName, index)}>`, hint)}</details>`;
 }
 
 /** Optional group text of an attribute or skill row (empty means no group). */
@@ -523,7 +568,7 @@ function diceSection(draft, cfg) {
   const modeSelect = selectField(
     'dice.mode',
     T('sandbox.editor.diceMode', 'Dice system'),
-    [['d20', T('sandbox.editor.diceD20', 'Single d20 check')], ['pool', T('sandbox.editor.dicePool', 'Dice pool')]],
+    [['d20', T('sandbox.editor.singleDie', 'One die + bonuses')], ['pool', T('sandbox.editor.dicePool', 'Dice pool')]],
     mode,
   );
   const fields = mode === 'pool'
@@ -535,7 +580,12 @@ function diceSection(draft, cfg) {
       + numberField('dice.d20.critMin', T('sandbox.editor.critMin', 'Critical on'), d20.critMin, 2, 100)
       + numberField('dice.d20.fumbleMax', T('sandbox.editor.fumbleMax', 'Fumble on'), d20.fumbleMax, 1, 100)
       + textField('dice.d20.targetLabel', T('sandbox.editor.targetLabel', 'Target label'), d20.targetLabel ?? '', LIMITS.targetLabel);
-  const body = `${modeSelect}<p class="ldm-editor-summary" aria-live="polite">${esc(describeDice(cfg))}</p><div class="ldm-editor-grid">${fields}</div>`;
+  const faces = mode === 'pool' ? pool.faces : d20.sides;
+  const choices = `<div class="ldm-editor-dice-choices" role="group" aria-label="${T('sandbox.editor.chooseDie', 'Choose your die')}">${[4, 6, 8, 10, 12, 20, 100].map((n) => `<button type="button" class="ldm-editor-btn ldm-editor-btn--die" data-action="ed-die" data-faces="${n}" aria-pressed="${Number(faces) === n}"><span class="ldm-die-symbol">🎲</span><span class="ldm-die-label">D${n}</span></button>`).join('')}</div>`;
+  const explanation = mode === 'pool'
+    ? T('sandbox.editor.poolHelp', 'Attribute + skill + bonus determines how many dice to roll. Each die at or above the success threshold counts as one success. Advantage adds a die; disadvantage removes one.')
+    : T('sandbox.editor.singleHelp', 'Roll one die and add the attribute, skill and bonus. Meet or beat the target to succeed. Advantage rolls two dice and keeps the higher; disadvantage keeps the lower.');
+  const body = `${modeSelect}${choices}<p class="ldm-editor-hint">${explanation}</p><p class="ldm-editor-summary" aria-live="polite">${esc(describeDice(cfg))}</p><div class="ldm-editor-grid">${fields}</div>${renderPreview(cfg)}`;
   return section('dice', T('sandbox.editor.sectionDice', 'Dice'), '', body);
 }
 
@@ -573,14 +623,17 @@ function combatSection(draft, cfg) {
     ${selectField('combat.initiative.attr', T('sandbox.editor.initAttr', 'Attribute used'), attributeOptions(draft, init.attr ?? ''), init.attr ?? '')}
     ${numberField('combat.initiative.bonus', T('sandbox.editor.initBonus', 'Bonus'), init.bonus ?? 0, -LIMITS.bonusBound, LIMITS.bonusBound)}
   </div>
-  <p class="ldm-editor-summary" aria-live="polite">${describeInitiative(cfg)}</p>`;
+  <p class="ldm-editor-summary" aria-live="polite">${describeInitiative(cfg)}</p>
+  <h4 class="ldm-editor-h4">${T('sandbox.editor.trackerResources', 'Resources in the combat tracker')}</h4>
+  <p class="ldm-editor-hint">${T('sandbox.editor.trackerHelp', 'Choose which resources appear beside combatants. Create or rename resources in Resources. Initiative uses the dice selected in Dice; the core orders higher totals first.')}</p>
+  <div class="ldm-editor-grid">${(draft.resources ?? []).map((row, index) => checkField('showInCombat', esc(row.label || row.key), row.showInCombat === true, rowAttrs('resources', index))).join('')}</div>`;
   return section('combat', T('sandbox.editor.sectionCombat', 'Combat'), '', body);
 }
 
 /** Localized one-line summary of the initiative rule (already escaped). */
 function describeInitiative(cfg) {
   const init = cfg.combat.initiative;
-  const attr = init.attr || '-';
+  const attr = cfg.attributes.find((a) => a.key === init.attr)?.label || '-';
   const vars = { attr, bonus: init.bonus };
   if (init.mode === 'roll') {
     return TV('sandbox.editor.initSummaryRoll', 'Initiative: check roll plus {attr} and bonus {bonus}.', vars);
@@ -636,9 +689,10 @@ function tabRow(meta, tabs, tab, index, s) {
 
   const chips = blocks.map((block, bi) => {
     const name = blockName(block, meta.scope);
-    const blockAt = `${at} data-block="${bi}"`;
+    const blockAt = `${at} data-block="${bi}" data-layout-block="${esc(block)}"`;
     return `<li class="ldm-editor-chip">
       <span class="ldm-editor-chip-name">${esc(name)}</span>
+      ${meta.scope === 'actor' ? `<select class="ldm-editor-input" data-field="blockSpan"${blockAt} aria-label="${T('sandbox.editor.blockWidth', 'Block width')}"><option value="auto"${tab.blockSpans?.[block] !== 'full' ? ' selected' : ''}>${T('sandbox.editor.widthAuto', 'Automatic')}</option><option value="full"${tab.blockSpans?.[block] === 'full' ? ' selected' : ''}>${T('sandbox.editor.widthFull', 'Full width')}</option></select>` : ''}
       <span class="ldm-editor-chip-tools">
         <button type="button" class="ldm-editor-btn" data-action="ed-block-move" data-dir="-1"${blockAt}${bi === 0 ? ' disabled' : ''} aria-label="${TV('sandbox.editor.blockUp', 'Move {name} up', { name })}">${T('sandbox.editor.up', 'Up')}</button>
         <button type="button" class="ldm-editor-btn" data-action="ed-block-move" data-dir="1"${blockAt}${bi >= blocks.length - 1 ? ' disabled' : ''} aria-label="${TV('sandbox.editor.blockDown', 'Move {name} down', { name })}">${T('sandbox.editor.down', 'Down')}</button>
@@ -717,6 +771,7 @@ function layoutPart(kind, draft, cfg, s) {
     ${add}
     ${notice}
     <p class="ldm-editor-hint">${T('sandbox.editor.effectsAlways', 'Effects is always shown on the sheet, even when no tab lists it. You can move it to any tab.')}</p>
+    <h5 class="ldm-editor-h4">${T('sandbox.editor.sheetPreview', 'Sheet preview')}</h5>
     ${renderLayoutPreview(resolved, meta.scope)}
   </div>`;
 }
@@ -746,6 +801,9 @@ const SECTION_TITLES = Object.freeze({
   dice: ['sandbox.editor.sectionDice', 'Dice'],
   attributes: ['sandbox.editor.sectionAttributes', 'Attributes'],
   skills: ['sandbox.editor.sectionSkills', 'Skills'],
+  saves: ['sandbox.editor.sectionSaves', 'Saving throws'],
+  attacks: ['sandbox.editor.sectionAttacks', 'Attacks'],
+  magic: ['sandbox.editor.sectionMagic', 'Magic'],
   resources: ['sandbox.editor.sectionResources', 'Resources'],
   categories: ['sandbox.editor.sectionCategories', 'Item categories'],
   kinds: ['sandbox.editor.sectionKinds', 'Item kinds'],
@@ -867,12 +925,13 @@ export function renderEditor(state) {
     .join('')}</select></label>`;
 
   const top = `<div class="ldm-editor-top">
+    <p class="ldm-editor-guide">${T('sandbox.editor.guide', 'Start with the dice. Add the attributes and skills your players use, then arrange their sheet. Save to apply these rules to this world.')}</p>
     ${textField('name', T('sandbox.editor.name', 'System name'), draft.name ?? '', LIMITS.name)}
-    <div class="ldm-editor-actions">
+    <details><summary>${T('sandbox.editor.startingPoint', 'Use a ready-made starting point')}</summary><div class="ldm-editor-actions">
       ${presetSelect}
       <button type="button" class="ldm-editor-btn" data-action="ed-preset-ask">${T('sandbox.editor.presetLoad', 'Load preset')}</button>
       <button type="button" class="ldm-editor-btn ldm-editor-danger" data-action="ed-reset-ask">${T('sandbox.editor.reset', 'Reset to defaults')}</button>
-    </div>
+    </div></details>
   </div>`;
 
   const notice = s.notice?.text
@@ -885,7 +944,11 @@ export function renderEditor(state) {
     ? `<div class="ldm-editor-errors" aria-live="polite"><p>${T('sandbox.editor.errorsTitle', 'Fix these before saving:')}</p><ul>${errors.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></div>`
     : '';
 
-  const attributes = listSection(
+  const attributesDisplay = selectField('attributeDisplay', T('sandbox.editor.attributeDisplay', 'Attribute values'), [
+    ['number', T('sandbox.editor.displayNumbers', 'Numbers')],
+    ['dots', T('sandbox.editor.displayDots', 'Dots')],
+  ], draft.attributeDisplay === 'dots' ? 'dots' : 'number');
+  const attributes = `${attributesDisplay}<p class="ldm-editor-hint">${T('sandbox.editor.attributeDisplayHint', 'Max sets the highest score: that many dots in dot mode or the maximum number. Negative ranges and maximums above 20 stay numeric.')}</p>${listSection(
     'attributes', 'sandbox.editor.sectionAttributes', 'Attributes',
     'sandbox.editor.attributesHint', 'Actors store one value per attribute. Removing one hides it; stored values are kept.',
     'attributes', draft.attributes ?? [], s,
@@ -894,9 +957,11 @@ export function renderEditor(state) {
       + numberField('min', T('sandbox.editor.min', 'Min'), row.min, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i))
       + numberField('max', T('sandbox.editor.max', 'Max'), row.max, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i))
       + numberField('default', T('sandbox.editor.default', 'Default'), row.default, -LIMITS.attrBound, LIMITS.attrBound, rowAttrs('attributes', i))
+      + checkField('useD20Modifier', T('sandbox.editor.useD20Modifier', 'Convert score to a d20 modifier'), row.useD20Modifier === true, rowAttrs('attributes', i))
+      + `<span class="ldm-editor-hint">${T('sandbox.editor.useD20ModifierHint', 'Uses floor((score − 10) ÷ 2) in rolls, linked skills and powers.')}</span>`
       + groupField('attributes', i, row),
     'sandbox.editor.addAttribute', 'Add attribute',
-  );
+  )}`;
 
   const skills = listSection(
     'skills', 'sandbox.editor.sectionSkills', 'Skills',
@@ -942,10 +1007,12 @@ export function renderEditor(state) {
   );
 
   const footer = `<div class="ldm-editor-footer">
-    <span class="ldm-editor-status" role="status">${dirty ? T('sandbox.editor.unsaved', 'Unsaved changes') : T('sandbox.editor.saved', 'All changes saved')}</span>
+    <span class="ldm-editor-status" role="status"><span class="ldm-status-dot"></span><span class="ldm-status-text">${dirty ? T('sandbox.editor.unsaved', 'Unsaved changes') : T('sandbox.editor.saved', 'All changes saved')}</span></span>
     <div class="ldm-editor-actions">
-      <button type="button" class="ldm-editor-btn" data-action="ed-cancel">${T('sandbox.editor.close', 'Close')}</button>
-      <button type="button" class="ldm-editor-btn ldm-editor-primary" data-action="ed-save"${saveDisabled ? ' disabled' : ''}>${s.saving ? T('sandbox.editor.saving', 'Saving...') : T('sandbox.editor.save', 'Save')}</button>
+      <button type="button" class="ldm-editor-btn ldm-editor-btn--nav" data-action="ed-step" data-dir="-1"${SECTION_KEYS.indexOf(s.section) <= 0 ? ' disabled' : ''}>← ${T('sandbox.editor.previousStep', 'Previous')}</button>
+      <button type="button" class="ldm-editor-btn ldm-editor-btn--nav" data-action="ed-step" data-dir="1"${SECTION_KEYS.indexOf(s.section) === SECTION_KEYS.length - 1 ? ' disabled' : ''}>${T('sandbox.editor.nextStep', 'Next')} →</button>
+      <button type="button" class="ldm-editor-btn ldm-editor-btn--close" data-action="ed-cancel">${T('sandbox.editor.close', 'Close')}</button>
+      <button type="button" class="ldm-editor-btn ldm-editor-primary" data-action="ed-save"${saveDisabled ? ' disabled' : ''}>${s.saving ? `⏳ ${T('sandbox.editor.saving', 'Saving...')}` : `💾 ${T('sandbox.editor.save', 'Save')}`}</button>
     </div>
   </div>`;
 
@@ -955,6 +1022,9 @@ export function renderEditor(state) {
     dice: diceSection(draft, cfg),
     attributes,
     skills,
+    saves: mechanicSection(draft, 'saves'),
+    attacks: mechanicSection(draft, 'attacks'),
+    magic: mechanicSection(draft, 'magic'),
     resources,
     categories,
     kinds,
@@ -991,7 +1061,7 @@ function loomOrNull() {
 function readValue(el) {
   if (el.type === 'checkbox') return el.checked === true;
   if (el.type === 'number') {
-    if (el.value === '') return '';
+    if (el.value === '') return el.dataset?.nullableNumber === 'true' ? null : '';
     const n = Number(el.value);
     return Number.isFinite(n) ? n : el.value;
   }
@@ -1006,7 +1076,7 @@ function captureFocus(root) {
   if (typeof document === 'undefined') return null;
   const el = document.activeElement;
   if (!el || !root.contains(el) || !el.dataset) return null;
-  const keys = ['action', 'field', 'state', 'list', 'tabList', 'index', 'block', 'dir'];
+  const keys = ['action', 'field', 'state', 'list', 'tabList', 'nestedList', 'sourceList', 'nestedPath', 'collection', 'index', 'block', 'dir'];
   const marks = {};
   for (const k of keys) if (el.dataset[k] !== undefined) marks[k] = el.dataset[k];
   if (Object.keys(marks).length === 0) return null;
@@ -1022,7 +1092,7 @@ function captureFocus(root) {
 function restoreFocus(root, saved) {
   if (!saved || typeof document === 'undefined') return;
   const selector = Object.entries(saved.marks)
-    .map(([k, v]) => `[data-${k}="${String(v).replace(/"/g, '\\"')}"]`)
+    .map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())}="${String(v).replace(/"/g, '\\"')}"]`)
     .join('');
   const el = root.querySelector(selector);
   if (!el) return;
@@ -1043,8 +1113,8 @@ export class RuleEditorWindow extends EngineBase {
       id: EDITOR_WINDOW_ID,
       title: translate('sandbox.editor.title', 'Rule editor'),
       icon: '<i class="fa-solid fa-sliders"></i>',
-      width: 760,
-      height: 'auto',
+      width: 980,
+      height: 700,
       resizable: true,
       showFooter: false,
     });
@@ -1052,11 +1122,12 @@ export class RuleEditorWindow extends EngineBase {
     this.closeOnSave = false;
     const loom = loomOrNull();
     const readOnly = loom?.user?.isGM !== true;
-    this.state = createEditorState(defaultConfig(), { readOnly });
-    this.state.loading = !readOnly;
+    this.editorState = createEditorState(defaultConfig(), { readOnly });
+    this.editorState.loading = !readOnly;
     this.saveTimer = null;
     this.unsubscribeSaved = null;
     this.bound = false;
+    this.isRefreshing = false;
     if (!readOnly) {
       this.unsubscribeSaved = onConfigSaved((cfg) => this.onExternalSave(cfg));
       void this.load();
@@ -1064,57 +1135,78 @@ export class RuleEditorWindow extends EngineBase {
   }
 
   bodyTemplate() {
-    return renderEditor(this.state);
+    return renderEditor(this.editorState);
   }
 
   onRender() {
-    if (this.bound || !this.element) return;
-    this.bound = true;
-    this.element.addEventListener('input', (e) => this.onFieldEvent(e, false));
-    this.element.addEventListener('change', (e) => this.onFieldEvent(e, true));
-    // Section tabs: one delegated click and keydown listener on the window root (shared standard).
-    attachTabs(this.element, {
-      getTabs: () => SECTION_KEYS.map((key) => ({ key })),
-      getActive: () => this.state.section,
-      setActive: (key) => {
-        this.state.section = key;
-      },
-      rerender: () => this.refresh(),
-    });
+    if (!this.element) return;
+    if (!this.bound) {
+      this.bound = true;
+      this.element.addEventListener('input', (e) => this.onFieldEvent(e, false));
+      this.element.addEventListener('change', (e) => this.onFieldEvent(e, true));
+      // Section tabs: one delegated click and keydown listener on the window root (shared standard).
+      attachTabs(this.element, {
+        getTabs: () => SECTION_KEYS.map((key) => ({ key })),
+        getActive: () => this.editorState.section,
+        setActive: (key) => {
+          this.editorState.section = key;
+        },
+        rerender: () => this.refresh(),
+      });
+    }
+    this.placeFixedFooter();
+  }
+
+  placeFixedFooter() {
+    if (!this.element) return;
+    const body = this.element.querySelector('.loom-window-body');
+    const footer = body?.querySelector('.ldm-editor-footer');
+    if (!footer) return;
+    const previous = this.element.querySelector(':scope > .ldm-editor-footer');
+    if (previous && previous !== footer) previous.remove();
+    if (footer.parentElement !== this.element) {
+      const resizeHandle = this.element.querySelector(':scope > .loom-window-resize-handle');
+      this.element.insertBefore(footer, resizeHandle ?? null);
+    }
   }
 
   /** Re-reads the saved config (fresh from the server) and replaces the draft. */
   async load() {
     const cfg = await loadConfig({ fresh: true });
-    this.state.draft = draftFromConfig(cfg);
-    this.state.baseline = baselineOf(cfg);
-    this.state.loading = false;
-    this.state.stale = false;
-    this.state.keyEditable = new WeakSet();
-    this.state.autoKey = new WeakSet();
+    this.editorState.draft = draftFromConfig(cfg);
+    this.editorState.baseline = baselineOf(cfg);
+    this.editorState.loading = false;
+    this.editorState.stale = false;
+    this.editorState.keyEditable = new WeakSet();
+    this.editorState.autoKey = new WeakSet();
     this.refresh();
   }
 
   onExternalSave(cfg) {
-    if (this.state.saving || !this.element) return;
-    if (!isDirty(this.state)) {
-      this.state.draft = draftFromConfig(cfg);
-      this.state.baseline = baselineOf(cfg);
-      this.state.stale = false;
+    if (this.editorState.saving || !this.element) return;
+    if (!isDirty(this.editorState)) {
+      this.editorState.draft = draftFromConfig(cfg);
+      this.editorState.baseline = baselineOf(cfg);
+      this.editorState.stale = false;
       this.refresh();
       return;
     }
-    this.state.stale = true;
+    this.editorState.stale = true;
     this.refresh();
   }
 
   /** Re-renders the body and keeps focus and caret on the same field. */
   refresh() {
-    if (!this.element) return;
+    if (!this.element || this.isRefreshing) return;
     clearTimeout(this.saveTimer);
-    const saved = captureFocus(this.element);
-    this.rerenderBody();
-    restoreFocus(this.element, saved);
+    this.isRefreshing = true;
+    try {
+      const saved = captureFocus(this.element);
+      this.rerenderBody();
+      restoreFocus(this.element, saved);
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   scheduleRefresh() {
@@ -1124,21 +1216,57 @@ export class RuleEditorWindow extends EngineBase {
 
   /** Text and select edits. Text inputs re-render after a pause; committed changes re-render now. */
   onFieldEvent(e, committed) {
-    const el = e.target;
+    // Replacing the body can synchronously fire blur/change on its focused input.
+    // Ignore those synthetic lifecycle events so they cannot start a nested render
+    // while BaseWindow is still assigning body.innerHTML.
+    if (this.isRefreshing) return;
+    const el = e.target.closest?.('input, select, textarea, [data-field], [data-state]') ?? e.target;
     if (!isEditorField(el)) return;
     this.applyField(el);
     if (el.dataset.state !== undefined) return;
-    if (committed) this.refresh();
+    if (committed || el.tagName === 'SELECT') this.refresh();
     else this.scheduleRefresh();
   }
 
   applyField(el) {
+    if (this.editorState.readOnly || this.editorState.saving) return;
     const value = readValue(el);
     if (el.dataset.state !== undefined) {
-      this.state[el.dataset.state] = String(value);
+      this.editorState[el.dataset.state] = String(value);
       return;
     }
-    const draft = this.state.draft;
+    const draft = this.editorState.draft;
+    if (el.dataset.field === 'magic.methods' && el.dataset.method) {
+      const methods = Array.isArray(draft.magic?.methods) ? draft.magic.methods : [];
+      draft.magic.methods = el.checked ? [...new Set([...methods, el.dataset.method])] : methods.filter((method) => method !== el.dataset.method);
+      if (!draft.magic.methods.includes(draft.magic.defaultMethod)) draft.magic.defaultMethod = draft.magic.methods[0] ?? 'free';
+      return;
+    }
+    const nested = el.dataset.nestedList ?? el.dataset.sourceList;
+    if (nested !== undefined) {
+      const [sectionName, listName] = String(nested).split('.');
+      const row = draft?.[sectionName]?.[listName]?.[Number(el.dataset.index)];
+      if (!isPlainObject(row)) return;
+      if (el.dataset.sourceList || el.dataset.field === 'sources') {
+        const rawOptions = el.multiple ? [...el.selectedOptions] : (el.value ? [{ value: el.value }] : []);
+        const sources = rawOptions.map((option) => {
+          const [kind, key, sourceVal] = option.value.split(':');
+          const sourceValue = sourceVal || (kind === 'skill' ? 'rank' : 'configured');
+          const exists = kind === 'attr' ? draft.attributes?.some((r) => r.key === key) : draft.skills?.some((r) => r.key === key);
+          return kind && key ? { kind, key, value: sourceValue, ...(!exists ? { removed: true } : {}) } : null;
+        }).filter(Boolean).slice(0, 12);
+        if (el.dataset.nestedPath) {
+          row[el.dataset.nestedPath] ??= {};
+          row[el.dataset.nestedPath].sources = sources;
+        } else row.sources = sources;
+        return;
+      }
+      const path = `${el.dataset.nestedPath ? `${el.dataset.nestedPath}.` : ''}${el.dataset.field}`.split('.');
+      let node = row;
+      for (const part of path.slice(0, -1)) { node[part] ??= {}; node = node[part]; }
+      node[path[path.length - 1]] = value;
+      return;
+    }
     if (el.dataset.tabList !== undefined) {
       this.applyTabField(el, value);
       return;
@@ -1150,14 +1278,20 @@ export class RuleEditorWindow extends EngineBase {
       if (!row) return;
       const prop = el.dataset.field;
       row[prop] = value;
-      if (prop === 'key') this.state.autoKey.delete(row);
-      if (prop === 'label' && this.state.autoKey.has(row)) {
+      if (prop === 'key') this.editorState.autoKey.delete(row);
+      if (prop === 'label' && this.editorState.autoKey.has(row)) {
         row.key = slug(String(value));
         const keyEl = this.element.querySelector(`[data-list="${list}"][data-index="${index}"][data-field="key"]`);
         if (keyEl) keyEl.value = row.key;
       }
       return;
     }
+    if (el.dataset.field === 'dice.d20.sides') {
+      const previous = Number(draft.dice.d20.sides);
+      if (Number(draft.dice.d20.critMin) === previous || Number(draft.dice.d20.critMin) > Number(value)) draft.dice.d20.critMin = value;
+      draft.dice.d20.fumbleMax = Math.min(Number(draft.dice.d20.fumbleMax), Math.max(1, Number(value) - 1));
+    }
+    if (el.dataset.field === 'dice.pool.faces') draft.dice.pool.successMin = Math.min(Number(draft.dice.pool.successMin), Number(value));
     setPath(draft, el.dataset.field, value);
   }
 
@@ -1165,7 +1299,7 @@ export class RuleEditorWindow extends EngineBase {
   layoutTabsFor(datasetValue) {
     const name = layoutListName(datasetValue);
     if (!name) return null;
-    const tabs = this.state.draft.layout?.[name];
+    const tabs = this.editorState.draft.layout?.[name];
     return Array.isArray(tabs) ? { name, tabs } : null;
   }
 
@@ -1174,13 +1308,13 @@ export class RuleEditorWindow extends EngineBase {
    * the new-tab flags of the old object (editable key, auto-slug) move to the object at the same index.
    */
   setLayoutTabs(name, next) {
-    const layout = this.state.draft.layout;
+    const layout = this.editorState.draft.layout;
     const before = Array.isArray(layout[name]) ? layout[name] : [];
     next.forEach((tab, index) => {
       const old = before[index];
       if (!old || old === tab) return;
-      if (this.state.keyEditable.has(old)) this.state.keyEditable.add(tab);
-      if (this.state.autoKey.has(old)) this.state.autoKey.add(tab);
+      if (this.editorState.keyEditable.has(old)) this.editorState.keyEditable.add(tab);
+      if (this.editorState.autoKey.has(old)) this.editorState.autoKey.add(tab);
     });
     layout[name] = next;
   }
@@ -1192,14 +1326,22 @@ export class RuleEditorWindow extends EngineBase {
     const tab = hit ? hit.tabs[index] : undefined;
     if (!hit || !isPlainObject(tab)) return;
     const prop = el.dataset.field;
+    if (prop === 'blockSpan' && hit.name === 'tabs') {
+      const block = el.dataset.layoutBlock;
+      if (!block || !tab.blocks.includes(block)) return;
+      tab.blockSpans ??= {};
+      if (value === 'full') tab.blockSpans[block] = 'full';
+      else delete tab.blockSpans[block];
+      return;
+    }
     if (prop === 'columns') {
       tab.columns = Number(value);
     } else if (prop === 'key') {
       tab.key = String(value);
-      this.state.autoKey.delete(tab);
+      this.editorState.autoKey.delete(tab);
     } else if (prop === 'label') {
       tab.label = String(value);
-      if (this.state.autoKey.has(tab)) {
+      if (this.editorState.autoKey.has(tab)) {
         tab.key = tabKeyFor(hit.tabs, String(value), index);
         const keyEl = this.element?.querySelector(`[data-tab-list="${hit.name}"][data-index="${index}"][data-field="key"]`);
         if (keyEl) keyEl.value = tab.key;
@@ -1208,18 +1350,30 @@ export class RuleEditorWindow extends EngineBase {
   }
 
   onAction(action, id, target) {
+    if (this.editorState.readOnly || this.editorState.saving) return;
     const list = target?.dataset?.list;
     const index = Number(target?.dataset?.index);
-    const draft = this.state.draft;
+    const draft = this.editorState.draft;
     switch (action) {
+      case 'ed-step': {
+        const index = Math.max(0, SECTION_KEYS.indexOf(this.editorState.section));
+        this.editorState.section = SECTION_KEYS[Math.max(0, Math.min(SECTION_KEYS.length - 1, index + Number(target.dataset.dir)))];
+        return this.refresh();
+      }
+      case 'ed-die': {
+        const faces = Number(target.dataset.faces);
+        if (![4, 6, 8, 10, 12, 20, 100].includes(faces)) return;
+        this.applyField({ type: 'number', value: String(faces), dataset: { field: draft.dice.mode === 'pool' ? 'dice.pool.faces' : 'dice.d20.sides' } });
+        return this.refresh();
+      }
       case 'ed-tab-add': {
         const hit = this.layoutTabsFor(target?.dataset?.tabList);
         if (!hit) return undefined;
         const next = addTab(hit.tabs, translate('sandbox.editor.newTabLabel', 'New tab'));
         if (next.length === hit.tabs.length) return undefined;
         const added = next[next.length - 1];
-        this.state.keyEditable.add(added);
-        this.state.autoKey.add(added);
+        this.editorState.keyEditable.add(added);
+        this.editorState.autoKey.add(added);
         draft.layout[hit.name] = next;
         return this.refresh();
       }
@@ -1269,27 +1423,48 @@ export class RuleEditorWindow extends EngineBase {
         const next = addRow(draft[list], template, LIMITS[list]);
         const added = next[next.length - 1];
         if (added) {
-          this.state.keyEditable.add(added);
-          this.state.autoKey.add(added);
+          this.editorState.keyEditable.add(added);
+          this.editorState.autoKey.add(added);
         }
         draft[list] = next;
         return this.refresh();
       }
+      case 'ed-nested-add': {
+        const [sectionName, listName] = String(target?.dataset?.collection ?? '').split('.');
+        const list = draft?.[sectionName]?.[listName];
+        if (!Array.isArray(list)) return;
+        const templates = {
+          'saves.entries': { key: `save${list.length + 1}`, label: 'New save', sources: [], bonus: 0, target: 0, showOnSheet: true },
+          'attacks.profiles': { key: `attack${list.length + 1}`, label: 'New attack', sources: [], bonus: 0, mode: 'system', faces: 10, successMin: 5, damage: { method: 'none', base: 0, sources: [], count: 1, faces: 6, successMin: 5, critPairs: false, critFace: 10 } },
+          'magic.levels': { key: `level${list.length}`, label: `Level ${list.length}`, rank: list.length, capacityDefault: 0, free: list.length === 0 },
+          'magic.checkProfiles': { key: `cast${list.length + 1}`, label: 'Casting check', sources: [], bonus: 0, target: 0, mode: 'system' },
+        };
+        const max = sectionName === 'magic' ? 21 : 24;
+        if (templates[`${sectionName}.${listName}`] && list.length < max) list.push(templates[`${sectionName}.${listName}`]);
+        return this.refresh();
+      }
+      case 'ed-nested-remove': {
+        const [sectionName, listName] = String(target?.dataset?.collection ?? '').split('.');
+        const list = draft?.[sectionName]?.[listName];
+        const rowIndex = Number(target?.dataset?.index);
+        if (Array.isArray(list) && Number.isInteger(rowIndex) && rowIndex >= 0) list.splice(rowIndex, 1);
+        return this.refresh();
+      }
       case 'ed-preset-ask':
-        this.state.pending = { kind: 'preset', name: PRESETS[this.state.preset] ? this.state.preset : 'd20Classic' };
+        this.editorState.pending = { kind: 'preset', name: PRESETS[this.editorState.preset] ? this.editorState.preset : 'd20Classic' };
         return this.refresh();
       case 'ed-reset-ask':
-        this.state.pending = { kind: 'reset' };
+        this.editorState.pending = { kind: 'reset' };
         return this.refresh();
       case 'ed-confirm':
         return this.applyPending();
       case 'ed-cancel-pending':
-        this.state.pending = null;
+        this.editorState.pending = null;
         return this.refresh();
       case 'ed-import':
         return this.importText();
       case 'ed-export':
-        this.state.exportText = serializeConfig(configFromDraft(draft));
+        this.editorState.exportText = serializeConfig(configFromDraft(draft));
         return this.refresh();
       case 'ed-save':
         return this.save();
@@ -1303,13 +1478,13 @@ export class RuleEditorWindow extends EngineBase {
   }
 
   applyPending() {
-    const pending = this.state.pending;
-    this.state.pending = null;
+    const pending = this.editorState.pending;
+    this.editorState.pending = null;
     if (!pending) return this.refresh();
     const cfg = pending.kind === 'reset' ? defaultConfig() : PRESETS[pending.name]();
-    this.state.draft = draftFromConfig(cfg);
-    markKeysEditable(this.state);
-    this.state.notice = {
+    this.editorState.draft = draftFromConfig(cfg);
+    markKeysEditable(this.editorState);
+    this.editorState.notice = {
       kind: 'info',
       text: translate(pending.kind === 'reset' ? 'sandbox.editor.resetDone' : 'sandbox.editor.presetLoaded',
         pending.kind === 'reset' ? 'Defaults loaded. Review it, then save.' : 'Preset loaded. Review it, then save.'),
@@ -1318,49 +1493,49 @@ export class RuleEditorWindow extends EngineBase {
   }
 
   importText() {
-    const parsed = parseConfig(this.state.importText);
+    const parsed = parseConfig(this.editorState.importText);
     if (!parsed.ok) {
-      this.state.importErrors = parsed.errors;
+      this.editorState.importErrors = parsed.errors;
       return this.refresh();
     }
-    this.state.draft = draftFromConfig(parsed.config);
-    markKeysEditable(this.state);
-    this.state.importErrors = [];
-    this.state.notice = { kind: 'info', text: translate('sandbox.editor.imported', 'Imported. Review it, then save.') };
+    this.editorState.draft = draftFromConfig(parsed.config);
+    markKeysEditable(this.editorState);
+    this.editorState.importErrors = [];
+    this.editorState.notice = { kind: 'info', text: translate('sandbox.editor.imported', 'Imported. Review it, then save.') };
     return this.refresh();
   }
 
   async reloadFromServer() {
-    if (isDirty(this.state) && !(await this.confirmDiscard())) return undefined;
-    this.state.loading = true;
+    if (isDirty(this.editorState) && !(await this.confirmDiscard())) return undefined;
+    this.editorState.loading = true;
     this.refresh();
     return this.load();
   }
 
   async save() {
-    if (this.state.readOnly) return undefined;
-    const errors = draftErrors(this.state.draft);
+    if (this.editorState.readOnly) return undefined;
+    const errors = draftErrors(this.editorState.draft);
     if (errors.length > 0) {
-      this.state.notice = { kind: 'error', text: translate('sandbox.editor.fixErrors', 'Fix the errors before saving.') };
+      this.editorState.notice = { kind: 'error', text: translate('sandbox.editor.fixErrors', 'Fix the errors before saving.') };
       return this.refresh();
     }
-    this.state.saving = true;
+    this.editorState.saving = true;
     this.refresh();
     let result;
     try {
-      result = await saveConfig(configFromDraft(this.state.draft));
+      result = await saveConfig(configFromDraft(this.editorState.draft));
     } finally {
-      this.state.saving = false;
+      this.editorState.saving = false;
     }
     if (result.ok) {
-      this.state.baseline = JSON.stringify(configFromDraft(this.state.draft));
-      this.state.keyEditable = new WeakSet();
-      this.state.autoKey = new WeakSet();
-      this.state.stale = false;
-      this.state.notice = { kind: 'ok', text: translate('sandbox.editor.savedNotice', 'Rules saved.') };
+      this.editorState.baseline = JSON.stringify(configFromDraft(this.editorState.draft));
+      this.editorState.keyEditable = new WeakSet();
+      this.editorState.autoKey = new WeakSet();
+      this.editorState.stale = false;
+      this.editorState.notice = { kind: 'ok', text: translate('sandbox.editor.savedNotice', 'Rules saved.') };
     } else {
       const reason = result.errors.join(' ');
-      this.state.notice = {
+      this.editorState.notice = {
         kind: 'error',
         text: TV('sandbox.editor.saveFailed', 'Could not save: {reason}', { reason }),
       };
@@ -1382,7 +1557,7 @@ export class RuleEditorWindow extends EngineBase {
 
   /** Unsaved-changes guard used by the header close button and Close. */
   async _onBeforeClose() {
-    if (this.state.readOnly || !isDirty(this.state)) return true;
+    if (this.editorState.readOnly || !isDirty(this.editorState)) return true;
     return this.confirmDiscard();
   }
 
@@ -1397,7 +1572,14 @@ export class RuleEditorWindow extends EngineBase {
 export function openRuleEditor() {
   const wm = loomOrNull()?.windowManager;
   if (!wm || typeof wm.open !== 'function') return Promise.resolve(false);
-  return wm.open(EDITOR_WINDOW_ID, RuleEditorWindow, {}).then(() => true, () => false);
+  return wm.open(EDITOR_WINDOW_ID, RuleEditorWindow, {}).then(() => true, (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[loom-demo-system] Could not open rule editor:', error);
+    try {
+      loomOrNull()?.showToast?.(`Não foi possível abrir o editor do sistema: ${message}`, 'error');
+    } catch { /* Keep the original window error visible in the console. */ }
+    return false;
+  });
 }
 
 /**
@@ -1408,11 +1590,14 @@ export function registerRuleEditorMenu() {
   try {
     const settings = loomOrNull()?.settings;
     if (typeof settings?.registerMenu !== 'function') return false;
+    const label = translate('sandbox.editor.menuName', 'Edit game rules');
+    const hint = translate('sandbox.editor.menuHint', 'Edit the dice, attributes, skills, resources, items, chat card and combat rules of this system (GM only).');
     settings.registerMenu(CONFIG_MODULE, MENU_KEY, {
-      name: 'sandbox.editor.menuName',
-      label: 'sandbox.editor.menuName',
-      hint: 'sandbox.editor.menuHint',
+      name: label,
+      label,
+      hint,
       icon: 'fa-solid fa-sliders',
+      restricted: true,
       type: RuleEditorWindow,
     });
     return true;

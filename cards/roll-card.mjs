@@ -12,6 +12,7 @@
 import { esc as helperEsc } from '../lib/helpers.mjs';
 import { defaultConfig, loadConfig as loadFreshConfig, onConfigSaved as onSavedConfig } from '../lib/config.mjs';
 import { interpret } from '../lib/dice.mjs';
+import { resolveAttackDamage } from '../lib/attacks.mjs';
 
 /** The roll meta marker that identifies rolls made by this system. */
 export const CARD_SYSTEM_ID = 'loom-demo';
@@ -149,8 +150,8 @@ function renderChips(view, isPool, card, e, t) {
  * Damage card: a plain formula, neutral dice chips and the total. No hit/miss, crit/fumble,
  * pass/fail or target: those belong to checks only.
  */
-function renderDamageCard(card, source, meta, e, t) {
-  const total = numberOf(source.total, 0);
+function renderDamageCard(card, source, meta, e, t, effectiveDamage = null) {
+  const total = effectiveDamage === null ? numberOf(source.total, 0) : effectiveDamage;
   const actorName = textOf(meta.actorName, LIMIT.label).trim();
   const label = textOf(meta.label, LIMIT.label).trim();
   const title = renderTitle(
@@ -210,7 +211,14 @@ export function renderCard(cfg, roll, esc, extra = {}) {
 
   // Damage rolls (the second roll posted by the actor sheet) never use the check rendering.
   // A missing or unknown kind falls through to the check rendering below.
-  if (meta.kind === 'damage') return renderDamageCard(card, source, meta, e, t);
+  if (meta.kind === 'damage') {
+    if (meta.damagePool === true) {
+      const view = interpret(cfg, roll);
+      const successes = view.dice.length === 0 ? numberOf(view.total, 0) : numberOf(view.successes, 0);
+      return renderDamageCard(card, source, meta, e, t, Math.max(0, numberOf(meta.base, 0) + successes));
+    }
+    return renderDamageCard(card, source, meta, e, t);
+  }
 
   const view = interpret(cfg, roll);
 
@@ -267,12 +275,17 @@ export function renderCard(cfg, roll, esc, extra = {}) {
   }
 
   const unitHtml = isPool ? `<span class="ldm-card-unit">${e(card.successLabel)}</span>` : '';
+  const attack = resolveAttackDamage(source, view);
+  const attackHtml = source.meta?.attack && attack
+    ? `<div class="ldm-card-attack-result"><span>${e(attack.hit === true ? t('sandbox.card.hit', 'Hit') : attack.hit === false ? t('sandbox.card.miss', 'Miss') : t('sandbox.card.defenseNeeded', 'Defense needed'))}${attack.successes > numberOf(view.successes, 0) ? ` · ${e(t('sandbox.card.effectiveSuccesses', 'Effective successes'))}: ${e(attack.successes)}` : ''}</span>${attack.damage === null ? '' : `<strong>${e(t('sandbox.card.damage', 'Damage'))}: ${e(attack.damage)}</strong>`}</div>`
+    : '';
 
   return `<div class="ldm-card ldm-card-${card.style} ldm-card-${isPool ? 'pool' : 'd20'}" style="--ldm-card-accent:${e(card.accent)}" data-ldm-card="1">`
     + `<div class="ldm-card-main">`
     + `<div class="ldm-card-header"><span class="ldm-card-title">${title}</span>${formulaHtml}</div>`
     + chipsHtml
     + `<div class="ldm-card-result"><span class="ldm-card-total">${e(resultValue)}</span>${unitHtml}${modHtml}${targetHtml}${badges.join('')}</div>`
+    + attackHtml
     + `</div>`
     + `</div>`;
 }

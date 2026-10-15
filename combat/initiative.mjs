@@ -13,7 +13,7 @@
 // Pure functions here run in plain Node. Nothing touches `window` at import time.
 
 import { buildCheck } from '../lib/dice.mjs';
-import { actorValue, loadConfig as defaultLoadConfig } from '../lib/config.mjs';
+import { actorValue, attributeRollValue, loadConfig as defaultLoadConfig } from '../lib/config.mjs';
 import { clamp, isPlainObject } from '../lib/helpers.mjs';
 import { cleanText, readCombatantRecord, t } from './labels.mjs';
 
@@ -60,7 +60,7 @@ function initiativeSettings(cfg) {
 export function computeInitiative(cfg, actorSystemData, rng = Math.random) {
   try {
     const { mode, attr, bonus } = initiativeSettings(cfg);
-    const attrValue = attr ? actorValue(actorSystemData, cfg, 'attr', attr) : 0;
+    const attrValue = attr ? attributeRollValue(cfg, attr, actorValue(actorSystemData, cfg, 'attr', attr)) : 0;
     if (mode === 'fixed') return finalize(bonus);
     if (mode === 'attribute') return finalize(attrValue + bonus);
 

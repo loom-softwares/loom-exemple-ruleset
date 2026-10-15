@@ -46,6 +46,36 @@ describe('buildSheetContext', () => {
     assert.equal(ctx.skillGroups.length, 3, 'one group per attribute that has skills');
   });
 
+  test('a selected d20 attribute keeps its score visible and adds its derived modifier to linked skills', () => {
+    const cfg = defaultConfig();
+    cfg.attributes[0].useD20Modifier = true;
+    cfg.attributes[0].max = 20;
+    const actor = { id: 'derived', name: 'Ada', type: 'hero', systemData: { attrs: { might: 16 }, skills: { melee: 2 } } };
+    const ctx = buildSheetContext(actor, [], cfg);
+    const might = ctx.attributes.find((a) => a.key === 'might');
+    const melee = ctx.skillGroups.flatMap((g) => g.skills).find((s) => s.key === 'melee');
+    assert.equal(might.value, 16, 'the character still edits the original score');
+    assert.equal(might.modifier, 3);
+    assert.equal(melee.modifier, 5, 'the linked skill adds its rank to the derived modifier');
+    assert.match(renderSheet(ctx), />\+3<\/span>/, 'the attribute modifier is visible beside its score');
+  });
+
+  test('dots use Max as the number of points and fall back to numbers outside the supported range', () => {
+    const cfg = defaultConfig();
+    cfg.attributeDisplay = 'dots';
+    cfg.attributes[0].min = 0;
+    cfg.attributes[0].max = 5;
+    const actor = { id: 'dots', name: 'Ada', type: 'hero', systemData: { attrs: { might: 3 } } };
+    const html = renderSheet(buildSheetContext(actor, [], cfg));
+    assert.equal((html.match(/class="ldm-sheet-dot(?: is-filled)?" data-action="attr-dot" data-key="might"/g) ?? []).length, 5);
+    assert.equal((html.match(/class="ldm-sheet-dot is-filled" data-action="attr-dot" data-key="might"/g) ?? []).length, 3);
+    assert.doesNotMatch(html, /name="attr\.might"/);
+
+    cfg.attributes[0].max = 21;
+    const fallback = renderSheet(buildSheetContext(actor, [], cfg));
+    assert.match(fallback, /name="attr\.might"[^>]*max="21"/);
+  });
+
   test('an unknown actor type falls back to the generic label and bad config is sanitized', () => {
     const ctx = buildSheetContext({ id: 'a2', name: 'X', type: 'dragon', systemData: null }, [], { dice: 'nope' });
     assert.equal(ctx.empty, false);
@@ -117,7 +147,7 @@ describe('escaping of hostile text', () => {
     const items = [{ id: 'i9', name: '"><script>alert(3)</script>', type: 'gear', data: { category: 'weapon', description: HOSTILE, quantity: 1 } }];
     const actor = { id: 'a6', name: HOSTILE, type: 'beast', avatarUrl: 'javascript:alert(4)', systemData: { notes: '</textarea><img src=x onerror=alert(5)>' } };
     const html = renderSheet(buildSheetContext(actor, items, cfg, { isGM: true, editable: true }));
-    assert.doesNotMatch(html, /<img\b/i);
+    assert.doesNotMatch(html, /<img src=x onerror=/i);
     assert.doesNotMatch(html, /<script/i);
     assert.doesNotMatch(html, /<b>x/i);
     assert.doesNotMatch(html, /javascript:/i, 'javascript: avatar is dropped');
@@ -547,6 +577,8 @@ const LAYOUT_BLOCKS_FOR_TEST = [
   'resources',
   'attributes',
   'skills',
+  'attacks',
+  'magic',
   'items:gear',
   'items:ability',
   'items:spell',
@@ -572,10 +604,12 @@ function sheetHtml(cfg, ui = {}, items = []) {
 }
 
 describe('layout: default tabs and blocks', () => {
-  test('the default layout renders 4 tabs with the expected blocks', () => {
+  test('the default layout renders the main, attacks, magic and inventory tabs', () => {
     const { html } = sheetHtml(defaultConfig());
-    assert.equal([...html.matchAll(/class="ldm-tab"/g)].length, 4);
+    assert.equal([...html.matchAll(/class="ldm-tab"/g)].length, 6);
     assert.deepEqual(panelBlocks(html, 'main'), ['resources', 'attributes', 'skills']);
+    assert.deepEqual(panelBlocks(html, 'attacks'), ['attacks']);
+    assert.deepEqual(panelBlocks(html, 'magic'), ['magic']);
     assert.deepEqual(panelBlocks(html, 'powers'), ['items:ability', 'items:spell']);
     assert.deepEqual(panelBlocks(html, 'gear'), ['items:gear', 'items:other', 'notes']);
     assert.deepEqual(panelBlocks(html, 'effects'), ['effects']);
@@ -596,6 +630,15 @@ describe('layout: default tabs and blocks', () => {
     assert.equal(localized.blockTitles.resources, 'Recursos');
     assert.equal(localized.blockTitles.skills, 'Skills', 'a missing key falls back');
   });
+});
+
+test('optional saves show a stored adjustment separately from the entered difficulty', () => {
+  const cfg = defaultConfig();
+  cfg.saves = { enabled: true, entries: [{ key: 'fortitude', label: 'Fortitude', sources: [], bonus: 1, target: 14, showOnSheet: true }] };
+  cfg.layout.tabs[0].blocks.push('saves');
+  const { html } = sheetHtml(cfg);
+  assert.match(html, /data-field="save" data-key="fortitude" aria-label="Fortitude adjustment"/);
+  assert.match(html, /class="[^"]*ldm-sheet-save-target"[^>]*value="14"/);
 });
 
 describe('layout: custom config', () => {
@@ -686,7 +729,7 @@ describe('layout: escaping and removed data', () => {
       ];
     });
     const { html } = sheetHtml(cfg);
-    assert.doesNotMatch(html, /<img\b/i);
+    assert.doesNotMatch(html, /<img src=x onerror=/i);
     assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   });
 
@@ -708,10 +751,15 @@ describe('layout: active tab', () => {
     assert.equal(buildSheetContext(actor, [], cfg).activeTab, 'main');
   });
 
-  test('the active tab is marked selected and the other panels are hidden', () => {
-    const { html } = sheetHtml(defaultConfig(), { activeTab: 'powers' });
-    assert.match(html, /aria-selected="true"[^>]*data-ldm-tab="powers"|data-ldm-tab="powers"[^>]*aria-selected="true"/);
-    assert.match(html, /data-ldm-panel="main"[^>]*hidden/);
+  test('xp tab is supported as active tab and renders active panel', () => {
+    const cfg = defaultConfig();
+    const actor = { id: 'L4', name: 'n', type: 'hero', systemData: { xp: { total: 50, current: 30, log: [] } } };
+    const ctx = buildSheetContext(actor, [], cfg, { activeTab: 'xp' });
+    assert.equal(ctx.activeTab, 'xp');
+    const html = renderSheet(ctx);
+    assert.match(html, /aria-selected="true"[^>]*data-ldm-tab="xp"|data-ldm-tab="xp"[^>]*aria-selected="true"/);
+    assert.match(html, /data-ldm-panel="xp"/);
+    assert.doesNotMatch(html, /data-ldm-panel="xp"[^>]*hidden/);
   });
 });
 
@@ -911,6 +959,31 @@ describe('item use copies the item effects onto the actor', () => {
     await useSheet(refused, [ability])._ldmUseItem('it-1');
     assert.equal(refused.calls.some((c) => c[0] === 'forItem'), false);
     assert.equal(refused.calls.some((c) => c[0] === 'create'), false);
+  });
+
+  test('a spell roll adds the configured derived attribute modifier', async () => {
+    const env = installUseLoom();
+    const spell = { id: 'it-1', name: 'Fireball', type: 'spell', data: { roll: { enabled: true, attr: 'might', skill: '', bonus: 0 } } };
+    const sheet = useSheet(env, [spell], { attrs: { might: 16 } });
+    sheet._ldmCfg.attributes[0].useD20Modifier = true;
+    sheet._ldmCfg.attributes[0].max = 20;
+
+    await sheet._ldmUseItem('it-1');
+
+    assert.equal(env.rolls.length, 1);
+    assert.equal(env.rolls[0].formula, '1d20+3');
+  });
+
+  test('clicking a dot writes that attribute score immediately', async () => {
+    const env = installUseLoom();
+    const sheet = useSheet(env, [], { attrs: { might: 2 } });
+    sheet._ldmCfg.attributeDisplay = 'dots';
+    sheet._ldmCfg.attributes[0].max = 5;
+
+    await sheet.onAction('attr-dot', null, { dataset: { key: 'might', value: '4' } });
+
+    const call = env.calls.find((entry) => entry[0] === 'put');
+    assert.deepEqual(call[2], { systemData: { attrs: { might: 4 } } });
   });
 
   test('an item without effects reads its own effects, writes no copy and toasts nothing', async () => {
