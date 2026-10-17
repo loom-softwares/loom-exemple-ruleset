@@ -5,6 +5,18 @@ Each release tag `vX.Y.Z` publishes the section headed `## [X.Y.Z]` as its relea
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-17
+
+### Added
+- Hero actor sheet with its own template and a larger rule editor (more options, live validation).
+- Item portrait editor and portrait support on item sheets.
+- Attack and casting mechanics, and the sources a check can draw its modifier from.
+- Data preparation for hero, villain and beast actors, and new English and Brazilian Portuguese texts for the sheet, editor, item, card and portrait windows.
+
+### Changed
+- Reworked sheet, item and editor styles, and the roll card and initiative adjusted to the new rules.
+- Test suite extended to 685 tests.
+
 ## [0.2.0] - 2026-10-13
 
 The demo system becomes an open sandbox: a place to test and learn how to build a system on Loom.
