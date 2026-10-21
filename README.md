@@ -1,5 +1,9 @@
 # Loom Demo System: developer walkthrough
 
+[![Loom VTT](https://img.shields.io/badge/Loom%20VTT-2.0.5--alpha-blueviolet)](https://loomvtt.com)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/loom-softwares/loom-exemple-ruleset/latest/loom-demo-system.zip?label=downloads)](https://github.com/loom-softwares/loom-exemple-ruleset/releases/latest)
+
 A complete, small ruleset for LoomVTT. The GM builds the rules in the system's own rule editor (attributes, skills, resources, item categories, dice, chat card, combat, sheet layout), and the code is short enough to read end to end. This page walks through it file by file.
 
 Paths are relative to the ruleset folder (`loom-demo-system`). Behaviour marked **(not verified in a browser)** was read from the code and has not been run in a browser yet.
