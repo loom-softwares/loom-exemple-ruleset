@@ -163,7 +163,43 @@ const STRINGS = Object.freeze({
   'sandbox.sheet.errEditorMissing': 'The rule editor is not available yet.',
   'sandbox.sheet.errCombatMissing': 'The combat panel is not available yet.',
   'sandbox.sheet.errGeneric': 'Something went wrong.',
+  // XP ledger
+  'sandbox.sheet.xpTotal': 'XP total',
+  'sandbox.sheet.xpAvailable': 'XP available',
+  'sandbox.sheet.xpValue': 'XP value',
+  'sandbox.sheet.xpReason': 'Reason',
+  'sandbox.sheet.xpAdd': 'Add XP',
+  'sandbox.sheet.xpHistory': 'XP history',
+  'sandbox.sheet.xpValuePlaceholder': '+100 or -50',
+  'sandbox.sheet.xpReasonPlaceholder': 'Where it was spent or where it came from',
+  'sandbox.sheet.xpRemove': 'Remove XP entry',
+  // Accessible names
+  'sandbox.sheet.saveAdjustment': '{label} adjustment',
+  'sandbox.sheet.slotsAvailable': '{label} available slots',
+  'sandbox.sheet.slotsMax': '{label} maximum slots',
+  // Save state
+  'sandbox.sheet.saving': 'Saving…',
+  'sandbox.sheet.saved': 'Saved',
 });
+
+const ICONS = Object.freeze({
+  dice: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  skull: '<path d="M12 2a7 7 0 0 0-7 7v3c0 1.7.8 3.2 2 4.2V19a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3v-2.8c1.2-1 2-2.5 2-4.2V9a7 7 0 0 0-7-7z"/><circle cx="9" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1.4" fill="currentColor" stroke="none"/><path d="M10 17h4"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/>',
+  swords: '<path d="M14 4h6v6L9 21l-6-6z"/><path d="M6 15l3 3"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+});
+
+/** Inline icon from the fixed set. Decorative by default: the label lives on the button. */
+function icon(name) {
+  const body = ICONS[name];
+  return body
+    ? `<svg class="ldm-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`
+    : '';
+}
 
 const PLAN_ERROR_KEYS = Object.freeze({
   'insufficient-resource': 'sandbox.sheet.errInsufficient',
@@ -822,24 +858,24 @@ function renderHeader(c) {
 
 function renderToolbar(c) {
   const advKey = { none: 'sandbox.sheet.advNone', adv: 'sandbox.sheet.advAdv', dis: 'sandbox.sheet.advDis' }[c.advantage];
-  const advIcon = c.advantage === 'adv' ? '⚡' : c.advantage === 'dis' ? '💀' : '🎲';
-  const dis = c.editable ? '' : ' disabled';
+  const advIcon = c.advantage === 'adv' ? 'bolt' : c.advantage === 'dis' ? 'skull' : 'dice';
   const gm = c.isGM
-    ? `<button type="button" class="ldm-sheet-btn ldm-sheet-btn--gm" data-action="configure" title="${L(c, 'sandbox.sheet.configure')}">⚙️ ${L(c, 'sandbox.sheet.configure')}</button>`
+    ? `<button type="button" class="ldm-sheet-btn ldm-sheet-btn--secondary ldm-sheet-btn--gm" data-action="configure" title="${L(c, 'sandbox.sheet.configure')}">${icon('settings')}<span>${L(c, 'sandbox.sheet.configure')}</span></button>`
     : '';
   return `<div class="ldm-sheet-toolbar">
     <div class="ldm-sheet-toolbar-actions">
-      <button type="button" class="ldm-sheet-btn ldm-sheet-adv ldm-sheet-adv--${esc(c.advantage)}" data-action="toggle-adv" title="${L(c, 'sandbox.sheet.rollMode')}">
-        <span class="ldm-sheet-adv-pill">${advIcon}</span>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-adv ldm-sheet-adv--${esc(c.advantage)}" data-action="toggle-adv" title="${L(c, 'sandbox.sheet.rollMode')}" aria-label="${L(c, 'sandbox.sheet.rollMode')}: ${L(c, advKey)}">
+        <span class="ldm-sheet-adv-pill">${icon(advIcon)}</span>
         <span class="ldm-sheet-adv-mode">${L(c, 'sandbox.sheet.rollMode')}:</span>
         <strong class="ldm-sheet-adv-text">${L(c, advKey)}</strong>
       </button>
-      <button type="button" class="ldm-sheet-btn" data-action="open-combat">⚔️ ${L(c, 'sandbox.sheet.combat')}</button>
-      <button type="button" class="ldm-sheet-btn" data-action="reload-config">🔄 ${L(c, 'sandbox.sheet.reloadConfig')}</button>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-btn--primary" data-action="open-combat">${icon('swords')}<span>${L(c, 'sandbox.sheet.combat')}</span></button>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-btn--secondary" data-action="reload-config">${icon('refresh')}<span>${L(c, 'sandbox.sheet.reloadConfig')}</span></button>
       ${gm}
+      <span class="ldm-sheet-save-state" role="status" aria-live="polite" data-state=""></span>
     </div>
     <div class="ldm-sheet-dice">
-      <span class="ldm-sheet-dice-chip">🎲 ${L(c, 'sandbox.sheet.rollMode')}</span>
+      <span class="ldm-sheet-dice-chip">${icon('dice')}<span>${L(c, 'sandbox.sheet.rollMode')}</span></span>
       <span class="ldm-sheet-dice-text">${esc(c.dice.description)}</span>
     </div>
   </div>`;
@@ -894,7 +930,7 @@ function renderAttributesBody(c) {
       <div class="ldm-sheet-attr-head">${label}</div>
       <button type="button" class="ldm-sheet-btn ldm-sheet-attr-roll-btn" data-action="attr-roll" data-key="${esc(a.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: a.label })}" title="${L(c, 'sandbox.sheet.rollNamed', { label: a.label })} (${modValue})">
         <span class="ldm-sheet-attr-mod" title="${L(c, 'sandbox.sheet.modifier')}">${esc(modValue)}</span>
-        <span class="ldm-roll-icon" aria-hidden="true">🎲</span>
+        <span class="ldm-roll-icon" aria-hidden="true">${icon('dice')}</span>
       </button>
       <div class="ldm-sheet-attr-score-wrap">
         ${dots}
@@ -927,7 +963,7 @@ function renderSkillsBody(c) {
         </div>
         <button type="button" class="ldm-sheet-btn ldm-sheet-btn--skill" data-action="skill-roll" data-key="${esc(s.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: s.label })}" title="${L(c, 'sandbox.sheet.rollNamed', { label: s.label })} (${mod})">
           <span class="ldm-sheet-skill-mod">${esc(mod)}</span>
-          <span class="ldm-roll-icon">🎲</span>
+          <span class="ldm-roll-icon" aria-hidden="true">${icon('dice')}</span>
         </button>
       </li>`;
     }).join('');
@@ -943,7 +979,7 @@ function renderSkillsBody(c) {
 function renderSavesBody(c) {
   const disabled = c.editable ? '' : ' disabled';
   if (!c.saveRows?.length) return emptyNote(c);
-  return `<ul class="ldm-sheet-check-list">${c.saveRows.map((save) => `<li class="ldm-sheet-skill"><span class="ldm-sheet-skill-label">${esc(save.label)}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="-99" max="99" value="${esc(save.value)}" data-field="save" data-key="${esc(save.key)}" aria-label="${esc(save.label)} adjustment"${disabled}><span class="ldm-sheet-skill-mod">${save.total >= 0 ? '+' : ''}${esc(save.total)}</span><label class="ldm-sheet-mini"><span>${L(c, 'sandbox.sheet.difficulty')}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small ldm-sheet-save-target" min="0" max="999" value="${esc(save.target ?? '')}" placeholder="—" aria-label="${L(c, 'sandbox.sheet.difficulty')} ${esc(save.label)}"${disabled}></label><button type="button" class="ldm-sheet-btn" data-action="save-roll" data-key="${esc(save.key)}" aria-label="${esc(save.label)}">${L(c, 'sandbox.sheet.rollNamed', { label: save.label })}</button></li>`).join('')}</ul>`;
+  return `<ul class="ldm-sheet-check-list">${c.saveRows.map((save) => `<li class="ldm-sheet-skill"><span class="ldm-sheet-skill-label">${esc(save.label)}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="-99" max="99" value="${esc(save.value)}" data-field="save" data-key="${esc(save.key)}" aria-label="${L(c, 'sandbox.sheet.saveAdjustment', { label: save.label })}"${disabled}><span class="ldm-sheet-skill-mod">${save.total >= 0 ? '+' : ''}${esc(save.total)}</span><label class="ldm-sheet-mini"><span>${L(c, 'sandbox.sheet.difficulty')}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small ldm-sheet-save-target" min="0" max="999" value="${esc(save.target ?? '')}" placeholder="—" aria-label="${L(c, 'sandbox.sheet.difficulty')} ${esc(save.label)}"${disabled}></label><button type="button" class="ldm-sheet-btn" data-action="save-roll" data-key="${esc(save.key)}" aria-label="${L(c, 'sandbox.sheet.rollNamed', { label: save.label })}">${L(c, 'sandbox.sheet.rollNamed', { label: save.label })}</button></li>`).join('')}</ul>`;
 }
 
 function renderAttacksBody(c) {
@@ -954,7 +990,7 @@ function renderAttacksBody(c) {
 
 function renderMagicBody(c) {
   if (!c.magicSlots?.length) return emptyNote(c);
-  return `<div class="ldm-sheet-magic-slots">${c.magicSlots.map((slot) => `<div class="ldm-sheet-magic-slot"><strong>${esc(slot.label)}</strong><label><span>${L(c, 'sandbox.sheet.resCount', { value: slot.value, max: slot.max })}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="99" value="${esc(slot.value)}" data-field="magic-slot-value" data-key="${esc(slot.key)}" aria-label="${esc(slot.label)} available slots"${c.editable ? '' : ' disabled'}><span>/</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="99" value="${esc(slot.max)}" data-field="magic-slot-max" data-key="${esc(slot.key)}" aria-label="${esc(slot.label)} maximum slots"${c.editable ? '' : ' disabled'}></label></div>`).join('')}<button type="button" class="ldm-sheet-btn" data-action="recover-magic"${c.editable ? '' : ' disabled'}>${L(c, 'sandbox.sheet.recoverMagic')}</button></div>`;
+  return `<div class="ldm-sheet-magic-slots">${c.magicSlots.map((slot) => `<div class="ldm-sheet-magic-slot"><strong>${esc(slot.label)}</strong><label><span>${L(c, 'sandbox.sheet.resCount', { value: slot.value, max: slot.max })}</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="99" value="${esc(slot.value)}" data-field="magic-slot-value" data-key="${esc(slot.key)}" aria-label="${L(c, 'sandbox.sheet.slotsAvailable', { label: slot.label })}"${c.editable ? '' : ' disabled'}><span>/</span><input type="number" class="ldm-sheet-input ldm-sheet-input--small" min="0" max="99" value="${esc(slot.max)}" data-field="magic-slot-max" data-key="${esc(slot.key)}" aria-label="${L(c, 'sandbox.sheet.slotsMax', { label: slot.label })}"${c.editable ? '' : ' disabled'}></label></div>`).join('')}<button type="button" class="ldm-sheet-btn" data-action="recover-magic"${c.editable ? '' : ' disabled'}>${L(c, 'sandbox.sheet.recoverMagic')}</button></div>`;
 }
 
 function renderItemRow(c, it) {
@@ -986,7 +1022,7 @@ function renderItemRow(c, it) {
     </div>
     <div class="ldm-sheet-item-controls">
       ${qty}${uses}${castLevel}${use}${attack}${prepare}
-      <button type="button" class="ldm-sheet-btn" data-action="edit-item" data-id="${id}">${L(c, 'sandbox.sheet.edit')}</button>
+      <button type="button" class="ldm-sheet-btn" data-action="edit-item" data-id="${id}"${dis}>${L(c, 'sandbox.sheet.edit')}</button>
       <button type="button" class="ldm-sheet-btn ldm-sheet-btn--danger" data-action="delete-item" data-id="${id}"${dis}>${L(c, 'sandbox.sheet.delete')}</button>
     </div>
   </li>`;
@@ -1073,28 +1109,34 @@ function renderXpBody(c) {
       <span class="ldm-sheet-xp-amount ${badgeClass}">${sign}${esc(entry.amount)} XP</span>
       <span class="ldm-sheet-xp-reason">${esc(entry.reason || '—')}</span>
       <span class="ldm-sheet-xp-date">${esc(entry.date || '')}</span>
-      <button type="button" class="ldm-sheet-btn ldm-sheet-btn--danger ldm-sheet-xp-del" data-action="xp-remove" data-index="${idx}" title="Remover"${dis}>✕</button>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-btn--danger ldm-sheet-xp-del" data-action="xp-remove" data-index="${idx}" title="${L(c, 'sandbox.sheet.xpRemove')}" aria-label="${L(c, 'sandbox.sheet.xpRemove')}"${dis}>${icon('x')}</button>
     </li>`;
   }).join('');
 
   return `<div class="ldm-sheet-xp-tab">
     <div class="ldm-sheet-xp-summary">
       <div class="ldm-sheet-xp-card">
-        <span class="ldm-sheet-xp-card-label">XP Total</span>
+        <span class="ldm-sheet-xp-card-label">${L(c, 'sandbox.sheet.xpTotal')}</span>
         <strong class="ldm-sheet-xp-card-val">${esc(xp.total)}</strong>
       </div>
       <div class="ldm-sheet-xp-card">
-        <span class="ldm-sheet-xp-card-label">XP Disponível</span>
+        <span class="ldm-sheet-xp-card-label">${L(c, 'sandbox.sheet.xpAvailable')}</span>
         <strong class="ldm-sheet-xp-card-val ldm-sheet-xp-card-val--avail">${esc(xp.current)}</strong>
       </div>
     </div>
     <div class="ldm-sheet-xp-form">
-      <input id="ldm-sheet-xp-val" type="number" class="ldm-sheet-input" placeholder="+100 ou -50" aria-label="Valor de XP"${dis}>
-      <input id="ldm-sheet-xp-desc" type="text" class="ldm-sheet-input" placeholder="Onde gastou ou de onde veio..." aria-label="Descrição do XP"${dis}>
-      <button type="button" class="ldm-sheet-btn ldm-sheet-xp-add-btn" data-action="xp-add"${dis}>+ Registrar XP</button>
+      <label class="ldm-sheet-xp-field">
+        <span class="ldm-sheet-xp-field-label">${L(c, 'sandbox.sheet.xpValue')}</span>
+        <input id="ldm-sheet-xp-val" type="number" class="ldm-sheet-input" placeholder="${L(c, 'sandbox.sheet.xpValuePlaceholder')}" aria-label="${L(c, 'sandbox.sheet.xpValue')}"${dis}>
+      </label>
+      <label class="ldm-sheet-xp-field ldm-sheet-xp-field--reason">
+        <span class="ldm-sheet-xp-field-label">${L(c, 'sandbox.sheet.xpReason')}</span>
+        <input id="ldm-sheet-xp-desc" type="text" class="ldm-sheet-input" placeholder="${L(c, 'sandbox.sheet.xpReasonPlaceholder')}" aria-label="${L(c, 'sandbox.sheet.xpReason')}"${dis}>
+      </label>
+      <button type="button" class="ldm-sheet-btn ldm-sheet-btn--primary ldm-sheet-xp-add-btn" data-action="xp-add"${dis}>${icon('plus')}<span>${L(c, 'sandbox.sheet.xpAdd')}</span></button>
     </div>
     <div class="ldm-sheet-xp-log-wrap">
-      <h5 class="ldm-sheet-cat-h">Histórico de XP</h5>
+      <h5 class="ldm-sheet-cat-h">${L(c, 'sandbox.sheet.xpHistory')}</h5>
       <ul class="ldm-sheet-xp-list">
         ${rows || `<li class="ldm-sheet-empty">${L(c, 'sandbox.sheet.noEntries')}</li>`}
       </ul>
@@ -1145,23 +1187,38 @@ export function renderSheet(ctx, opts = {}) {
         ${renderAttributesBody(c)}
       </div>`
     : '';
+  const topResources = c.resources?.length
+    ? `<div class="ldm-sheet-top-resources">${renderResourcesBody(c)}</div>`
+    : '';
+  // Character rail: vitals and attributes live beside the tabbed content on wide
+  // sheets, and stack above it when the window is narrow (see folio.css). The
+  // blocks stay in the rail instead of the panel so every tab shares the same
+  // physical "character folio" frame.
+  const railSections = [];
+  if (topResources) {
+    railSections.push(
+      `<section class="ldm-sheet-rail-section ldm-sheet-rail-section--vitals" role="region" aria-label="${esc(c.blockTitles?.resources ?? BLOCK_FALLBACK.resources)}" data-label="${esc(c.blockTitles?.resources ?? BLOCK_FALLBACK.resources)}">${topResources}</section>`,
+    );
+  }
+  if (fixedAttributes) {
+    railSections.push(
+      `<section class="ldm-sheet-rail-section ldm-sheet-rail-section--attributes" data-label="${esc(c.blockTitles?.attributes ?? BLOCK_FALLBACK.attributes)}">${fixedAttributes}</section>`,
+    );
+  }
+  const railHtml = railSections.length ? `<div class="ldm-sheet-rail">${railSections.join('')}</div>` : '';
   const tabsHtml = renderTabs({
     idPrefix: 'ldm-sheet',
     tabs,
     activeKey: c.activeTab,
     panels,
     ariaLabel: c.tablistLabel,
-    betweenHtml: fixedAttributes,
+    betweenHtml: railHtml,
   });
-  const topResources = c.resources?.length
-    ? `<div class="ldm-sheet-top-resources">${renderResourcesBody(c)}</div>`
-    : '';
   return `<div class="ldm-sheet ldm-density-${density}${c.editable ? '' : ' ldm-sheet--readonly'}">
     ${renderHeader(c)}
-    ${topResources}
     ${renderToolbar(c)}
     ${c.configChanged ? `<p class="ldm-sheet-hint" role="status">${L(c, 'sandbox.sheet.configChanged')}</p>` : ''}
-    <div class="ldm-sheet-body">${tabsHtml}</div>
+    <div class="ldm-sheet-body${railHtml ? ' ldm-sheet-body--rail' : ''}">${tabsHtml}</div>
   </div>`;
 }
 
@@ -1204,7 +1261,7 @@ function buildSheetClass(loom) {
 
   return class SandboxSheet extends Base {
     // `compile()` below renders the body from the pure renderer, so no PARTS templates.
-    static DEFAULT_OPTIONS = { position: { width: 680, height: 800 } };
+    static DEFAULT_OPTIONS = { position: { width: 1120, height: 900 } };
     static PARTS = {};
 
     _ldmCfg = null;
@@ -1233,6 +1290,10 @@ function buildSheetClass(loom) {
     _ldmTabsWired = false;
     _ldmEffects = [];
     _ldmEffectsWired = false;
+    // Save feedback (aria-live) and the timer that clears "Saved" after a moment.
+    _ldmSaveState = '';
+    _ldmSaveTimer = null;
+    _ldmWriteFailed = false;
 
     constructor(props) {
       super({ ...props, classes: [...(props?.classes ?? []), 'ldm-sheet-window'] });
@@ -1344,6 +1405,147 @@ function buildSheetClass(loom) {
     }
 
     /**
+     * Switches tabs IN PLACE: every panel is already in the DOM (renderTabs renders all of
+     * them, inactive ones hidden), so no re-render is needed. This keeps focus, caret and
+     * scroll position intact, matching the item sheet.
+     */
+    _ldmShowTab(key) {
+      this._ldmTab = typeof key === 'string' ? key : '';
+      const root = this.element;
+      if (!root) return;
+      const selected = this._ldmTab;
+      const panels = Array.from(root.querySelectorAll('[data-ldm-panel]'));
+      if (!panels.some((panel) => panel?.dataset?.ldmPanel === selected)) return;
+      for (const button of root.querySelectorAll('[data-ldm-tab]')) {
+        const isActive = button?.dataset?.ldmTab === selected;
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.setAttribute('tabindex', isActive ? '0' : '-1');
+      }
+      for (const panel of panels) {
+        if (panel.dataset.ldmPanel === selected) panel.removeAttribute('hidden');
+        else panel.setAttribute('hidden', '');
+      }
+    }
+
+    /**
+     * Snapshot of the focused control plus the scroll offsets before a re-render replaces the
+     * DOM. Fields are matched by their data attributes, which are stable across renders.
+     */
+    _ldmCaptureFocus() {
+      const root = this.element;
+      const doc = root?.ownerDocument;
+      if (!root || !doc) return null;
+      const snap = { kind: '', data: null, id: '', name: '', start: null, end: null, scroll: [], bodyScroll: 0, railScroll: 0 };
+      const body = root.querySelector('.ldm-sheet-body');
+      snap.bodyScroll = body ? body.scrollTop : 0;
+      const rail = root.querySelector('.ldm-sheet-rail');
+      snap.railScroll = rail ? rail.scrollTop : 0;
+      for (const panel of root.querySelectorAll('[data-ldm-panel]')) {
+        snap.scroll.push([panel?.dataset?.ldmPanel ?? '', panel?.scrollTop ?? 0]);
+      }
+      const active = doc.activeElement;
+      if (!active || !root.contains(active)) return snap;
+      const ds = active.dataset ?? {};
+      if (ds.field) snap.kind = 'field';
+      else if (ds.action) snap.kind = 'action';
+      else if (active.id) snap.kind = 'id';
+      else if (active.name) snap.kind = 'name';
+      else return snap;
+      const data = {};
+      for (const key of Object.keys(ds)) data[key] = ds[key];
+      snap.data = data;
+      snap.id = active.id ?? '';
+      snap.name = active.name ?? '';
+      try {
+        snap.start = active.selectionStart;
+        snap.end = active.selectionEnd;
+      } catch {
+        // Not a text control: no selection to restore.
+      }
+      return snap;
+    }
+
+    _ldmRestoreFocus(snap) {
+      if (!snap || !this.element) return;
+      const root = this.element;
+      let target = null;
+      if (snap.kind === 'field' || snap.kind === 'action') {
+        const selector = snap.kind === 'field' ? '[data-field]' : '[data-action]';
+        const wanted = snap.data ?? {};
+        target = Array.from(root.querySelectorAll(selector)).find((el) => {
+          const ds = el?.dataset ?? {};
+          return Object.entries(wanted).every(([key, value]) => (ds[key] ?? '') === value);
+        }) ?? null;
+      } else if (snap.kind === 'id' && snap.id) {
+        target = Array.from(root.querySelectorAll('[id]')).find((el) => el.id === snap.id) ?? null;
+      } else if (snap.kind === 'name' && snap.name) {
+        target = Array.from(root.querySelectorAll('[name]')).find((el) => el.name === snap.name) ?? null;
+      }
+      if (target && !target.disabled && typeof target.focus === 'function') {
+        try {
+          target.focus({ preventScroll: true });
+        } catch {
+          target.focus();
+        }
+        if (snap.start !== null && typeof target.setSelectionRange === 'function') {
+          try {
+            target.setSelectionRange(snap.start, snap.end ?? snap.start);
+          } catch {
+            // Input type does not support selection (number, for example).
+          }
+        }
+      }
+      for (const [key, top] of snap.scroll ?? []) {
+        const panel = root.querySelector(`[data-ldm-panel="${key}"]`);
+        if (panel) panel.scrollTop = top;
+      }
+      const body = root.querySelector('.ldm-sheet-body');
+      if (body) body.scrollTop = snap.bodyScroll ?? 0;
+      const rail = root.querySelector('.ldm-sheet-rail');
+      if (rail) rail.scrollTop = snap.railScroll ?? 0;
+    }
+
+    /** Re-renders the body while preserving focus, caret and scroll. */
+    _ldmRerender() {
+      const snap = this._ldmCaptureFocus();
+      this.rerenderBody();
+      this._ldmRestoreFocus(snap);
+      this._ldmApplySaveState();
+    }
+
+    _ldmSetSaveState(state) {
+      const next = state === 'saving' || state === 'saved' ? state : '';
+      const changed = next !== this._ldmSaveState;
+      this._ldmSaveState = next;
+      clearTimeout(this._ldmSaveTimer);
+      this._ldmSaveTimer = null;
+      // Avoid re-announcing the same message on every keystroke.
+      if (changed) this._ldmApplySaveState();
+      if (this._ldmSaveState === 'saved') {
+        this._ldmSaveTimer = setTimeout(() => {
+          if (this._ldmSaveState === 'saved') {
+            this._ldmSaveState = '';
+            this._ldmApplySaveState();
+          }
+        }, 2000);
+      }
+    }
+
+    /** Writes the save state into the live region (safe: textContent, no HTML). */
+    _ldmApplySaveState() {
+      const el = this.element?.querySelector?.('.ldm-sheet-save-state');
+      if (!el) return;
+      const state = this._ldmSaveState ?? '';
+      const key = state === 'saving'
+        ? 'sandbox.sheet.saving'
+        : state === 'saved'
+          ? 'sandbox.sheet.saved'
+          : '';
+      el.dataset.state = state;
+      el.textContent = key ? localizeKey(key) : '';
+    }
+
+    /**
      * Tab bar and arrow keys: ONE delegated click and keydown listener on the window root
      * (attachTabs). The active tab is kept on the instance, so it survives every re-render.
      */
@@ -1356,7 +1558,7 @@ function buildSheetClass(loom) {
         setActive: (key) => {
           this._ldmTab = typeof key === 'string' ? key : '';
         },
-        rerender: () => this.rerenderBody(),
+        rerender: (key) => this._ldmShowTab(key),
       });
     }
 
@@ -1372,7 +1574,7 @@ function buildSheetClass(loom) {
           this._ldmEffects = Array.isArray(list) ? list : [];
         },
         isEditable: () => this.isEditable !== false && this._ldmCastState !== 'refused',
-        rerender: () => this.rerenderBody(),
+        rerender: () => this._ldmRerender(),
       });
     }
 
@@ -1406,6 +1608,7 @@ function buildSheetClass(loom) {
       }
       clearTimeout(this._ldmTimer);
       this._ldmTimer = null;
+      this._ldmSetSaveState('saving');
       if (debounced) {
         this._ldmTimer = setTimeout(() => void this._ldmFlush(), 300);
       } else {
@@ -1425,6 +1628,7 @@ function buildSheetClass(loom) {
       this._ldmTimer = null;
       if (this._ldmFlushing) return;
       this._ldmFlushing = true;
+      this._ldmWriteFailed = false;
       try {
         while (!isEmptyPatch(this._ldmPatch) || this._ldmItemQueue.length > 0) {
           const sysPatch = this._ldmPatch;
@@ -1439,6 +1643,11 @@ function buildSheetClass(loom) {
         }
       } finally {
         this._ldmFlushing = false;
+        if (this._ldmWriteFailed) this._ldmSetSaveState('');
+        else if (isEmptyPatch(this._ldmPatch) && this._ldmItemQueue.length === 0 && this._ldmSaveState === 'saving') {
+          // Nothing left pending: the last batch is saved (or there was nothing to save).
+          this._ldmSetSaveState('saved');
+        }
       }
     }
 
@@ -1450,6 +1659,7 @@ function buildSheetClass(loom) {
       const doc = this.document;
       if (!doc || !doc.id) return;
       if (this._ldmCastState === 'refused') {
+        this._ldmWriteFailed = true;
         toast('sandbox.sheet.errCastRefused');
         await this._reloadDocument();
         return;
@@ -1470,12 +1680,13 @@ function buildSheetClass(loom) {
           await this._ldmPutItem(doc, item, data);
         }
       } catch (err) {
+        this._ldmWriteFailed = true;
         loomGlobal()?.clog?.error?.(`[SANDBOX-SHEET] write failed: ${err?.message ?? err}`);
         toast('sandbox.sheet.errSave');
         await this._reloadDocument();
         return;
       }
-      this.rerenderBody();
+      this._ldmRerender();
     }
 
     /**
@@ -1556,7 +1767,7 @@ function buildSheetClass(loom) {
         case 'toggle-adv': {
           const i = ADV_ORDER.indexOf(this._ldmAdvantage);
           this._ldmAdvantage = ADV_ORDER[(i + 1) % ADV_ORDER.length];
-          this.rerenderBody();
+          this._ldmRerender();
           return undefined;
         }
         case 'res-delta': {
@@ -1615,7 +1826,7 @@ function buildSheetClass(loom) {
       this._ldmConfigChanged = this._ldmCfgSig !== '' && sig !== this._ldmCfgSig;
       this._ldmCfg = next;
       this._ldmCfgSig = sig;
-      this.rerenderBody();
+      this._ldmRerender();
     }
 
     async _ldmRollAttr(key) {
@@ -1703,7 +1914,7 @@ function buildSheetClass(loom) {
       const kind = cfg.magic.recovery === 'manual' ? 'manual' : cfg.magic.recovery;
       const plan = planRecovery(this._ldmView(), cfg, kind);
       if (!plan.ok) return;
-      try { await this._ldmPutSystem(this.document, plan.patch); this.rerenderBody(); }
+      try { await this._ldmPutSystem(this.document, plan.patch); this._ldmRerender(); }
       catch { toast('sandbox.sheet.errSave'); await this._reloadDocument(); }
     }
 
@@ -1716,7 +1927,7 @@ function buildSheetClass(loom) {
       const current = this._ldmView().magic?.prepared?.[itemId];
       const plan = planPrepare(item, this._ldmView(), cfg, Math.max(1, Number(current?.max) || 0) + 1, levelKey);
       if (!plan.ok) return toast('sandbox.sheet.prepareCapacity');
-      try { await this._ldmPutSystem(this.document, plan.patch); this.rerenderBody(); }
+      try { await this._ldmPutSystem(this.document, plan.patch); this._ldmRerender(); }
       catch { toast('sandbox.sheet.errSave'); await this._reloadDocument(); }
     }
 
@@ -1831,7 +2042,7 @@ function buildSheetClass(loom) {
         }
       }
       if (useOk) await this._ldmApplyUseEffects(item);
-      this.rerenderBody();
+      this._ldmRerender();
     }
 
     /**

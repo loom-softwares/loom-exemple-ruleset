@@ -143,7 +143,7 @@ function renderChips(view, isPool, card, e, t) {
     return `<span class="${classes.join(' ')}"${titleAttr}>${e(numberOf(die.value, 0))}</span>`;
   }).join('');
   const more = hidden > 0 ? `<span class="ldm-card-more">+${hidden}</span>` : '';
-  return `<div class="ldm-card-dice" aria-label="${e(t('sandbox.card.dice', 'Dice'))}">${chips}${more}</div>`;
+  return `<div class="ldm-card-dice" role="group" aria-label="${e(t('sandbox.card.dice', 'Dice'))}">${chips}${more}</div>`;
 }
 
 /**
@@ -180,8 +180,12 @@ function renderDamageCard(card, source, meta, e, t, effectiveDamage = null) {
     const hidden = values.length - shown.length;
     const chips = shown.map((value) => `<span class="ldm-card-die">${e(value)}</span>`).join('');
     const more = hidden > 0 ? `<span class="ldm-card-more">+${hidden}</span>` : '';
-    chipsHtml = `<div class="ldm-card-dice" aria-label="${e(t('sandbox.card.dice', 'Dice'))}">${chips}${more}</div>`;
+    chipsHtml = `<div class="ldm-card-dice" role="group" aria-label="${e(t('sandbox.card.dice', 'Dice'))}">${chips}${more}</div>`;
   }
+
+  const summary = [actorName, label || t('sandbox.card.untitled', 'Roll'), `${total} ${t('sandbox.card.damage', 'Damage')}`]
+    .filter(Boolean)
+    .join(' · ');
 
   return `<div class="ldm-card ldm-card-${card.style} ldm-card-damage" style="--ldm-card-accent:${e(card.accent)}" data-ldm-card="1">`
     + `<div class="ldm-card-main">`
@@ -189,6 +193,7 @@ function renderDamageCard(card, source, meta, e, t, effectiveDamage = null) {
     + chipsHtml
     + `<div class="ldm-card-result"><span class="ldm-card-total">${e(total)}</span>`
     + `<span class="ldm-card-unit">${e(t('sandbox.card.damage', 'Damage'))}</span></div>`
+    + `<span class="ldm-card-sr" role="status" aria-live="polite">${e(summary)}</span>`
     + `</div>`
     + `</div>`;
 }
@@ -280,12 +285,30 @@ export function renderCard(cfg, roll, esc, extra = {}) {
     ? `<div class="ldm-card-attack-result"><span>${e(attack.hit === true ? t('sandbox.card.hit', 'Hit') : attack.hit === false ? t('sandbox.card.miss', 'Miss') : t('sandbox.card.defenseNeeded', 'Defense needed'))}${attack.successes > numberOf(view.successes, 0) ? ` · ${e(t('sandbox.card.effectiveSuccesses', 'Effective successes'))}: ${e(attack.successes)}` : ''}</span>${attack.damage === null ? '' : `<strong>${e(t('sandbox.card.damage', 'Damage'))}: ${e(attack.damage)}</strong>`}</div>`
     : '';
 
+  // Plain-language summary for screen readers; the visible card stays unchanged.
+  const summaryParts = [];
+  if (actorName) summaryParts.push(actorName);
+  summaryParts.push(label || t('sandbox.card.untitled', 'Roll'));
+  summaryParts.push(`${resultValue}${isPool ? ` ${card.successLabel}` : ''}`);
+  if (targetNumber !== undefined) {
+    summaryParts.push(`${t('sandbox.card.target', 'Target')} ${targetNumber} · ${total >= targetNumber ? t('sandbox.card.pass', 'Pass') : t('sandbox.card.fail', 'Fail')}`);
+  }
+  if (isPool && view.glitch) summaryParts.push(t('sandbox.card.glitch', 'Glitch'));
+  if (!isPool && view.crit) summaryParts.push(card.critLabel);
+  if (!isPool && view.fumble) summaryParts.push(card.fumbleLabel);
+  if (source.meta?.attack && attack) {
+    summaryParts.push(attack.hit === true ? t('sandbox.card.hit', 'Hit') : attack.hit === false ? t('sandbox.card.miss', 'Miss') : t('sandbox.card.defenseNeeded', 'Defense needed'));
+    if (attack.damage !== null) summaryParts.push(`${t('sandbox.card.damage', 'Damage')} ${attack.damage}`);
+  }
+  const summary = summaryParts.filter(Boolean).join(' · ');
+
   return `<div class="ldm-card ldm-card-${card.style} ldm-card-${isPool ? 'pool' : 'd20'}" style="--ldm-card-accent:${e(card.accent)}" data-ldm-card="1">`
     + `<div class="ldm-card-main">`
     + `<div class="ldm-card-header"><span class="ldm-card-title">${title}</span>${formulaHtml}</div>`
     + chipsHtml
     + `<div class="ldm-card-result"><span class="ldm-card-total">${e(resultValue)}</span>${unitHtml}${modHtml}${targetHtml}${badges.join('')}</div>`
     + attackHtml
+    + `<span class="ldm-card-sr" role="status" aria-live="polite">${e(summary)}</span>`
     + `</div>`
     + `</div>`;
 }

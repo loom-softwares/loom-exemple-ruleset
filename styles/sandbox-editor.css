@@ -162,7 +162,7 @@
   background: rgba(255, 255, 255, 0.02);
   color: var(--ldm-editor-text-muted);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 550;
   line-height: 1.2;
   text-align: center;
@@ -360,7 +360,7 @@
 }
 
 .ldm-editor-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ldm-editor-text-muted);
   letter-spacing: 0.02em;
@@ -453,7 +453,7 @@ select.ldm-editor-input option {
   background: #0f1118;
   border: 1px solid var(--ldm-editor-border);
   font-family: ui-monospace, Consolas, monospace;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ldm-editor-text-muted);
   overflow-wrap: anywhere;
 }
@@ -526,7 +526,7 @@ select.ldm-editor-input option {
 /* ── Buttons ──────────────────────────────────────────────────── */
 
 .ldm-editor-btn {
-  min-height: 30px;
+  min-height: 32px;
   padding: 5px 12px;
   border: 1px solid var(--ldm-editor-border);
   border-radius: 6px;
@@ -730,7 +730,7 @@ select.ldm-editor-input option {
   border-radius: 4px;
   background: var(--ldm-editor-accent);
   color: #111319;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;

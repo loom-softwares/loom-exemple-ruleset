@@ -96,7 +96,8 @@
   flex: 0 0 auto;
   appearance: none;
   margin: 0;
-  padding: 6px 10px;
+  min-height: 36px;
+  padding: 8px 12px;
   border: 0;
   border-bottom: 3px solid transparent;
   border-radius: var(--ldm-radius, 6px) var(--ldm-radius, 6px) 0 0;
@@ -213,5 +214,17 @@
 
   .ldm-block {
     padding: calc(var(--ldm-pad, 0.75rem) * 0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldm-tabs,
+  .ldm-tabs *,
+  .ldm-tabs *::before,
+  .ldm-tabs *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

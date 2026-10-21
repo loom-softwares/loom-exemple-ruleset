@@ -51,7 +51,7 @@
 
 .ldm-fx-hint {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 13px;
   color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
 }
 
@@ -121,13 +121,13 @@
 
 .ldm-fx-origin,
 .ldm-fx-duration {
-  font-size: 0.8rem;
+  font-size: 13px;
   color: var(--ldm-muted, var(--color-text-muted, rgba(255, 255, 255, 0.6)));
   overflow-wrap: anywhere;
 }
 
 .ldm-fx-summary {
-  font-size: 0.85rem;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 
@@ -142,7 +142,7 @@
 .ldm-fx-badge {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 12px;
   border: 1px solid currentColor;
 }
 
@@ -171,7 +171,7 @@
   background: transparent;
   color: var(--ldm-text, inherit);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -214,14 +214,14 @@
 
 .ldm-fx-form-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 15px;
 }
 
 .ldm-fx-errors {
   margin: 0;
   padding: 0.4rem 0.6rem 0.4rem 1.2rem;
   color: var(--ldm-danger, #e5484d);
-  font-size: 0.85rem;
+  font-size: 13px;
   border-radius: var(--ldm-radius, 6px);
   border: 1px solid var(--ldm-danger, #e5484d);
 }
@@ -237,7 +237,7 @@
   flex-direction: column;
   gap: 0.2rem;
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: 13px;
 }
 
 .ldm-fx-field > span {
@@ -260,7 +260,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 13px;
   min-height: 2.25rem;
 }
 
@@ -276,7 +276,7 @@
 }
 
 .ldm-fx-changes legend {
-  font-size: 0.85rem;
+  font-size: 13px;
   padding: 0 0.3rem;
 }
 
@@ -290,4 +290,15 @@
 .ldm-fx-change > .ldm-fx-btn {
   grid-column: 1 / -1;
   justify-self: end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ldm-fx,
+  .ldm-fx *,
+  .ldm-fx *::before,
+  .ldm-fx *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

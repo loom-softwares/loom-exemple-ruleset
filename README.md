@@ -7,9 +7,9 @@ Paths are relative to the ruleset folder (`loom-demo-system`). Behaviour marked 
 ## Status
 
 - Browser validation (a planned run on a local dev server with a test account) has **not run yet**. Nothing in this page, including the layout, the tabs and the effects block, has been run in a browser.
-- `npm test` passes: 663 tests in 64 suites, 0 failures (run on 2026-10-13).
+- `npm test` passes: 685 tests in 65 suites, 0 failures (run on 2026-10-19).
 - Everything else comes from reading this repo and the engine code it calls. Each claim names its file.
-- Open items: `styles/system.css` is still listed in `ruleset.json` but its selectors belong to the previous system (none start with `ldm-`). See section 10.
+- The shipped UI no longer loads the legacy `styles/system.css` (see section 10). Shared design tokens live in `styles/tokens.css`.
 
 ## 1. What it is and what the GM can configure
 
@@ -65,7 +65,8 @@ Tour:
 | `combat/initiative.mjs` | `combatInitiative` handler: computes totals for the selected tokens. |
 | `combat/labels.mjs` | `combatantLabel` badges, the shared resource cache, the rate-limited sweeper. |
 | `combat/tracker-window.mjs` | Player-visible combat panel: polling, turn marker, GM controls. |
-| `styles/system.css` | Legacy stylesheet from the previous system. Still listed in the manifest; see section 10. |
+| `styles/system.css` | Legacy stylesheet from the previous system, kept on disk for reference. Not listed in the manifest; see section 10. |
+| `styles/tokens.css` | Shared design tokens (spacing, type scale, radii, motion, tap sizes). Loaded before every other sandbox stylesheet. |
 | `styles/sandbox-layout.css` | Shared tabs, grid and block styles, and the `--ldm-*` theming variables (section 5). Classes start with `ldm-tab`, `ldm-grid`, `ldm-block`, `ldm-density-`. |
 | `styles/sandbox-effects.css` | Effects block styles. Every class starts with `ldm-fx-`. |
 | `styles/sandbox-sheet.css`, `-item.css`, `-card.css`, `-editor.css`, `-combat.css` | One stylesheet per module, every class prefixed (`ldm-sheet-`, `ldm-item-`, `ldm-card-`, `ldm-editor-`, `ldm-combat-`). |
@@ -210,6 +211,10 @@ Every label, key and title is escaped by the module. The caller escapes the cont
 | `.ldm-density-compact`, `.ldm-density-comfortable` | Smaller or larger gap and padding. |
 
 **Density.** `layout.density` is applied as a class on the actor sheet root (`ldm-density-<value>`, `sheets/sandbox-sheet.mjs`). The item sheet has no density class, so density changes the actor sheet only.
+
+**Interaction.** The actor and item sheets switch tabs in place: every panel is rendered and only the `hidden` attribute changes, so focus, caret and scroll position survive a tab change. When the actor sheet must rebuild (a debounced save, a document reload or an effect change), `_ldmRerender()` snapshots the focused control by its `data-field`/`data-action` attributes and the panel scroll offsets, then restores them. The toolbar carries a polite `Saving…` / `Saved` status.
+
+**Tokens.** `styles/tokens.css` is loaded before the other sandbox stylesheets and defines the shared scale: `--ldm-space-*`, `--ldm-text-*`, `--ldm-radius-*`, `--ldm-duration-*` and `--ldm-tap-*`. Components keep literal fallbacks, so they still read on a host that does not load the token file. Reduced-motion users get near-zero durations and animations through both the token file and per-module `@media (prefers-reduced-motion: reduce)` blocks.
 
 **Theme it.** Every component reads `--ldm-*` variables. Set them on any ancestor (a sheet root, a window root or `:root`) and every tab bar, grid and block inside picks them up. Each use carries its own fallback, so the defaults apply only when nothing is set:
 
@@ -423,7 +428,7 @@ Each row is a limit of the engine that this system works around, with the code t
 | The engine does not relay buff (effect) events to clients | The Effects block reloads its list after every change | `reload` in `lib/effects-view.mjs` |
 | Combat round changes decrement every effect in the world, not only the combatants | None in the demo; effects are not scoped to a combat | `lib/effects-view.mjs` header; `server/applications/api/combat.ts` |
 
-**Legacy leftover.** `styles/system.css` (about 2,000 lines) is still in the manifest's `styles` list. None of its selectors start with `ldm-`, and the rebuilt UI uses only the `sandbox-*.css` files, `sandbox-layout.css` and `sandbox-effects.css` included. Removing it from the manifest is a follow-up; this walkthrough does not change it.
+**Legacy leftover.** `styles/system.css` (about 2,000 lines) is kept on disk for reference, but it is no longer in the manifest's `styles` list: none of its selectors start with `ldm-`, and the rebuilt UI uses only `tokens.css`, the sandbox stylesheets and `sandbox-effects.css`.
 
 ## 11. Extend it: add one field
 

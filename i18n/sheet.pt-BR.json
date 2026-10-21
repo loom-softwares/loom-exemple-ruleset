@@ -88,5 +88,19 @@
   "sandbox.sheet.noEntries": "Nada para mostrar aqui ainda.",
   "sandbox.sheet.kindOther": "Outro",
   "sandbox.sheet.editPortrait": "Editar retrato e token",
-  "sandbox.sheet.portraitUnavailable": "O editor de retrato não está disponível nesta versão do motor."
+  "sandbox.sheet.portraitUnavailable": "O editor de retrato não está disponível nesta versão do motor.",
+  "sandbox.sheet.xpTotal": "XP total",
+  "sandbox.sheet.xpAvailable": "XP disponível",
+  "sandbox.sheet.xpValue": "Valor de XP",
+  "sandbox.sheet.xpReason": "Motivo",
+  "sandbox.sheet.xpAdd": "Adicionar XP",
+  "sandbox.sheet.xpHistory": "Histórico de XP",
+  "sandbox.sheet.xpValuePlaceholder": "+100 ou -50",
+  "sandbox.sheet.xpReasonPlaceholder": "Onde foi gasto ou de onde veio",
+  "sandbox.sheet.xpRemove": "Remover registro de XP",
+  "sandbox.sheet.saveAdjustment": "Ajuste de {label}",
+  "sandbox.sheet.slotsAvailable": "Espaços disponíveis de {label}",
+  "sandbox.sheet.slotsMax": "Espaços máximos de {label}",
+  "sandbox.sheet.saving": "Salvando…",
+  "sandbox.sheet.saved": "Salvo"
 }

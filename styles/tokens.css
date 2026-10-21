@@ -1,0 +1,50 @@
+/* ══════════════════════════════════════════════════════════════
+   Shared design tokens for the sandbox windows.
+   Loaded before every other sandbox stylesheet.
+
+   These are defaults only: a window may still override any token on its
+   own root. Components keep their literal fallbacks so they also read on a
+   host that does not load this file (tests, embedded previews).
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Spacing scale (4px base). */
+  --ldm-space-1: 4px;
+  --ldm-space-2: 8px;
+  --ldm-space-3: 12px;
+  --ldm-space-4: 16px;
+  --ldm-space-5: 24px;
+
+  /* Type scale. Nothing functional goes below 12px. */
+  --ldm-text-xs: 12px;
+  --ldm-text-sm: 13px;
+  --ldm-text-md: 14px;
+  --ldm-text-lg: 16px;
+  --ldm-text-xl: 22px;
+  --ldm-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Radii and elevation. */
+  --ldm-radius-sm: 4px;
+  --ldm-radius-md: 6px;
+  --ldm-radius-lg: 10px;
+  --ldm-shadow-1: 0 1px 4px rgba(0, 0, 0, 0.25);
+  --ldm-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.35);
+
+  /* Motion. */
+  --ldm-duration-fast: 120ms;
+  --ldm-duration-base: 160ms;
+  --ldm-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Interaction sizes. */
+  --ldm-tap-min: 24px;
+  --ldm-tap-comfortable: 32px;
+  --ldm-tap-large: 44px;
+  --ldm-icon-size: 1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ldm-duration-fast: 0.01ms;
+    --ldm-duration-base: 0.01ms;
+  }
+}

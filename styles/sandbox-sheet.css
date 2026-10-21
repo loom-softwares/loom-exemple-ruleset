@@ -84,8 +84,8 @@
 
 .ldm-sheet-portrait {
   flex: 0 0 auto;
-  width: 58px;
-  height: 58px;
+  width: 64px;
+  height: 64px;
   border-radius: 8px;
   overflow: hidden;
   background: var(--ldm-sheet-bg-surface);
@@ -128,7 +128,7 @@
   height: 100%;
   padding: 4px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ldm-sheet-muted);
 }
 
@@ -146,7 +146,7 @@
 
 .ldm-sheet-name {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.55rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: #f8fafc;
@@ -161,9 +161,9 @@
   border: 1px solid rgba(223, 184, 120, 0.25);
   color: #dfb878;
   border-radius: 4px;
-  padding: 1px 8px;
+  padding: 2px 8px;
   font-weight: 600;
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   line-height: 1.3;
@@ -171,7 +171,7 @@
 
 .ldm-sheet-type {
   margin: 2px 0 0;
-  font-size: 11.5px;
+  font-size: 12px;
   color: #64748b;
 }
 
@@ -183,26 +183,26 @@
 
 .ldm-sheet-top-resources {
   flex-shrink: 0;
-  padding: 4px 0 6px;
+  padding: 8px 0 10px;
   border-bottom: 1px solid var(--ldm-sheet-border);
 }
 
 .ldm-sheet-top-resources .ldm-sheet-res-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 8px;
 }
 
 .ldm-sheet-top-resources .ldm-sheet-res {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 5px;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
   background: #141722;
   border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-  min-height: 26px;
+  min-height: 38px;
 }
 
 .ldm-sheet-top-resources .ldm-sheet-res-head {
@@ -214,14 +214,14 @@
 }
 
 .ldm-sheet-top-resources .ldm-sheet-res-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #f1f5f9;
   white-space: nowrap;
 }
 
 .ldm-sheet-top-resources .ldm-sheet-res-count {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
   white-space: nowrap;
@@ -231,7 +231,7 @@
 .ldm-sheet-top-resources .ldm-sheet-bar {
   flex: 1 1 auto;
   min-width: 35px;
-  height: 5px;
+  height: 6px;
   background: rgba(0, 0, 0, 0.4);
   border-radius: 3px;
   overflow: hidden;
@@ -249,13 +249,13 @@
 .ldm-sheet-top-resources .ldm-sheet-res-controls {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex: 0 0 auto;
 }
 
 .ldm-sheet-top-resources .ldm-sheet-btn--step {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -276,10 +276,10 @@
 }
 
 .ldm-sheet-top-resources .ldm-sheet-input {
-  width: 36px;
-  height: 20px;
-  padding: 0 2px;
-  font-size: 11px;
+  width: 44px;
+  height: 28px;
+  padding: 0 4px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
   background: rgba(0, 0, 0, 0.4);
@@ -302,29 +302,47 @@
 .ldm-sheet-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px 0;
+  gap: 6px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--ldm-sheet-border);
 }
 
 .ldm-sheet-toolbar-actions {
   display: flex;
-  gap: 5px;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
   width: 100%;
 }
 
 .ldm-sheet-toolbar-actions .ldm-sheet-btn {
-  flex: 1 1 0;
-  min-height: 26px;
-  padding: 3px 6px;
-  font-size: 11px;
+  flex: 0 1 auto;
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   justify-content: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ldm-sheet-save-state {
+  margin-left: auto;
+  min-width: 0;
+  font-size: var(--ldm-text-xs, 12px);
+  font-weight: 600;
+  color: var(--ldm-sheet-muted);
+  white-space: nowrap;
+}
+
+.ldm-sheet-save-state[data-state='saving'] {
+  color: var(--ldm-sheet-gold);
+}
+
+.ldm-sheet-save-state[data-state='saved'] {
+  color: var(--ldm-sheet-success);
 }
 
 .ldm-sheet-dice {
@@ -335,7 +353,7 @@
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.3;
   color: var(--ldm-sheet-muted);
   width: 100%;
@@ -344,6 +362,9 @@
 
 .ldm-sheet-dice-chip {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 700;
   color: var(--ldm-sheet-gold);
 }
@@ -373,7 +394,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 30px;
+  min-height: 32px;
   padding: 4px 11px;
   border-radius: 6px;
   border: 1px solid var(--ldm-sheet-border-light);
@@ -405,9 +426,35 @@
   cursor: not-allowed;
 }
 
+.ldm-sheet-btn--primary {
+  border-color: var(--ldm-sheet-border-gold);
+  background: rgba(229, 169, 60, 0.14);
+  color: var(--ldm-sheet-gold);
+  font-weight: 700;
+}
+
+.ldm-sheet-btn--secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--ldm-sheet-muted);
+  box-shadow: none;
+}
+
+.ldm-sheet-btn--secondary:hover:not(:disabled) {
+  color: var(--ldm-sheet-text);
+}
+
 .ldm-sheet-btn--gm {
   border-color: var(--ldm-sheet-border-gold);
   color: var(--ldm-sheet-gold);
+}
+
+.ldm-icon {
+  width: var(--ldm-icon-size, 1em);
+  height: var(--ldm-icon-size, 1em);
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: -0.125em;
 }
 
 /* Roll mode button states */
@@ -455,8 +502,8 @@
 }
 
 .ldm-sheet-btn--step {
-  min-width: 30px;
-  min-height: 26px;
+  min-width: 32px;
+  min-height: 32px;
   font-size: 16px;
   line-height: 1;
   padding: 1px 6px;
@@ -650,7 +697,7 @@
   gap: 8px;
   margin: 0 0 8px;
   padding: 0 0 4px 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -664,7 +711,7 @@
 
 .ldm-sheet-subh {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #64748b;
   letter-spacing: 0.06em;
@@ -708,10 +755,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  height: 68px;
-  padding: 5px 4px 4px;
+  min-height: 76px;
+  padding: 6px 4px 5px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   background: #151822;
@@ -735,7 +782,7 @@
   min-width: 0;
   overflow: hidden;
   color: #94a3b8;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-overflow: ellipsis;
@@ -764,7 +811,7 @@
 }
 
 .ldm-sheet-attr-mod {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: #f8fafc;
   line-height: 1;
@@ -777,7 +824,7 @@
 }
 
 .ldm-sheet-attr-roll-btn .ldm-roll-icon {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ldm-sheet-gold);
   opacity: 0.45;
   transition: opacity 140ms ease, transform 140ms ease;
@@ -796,14 +843,14 @@
 }
 
 .ldm-sheet-attr-score-input {
-  width: 36px;
-  height: 18px;
+  width: 42px;
+  height: 26px;
   padding: 0;
   border: 0;
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.35);
   color: #94a3b8;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
   transition: all 120ms ease;
@@ -816,7 +863,7 @@
 }
 
 .ldm-sheet-attr .ldm-sheet-range {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--ldm-sheet-muted);
 }
@@ -825,22 +872,31 @@
 .ldm-sheet-dots {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  min-height: 20px;
+  min-height: 24px;
 }
 
+/* 16px visual dot with a 24x24 hit area (gap 8 keeps the hit areas adjacent). */
 .ldm-sheet-dot {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 10px;
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
   transition: all 120ms ease;
+}
+
+.ldm-sheet-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
 }
 
 .ldm-sheet-dot.is-filled {
@@ -874,8 +930,8 @@
   justify-content: space-between;
   gap: 8px;
   width: 100% !important;
-  min-height: 28px;
-  padding: 2px 8px;
+  min-height: 32px;
+  padding: 3px 8px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -914,7 +970,7 @@
 
 .ldm-sheet-skill-attr-tag {
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -929,9 +985,9 @@
 }
 
 .ldm-sheet-skill-input {
-  width: 30px;
-  height: 20px;
-  font-size: 11px;
+  width: 44px;
+  height: 28px;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
   background: rgba(0, 0, 0, 0.3);
@@ -954,14 +1010,14 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 46px;
-  height: 22px;
-  padding: 0 6px;
+  min-width: 52px;
+  height: 30px;
+  padding: 0 8px;
   border-radius: 4px;
   border: 1px solid rgba(245, 158, 11, 0.25);
   background: rgba(245, 158, 11, 0.08);
   color: #f59e0b;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   white-space: nowrap;
@@ -981,7 +1037,7 @@
 }
 
 .ldm-sheet-btn--skill .ldm-roll-icon {
-  font-size: 10px;
+  font-size: 12px;
   transition: transform 140ms ease;
 }
 
@@ -1057,7 +1113,7 @@
 
 .ldm-sheet-cat-h {
   margin: 8px 0 4px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ldm-sheet-muted);
   font-weight: 700;
   text-transform: uppercase;
@@ -1104,7 +1160,7 @@
 
 .ldm-sheet-item-meta {
   display: block;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ldm-sheet-muted);
 }
 
@@ -1126,7 +1182,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ldm-sheet-muted);
 }
 
@@ -1147,8 +1203,8 @@
   align-items: center !important;
   gap: 10px !important;
   width: 100% !important;
-  min-height: 32px !important;
-  padding: 3px 10px !important;
+  min-height: 38px !important;
+  padding: 4px 10px !important;
   border-radius: 5px !important;
   background: rgba(255, 255, 255, 0.02) !important;
   border: 1px solid rgba(255, 255, 255, 0.04) !important;
@@ -1168,10 +1224,10 @@
 }
 
 .ldm-sheet-check-list .ldm-sheet-input--small {
-  width: 38px;
-  height: 22px;
-  padding: 0 4px;
-  font-size: 11.5px;
+  width: 56px;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
   background: rgba(0, 0, 0, 0.35);
@@ -1194,7 +1250,7 @@
   align-items: center !important;
   gap: 6px !important;
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
 }
@@ -1204,9 +1260,9 @@
 }
 
 .ldm-sheet-check-list .ldm-sheet-btn {
-  height: 24px !important;
-  padding: 0 10px !important;
-  font-size: 11.5px !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   border-radius: 4px !important;
   border: 1px solid rgba(245, 158, 11, 0.35) !important;
@@ -1275,8 +1331,22 @@
 /* ── Responsive & Compact breakpoints ─────────────────────────── */
 
 @media (max-width: 560px) {
+  .ldm-sheet-xp-form {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .ldm-sheet-xp-add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .ldm-sheet-xp-row {
+    flex-wrap: wrap;
+  }
+  .ldm-sheet-xp-reason {
+    flex-basis: 100%;
+    order: 3;
+  }
   .ldm-sheet-skill {
-    grid-template-columns: minmax(0, 1fr) 52px 40px auto;
     gap: 6px;
   }
   .ldm-sheet-attack {
@@ -1335,7 +1405,7 @@
 }
 
 .ldm-sheet-xp-card-label {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1354,32 +1424,37 @@
 }
 
 .ldm-sheet-xp-form {
+  display: grid;
+  grid-template-columns: minmax(100px, 130px) minmax(160px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.ldm-sheet-xp-field {
   display: flex;
-  gap: 6px;
-  align-items: center;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.ldm-sheet-xp-form #ldm-sheet-xp-val {
-  width: 110px;
-  flex-shrink: 0;
-  height: 28px;
-  font-size: 12px;
-  text-align: center;
+.ldm-sheet-xp-field-label {
+  font-size: var(--ldm-text-xs, 12px);
+  font-weight: 600;
+  color: var(--ldm-sheet-muted);
 }
 
-.ldm-sheet-xp-form #ldm-sheet-xp-desc {
-  flex: 1 1 auto;
-  height: 28px;
+.ldm-sheet-xp-form .ldm-sheet-input {
+  width: 100%;
+  height: 32px;
   font-size: 12px;
   text-align: left;
   padding: 0 8px;
 }
 
 .ldm-sheet-xp-add-btn {
-  flex-shrink: 0;
-  height: 28px;
+  height: 32px;
   padding: 0 12px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: #dfb878;
   background: rgba(223, 184, 120, 0.12);
@@ -1414,14 +1489,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .ldm-sheet-xp-amount {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 3px;
@@ -1447,15 +1522,19 @@
 }
 
 .ldm-sheet-xp-date {
-  font-size: 10px;
+  font-size: 12px;
   color: #64748b;
   flex-shrink: 0;
 }
 
 .ldm-sheet-xp-del {
-  padding: 1px 6px;
-  height: 20px;
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 12px;
   line-height: 1;
 }
 

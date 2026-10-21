@@ -88,5 +88,19 @@
   "sandbox.sheet.noEntries": "Nothing to show here yet.",
   "sandbox.sheet.kindOther": "Other",
   "sandbox.sheet.editPortrait": "Edit portrait and token",
-  "sandbox.sheet.portraitUnavailable": "The portrait editor is not available in this engine version."
+  "sandbox.sheet.portraitUnavailable": "The portrait editor is not available in this engine version.",
+  "sandbox.sheet.xpTotal": "XP total",
+  "sandbox.sheet.xpAvailable": "XP available",
+  "sandbox.sheet.xpValue": "XP value",
+  "sandbox.sheet.xpReason": "Reason",
+  "sandbox.sheet.xpAdd": "Add XP",
+  "sandbox.sheet.xpHistory": "XP history",
+  "sandbox.sheet.xpValuePlaceholder": "+100 or -50",
+  "sandbox.sheet.xpReasonPlaceholder": "Where it was spent or where it came from",
+  "sandbox.sheet.xpRemove": "Remove XP entry",
+  "sandbox.sheet.saveAdjustment": "{label} adjustment",
+  "sandbox.sheet.slotsAvailable": "{label} available slots",
+  "sandbox.sheet.slotsMax": "{label} maximum slots",
+  "sandbox.sheet.saving": "Saving…",
+  "sandbox.sheet.saved": "Saved"
 }

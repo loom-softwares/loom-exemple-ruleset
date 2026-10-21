@@ -84,7 +84,7 @@
 }
 .ldm-item-img--empty { position: relative; flex-direction: column; gap: 1px; }
 .ldm-item-img--empty svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 2; opacity: .76; }
-.ldm-item-img--empty > span { position: absolute; right: 5px; bottom: 2px; font-size: 10px; font-weight: 700; }
+.ldm-item-img--empty > span { position: absolute; right: 5px; bottom: 2px; font-size: 12px; font-weight: 700; }
 
 .ldm-item-head-fields {
   display: flex;
@@ -165,8 +165,8 @@
 }
 
 .ldm-item-check input {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   margin: 0;
   accent-color: var(--ldm-item-gold);
 }
@@ -242,3 +242,14 @@
 .ldm-item-portrait[data-action] { padding: 0; cursor: pointer; color: inherit; background: transparent; }
 .ldm-item-portrait[data-action]:focus-visible { outline: 3px solid var(--rpg-gold, #e5a93c); outline-offset: 3px; }
 .ldm-item-portrait[data-action]:disabled { cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ldm-item-sheet,
+  .ldm-item-sheet *,
+  .ldm-item-sheet *::before,
+  .ldm-item-sheet *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

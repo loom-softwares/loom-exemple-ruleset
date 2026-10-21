@@ -460,9 +460,20 @@ export function createCombatPanelClass(Base) {
 
     async endCombat() {
       if (!this.panel.isGM || this.panel.busy) return;
-      const ask = typeof window !== 'undefined' && typeof window.confirm === 'function'
-        ? window.confirm(t('sandbox.combat.endConfirm', 'End the combat?'))
-        : false;
+      // The engine dialog keeps focus inside the app; window.confirm is only a last resort.
+      const message = t('sandbox.combat.endConfirm', 'End the combat?');
+      const title = t('sandbox.combat.end', 'End combat');
+      const showConfirm = loomGlobal()?.showConfirm;
+      let ask = false;
+      if (typeof showConfirm === 'function') {
+        try {
+          ask = await showConfirm(title, message);
+        } catch {
+          ask = false;
+        }
+      } else if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        ask = window.confirm(message);
+      }
       if (!ask) return;
       const api = loomGlobal()?.api;
       const worldId = this.worldId();
