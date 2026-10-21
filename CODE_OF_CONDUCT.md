@@ -36,7 +36,7 @@ This Code of Conduct applies within all project spaces (issues, pull requests, d
 
 ## Reporting and Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior can be reported to the maintainers through GitHub: use GitHub's "Report content" option on the offending comment, issue or pull request, or contact the repository owner through their GitHub profile. All complaints will be reviewed and investigated promptly and fairly, and the reporter's privacy will be respected.
+Instances of abusive, harassing, or otherwise unacceptable behavior can be reported to the project maintainer through their GitHub account, [@sammore2](https://github.com/sammore2). All complaints will be reviewed and investigated promptly and fairly, and the reporter's privacy will be respected.
 
 Maintainers who do not follow or enforce this Code of Conduct in good faith may face repercussions as determined by the rest of the project's leadership.
 
