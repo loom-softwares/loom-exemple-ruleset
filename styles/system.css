@@ -3,22 +3,108 @@
    Complete visual styling for the Loom Demo System character and item sheets
    ══════════════════════════════════════════════════════════════ */
 
-/* Minimum dimensions and layout adjustments for the sheet window in Loom */
+/* ── Diegetic Sheet Window Integration (Unified RPG Frame) ───── */
 .loom-window:has(.loom-demo-sheet),
 .loom-window:has(.ldm-sheet),
 .loom-window.ldm-sheet-window,
 .loom-window.sheet.actor.hero {
-  min-width: 660px !important;
-  min-height: 580px !important;
+  min-width: 780px !important;
+  min-height: 680px !important;
+  overflow: visible !important;
+  background: linear-gradient(180deg, #191b26 0%, #0f1118 100%) !important;
+  border: 1px solid rgba(229, 169, 60, 0.35) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
-.loom-window:has(.loom-demo-sheet) .loom-window-body,
+/* Seamless Window Header: merged directly into the top of the sheet frame */
+.loom-window:has(.loom-demo-sheet) .loom-window-header {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 12px !important;
+  background: transparent !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  z-index: 50 !important;
+  cursor: grab;
+}
+
+.loom-window:has(.loom-demo-sheet) .loom-window-header:active {
+  cursor: grabbing;
+}
+
+/* Conceal the raw Windows-style title so it does not break immersion */
+.loom-window:has(.loom-demo-sheet) .loom-window-title,
+.loom-window:has(.loom-demo-sheet) .loom-window-title-text,
+.loom-window:has(.loom-demo-sheet) .loom-window-title-icon {
+  visibility: hidden !important;
+}
+
+/* Diegetic integrated window control buttons (tactile RPG controls) */
+.loom-window:has(.loom-demo-sheet) .loom-window-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.loom-window:has(.loom-demo-sheet) .loom-window-controls button,
+.loom-window:has(.loom-demo-sheet) .loom-window-controls .header-control,
+.loom-window:has(.loom-demo-sheet) .loom-window-controls .loom-window-control-btn {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(18, 20, 28, 0.75) !important;
+  border: 1px solid rgba(229, 169, 60, 0.25) !important;
+  border-radius: 4px !important;
+  color: #94a3b8 !important;
+  font-size: 0.72rem !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.loom-window:has(.loom-demo-sheet) .loom-window-controls button:hover,
+.loom-window:has(.loom-demo-sheet) .loom-window-controls .header-control:hover,
+.loom-window:has(.loom-demo-sheet) .loom-window-controls .loom-window-control-btn:hover {
+  background: rgba(229, 169, 60, 0.2) !important;
+  border-color: #f59e0b !important;
+  color: #fef08a !important;
+  transform: translateY(-1px) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 8px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Close button gets subtle crimson warning on hover */
+.loom-window:has(.loom-demo-sheet) .loom-window-controls .loom-window-close:hover,
+.loom-window:has(.loom-demo-sheet) .loom-window-controls button[data-action="close"]:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5) !important;
+}
+
+/* Window body: starts right under the diegetic control bar without seam */
+.loom-window:has(.loom-demo-sheet) .loom-window-body {
+  overflow: visible !important;
+  padding: 34px 10px 10px 10px !important;
+  background: transparent !important;
+}
+
 .loom-window:has(.ldm-sheet) .loom-window-body,
 .loom-window.ldm-sheet-window .loom-window-body {
-  overflow-y: auto !important;
-  overflow-x: clip !important;
-  padding: 0.65rem 1rem !important;
-  background: radial-gradient(circle at 50% 0%, rgba(229, 169, 60, 0.05) 0%, rgba(15, 17, 24, 0.98) 75%), #0f1118 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
 }
 
 /* System window title */
@@ -407,15 +493,16 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   HERO RPG SHEET (.loom-demo-sheet)
+   HERO RPG SHEET (.loom-demo-sheet.rs-sheet-layout)
+   Layout Completo: HUD Fixo + Abas Laterais Flutuantes + Escudos SVG
    ══════════════════════════════════════════════════════════════ */
 .loom-demo-sheet {
   --rpg-gold: #e5a93c;
   --rpg-gold-hover: #f59e0b;
   --rpg-gold-dim: rgba(229, 169, 60, 0.18);
-  --rpg-dark-bg: #131418;
-  --rpg-surface: #1c1e24;
-  --rpg-surface-elevated: #242730;
+  --rpg-dark-bg: #11131a;
+  --rpg-surface: #181a24;
+  --rpg-surface-elevated: #212432;
   --rpg-border: rgba(255, 255, 255, 0.08);
   --rpg-border-focus: rgba(229, 169, 60, 0.5);
   --rpg-red: #ef4444;
@@ -424,99 +511,90 @@
   --rpg-text: #f3f4f6;
   --rpg-text-muted: #9ca3af;
 
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
   width: 100%;
+  height: 100%;
+  min-height: 580px;
+  max-height: calc(100vh - 80px);
   color: var(--rpg-text);
   font-family: inherit;
   box-sizing: border-box;
 }
 
-/* ── 1. HERO HEADER (Portrait + Identity) ───────────────── */
-.loom-hero-header {
+/* ── 1. FIXED COMBAT HUD (.rs-fixed-hud) ─────────────────────── */
+.rs-fixed-hud {
   display: flex;
-  gap: 1rem;
-  align-items: stretch;
-  background: linear-gradient(145deg, #1d1f27 0%, #15161c 100%);
-  border: 1px solid var(--rpg-border);
+  flex-direction: column;
+  gap: 0.55rem;
+  background: linear-gradient(160deg, #1e202c 0%, #13141d 100%);
+  border: 1px solid rgba(229, 169, 60, 0.35);
   border-radius: 12px;
-  padding: 0.85rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  padding: 0.75rem 0.9rem;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
   position: relative;
-  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 10;
 }
 
-.loom-hero-header::before {
+.rs-fixed-hud::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent 0%, var(--rpg-gold) 35%, var(--rpg-gold) 65%, transparent 100%);
-  opacity: 0.85;
-}
-
-/* Portrait Frame */
-.loom-hero-portrait-frame {
-  width: 96px;
-  height: 96px;
-  min-width: 96px;
-  border-radius: 10px;
-  background: #111216;
-  border: 2px solid var(--rpg-gold);
-  box-shadow: 0 0 10px rgba(229, 169, 60, 0.25), inset 0 0 12px rgba(0, 0, 0, 0.85);
-  position: relative;
-  cursor: pointer;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.loom-hero-portrait-frame:hover {
-  transform: scale(1.02);
-  border-color: #fef08a;
-  box-shadow: 0 0 16px rgba(229, 169, 60, 0.45), inset 0 0 8px rgba(0, 0, 0, 0.9);
-}
-
-.loom-hero-portrait-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.loom-hero-portrait-img.is-default {
-  object-fit: contain;
-  padding: 12px;
-  opacity: 0.85;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
-}
-
-.loom-hero-portrait-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  color: var(--rpg-gold);
+  background: linear-gradient(90deg, transparent 0%, #f59e0b 35%, #f59e0b 65%, transparent 100%);
   opacity: 0.9;
 }
 
-.loom-hero-portrait-placeholder i {
-  font-size: 2rem;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+.rs-hud-identity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
 }
 
-.loom-hero-portrait-placeholder .placeholder-text {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--rpg-text-muted);
+/* Heroic Circular Medallion Frame */
+.rs-portrait-medallion {
+  width: 82px;
+  height: 82px;
+  min-width: 82px;
+  position: relative;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  flex-shrink: 0;
+}
+
+.rs-portrait-medallion:hover {
+  transform: scale(1.03);
+  filter: drop-shadow(0 0 10px rgba(229, 169, 60, 0.5));
+}
+
+.rs-medallion-frame {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.rs-medallion-outer-glow {
+  fill: none;
+  stroke: rgba(229, 169, 60, 0.25);
+  stroke-width: 3;
+}
+
+.rs-medallion-outer-ring {
+  fill: #141620;
+  stroke: #e5a93c;
+  stroke-width: 2.5;
+}
+
+.rs-medallion-inner-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1;
 }
 
 .portrait-hover-overlay {
@@ -532,6 +610,7 @@
   opacity: 0;
   transition: opacity 0.2s ease;
   backdrop-filter: blur(2px);
+  border-radius: 50%;
 }
 
 .portrait-hover-overlay i {
@@ -540,31 +619,28 @@
 }
 
 .portrait-hover-overlay span {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.loom-hero-portrait-frame:hover .portrait-hover-overlay {
+.rs-portrait-medallion:hover .portrait-hover-overlay {
   opacity: 1;
 }
 
-/* Hero Identity Block */
-.loom-hero-identity {
+.rs-identity-col {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 0.4rem;
+  gap: 0.35rem;
   min-width: 0;
 }
 
-.loom-hero-meta-bar {
+.rs-meta-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
 .loom-badge-archetype {
@@ -582,35 +658,28 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
 }
 
-.loom-header-stats {
+.rs-quick-summary-chips {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
-.loom-header-stat {
+.rs-summary-chip {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.18rem 0.5rem;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--rpg-border);
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.2px;
+  gap: 0.3rem;
 }
 
-.loom-header-stat.stat-hp i {
-  color: var(--rpg-red);
-}
+.rs-summary-chip.hp-chip i { color: #ef4444; }
+.rs-summary-chip.def-chip i { color: #60a5fa; }
 
-.loom-header-stat.stat-def i {
-  color: #60a5fa;
-}
-
-/* Hero Name Input */
-.loom-hero-name-row {
+.rs-name-row {
   width: 100%;
 }
 
@@ -642,74 +711,462 @@
   font-weight: 600;
 }
 
-/* Quick Actions in Header */
-.loom-hero-quick-actions {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+/* Symmetrical Vitals Row in Fixed HUD */
+.rs-vitals-row {
+  display: grid;
+  grid-template-columns: 1.15fr auto 1.45fr;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(10, 11, 16, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
 }
 
-.loom-quick-btn {
-  display: inline-flex;
+.rs-vitals-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rs-vital-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+}
+
+.rs-vital-title {
+  font-weight: 700;
+  color: #d1d5db;
+  display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.26rem 0.55rem;
-  font-size: 0.75rem;
+}
+
+.rs-vital-title i { color: #ef4444; }
+
+.rs-vital-value {
+  font-weight: 800;
+  color: #fff;
+}
+
+.rs-hp-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rs-hp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #dc2626 0%, #f59e0b 60%, #10b981 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+}
+
+/* Middle: Defense Crest */
+.rs-vitals-mid {
+  display: flex;
+  justify-content: center;
+}
+
+.rs-def-crest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(145deg, #1e2230 0%, #111420 100%);
+  border: 1.5px solid #3b82f6;
+  border-radius: 8px;
+  padding: 0.3rem 0.65rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.rs-def-crest i {
+  color: #60a5fa;
+  font-size: 1rem;
+}
+
+.rs-def-crest .def-num {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+
+.rs-def-crest .def-lbl {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #93c5fd;
+  text-transform: uppercase;
+}
+
+/* Right: Quick actions */
+.rs-vitals-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rs-quick-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── 2. SCROLLABLE WORKSPACE & STEALTH SCROLL ───────────────── */
+.rs-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.3rem 0.2rem 0.4rem 0.1rem;
+  min-height: 0;
+}
+
+.rs-scroll {
+  scrollbar-width: none; /* Firefox */
+}
+
+.rs-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Edge, Safari */
+}
+
+/* ── 3. HERALDIC SVG SHIELD TRAITS (Tab 1) ─────────────────── */
+.rs-traits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.rs-trait-card {
+  background: linear-gradient(160deg, #1e202c 0%, #141520 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rs-trait-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.rs-trait-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.22rem 0.7rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rs-trait-card.attr-might .rs-trait-ribbon i { color: #ef4444; }
+.rs-trait-card.attr-swift .rs-trait-ribbon i { color: #10b981; }
+.rs-trait-card.attr-wits  .rs-trait-ribbon i { color: #3b82f6; }
+
+.rs-shield-wrap {
+  position: relative;
+  width: 86px;
+  height: 102px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.15rem 0;
+}
+
+.rs-shield-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+}
+
+.rs-shield-outer {
+  stroke-width: 2.2;
+  fill: #141620;
+}
+
+.rs-trait-card.attr-might .rs-shield-outer { stroke: #ef4444; }
+.rs-trait-card.attr-swift .rs-shield-outer { stroke: #10b981; }
+.rs-trait-card.attr-wits  .rs-shield-outer { stroke: #3b82f6; }
+
+.rs-shield-inner {
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 1;
+}
+
+.rs-shield-spine {
+  stroke: rgba(229, 169, 60, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.rs-shield-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+}
+
+.rs-trait-mod {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.rs-trait-base-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rs-trait-input {
+  width: 28px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+  color: #fef08a !important;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rs-trait-input:focus {
+  outline: none;
+}
+
+.rs-trait-max {
+  font-size: 0.68rem;
+  color: var(--rpg-text-muted);
   font-weight: 700;
-  background: var(--rpg-surface);
-  border: 1px solid rgba(229, 169, 60, 0.3);
-  color: #fef08a;
-  border-radius: 5px;
+}
+
+.rs-trait-sub-line {
+  font-size: 0.72rem;
+  color: var(--rpg-text-muted);
+  font-weight: 600;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.btn-card-roll {
+  width: 100%;
+}
+
+/* ── 4. TACTILE GAME BUTTONS (.btn-game-roll) ───────────────── */
+.btn-game-roll {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fff;
+  background: linear-gradient(180deg, #2e3242 0%, #1b1c25 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 3px 6px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
+  user-select: none;
   white-space: nowrap;
 }
 
-.loom-quick-btn:hover {
-  background: rgba(229, 169, 60, 0.22);
-  border-color: var(--rpg-gold);
+.btn-game-roll:hover {
+  filter: brightness(1.2);
+  border-color: rgba(229, 169, 60, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 10px rgba(229, 169, 60, 0.25);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(229, 169, 60, 0.25);
 }
 
-.loom-quick-btn:active {
-  transform: translateY(0);
+.btn-game-roll:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* ── 2. NAVIGATION TABS ───────────────────────────────────────── */
-.loom-sheet-tabs {
-  display: flex;
-  gap: 0.3rem;
-  border-bottom: 2px solid #282a34;
-  padding-bottom: 0;
-  margin-top: 0.15rem;
+.btn-game-roll.btn-accent {
+  background: linear-gradient(180deg, #a16207 0%, #78350f 100%);
+  border-color: #f59e0b;
+  color: #fef08a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 3px 6px rgba(0, 0, 0, 0.4);
 }
 
-.loom-sheet-tabs .tab-button {
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--rpg-text-muted);
-  padding: 0.5rem 0.85rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
+.btn-game-roll.btn-accent:hover {
+  filter: brightness(1.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 12px rgba(245, 158, 11, 0.45);
+}
+
+.btn-game-roll.btn-micro-roll {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.7rem;
+}
+
+.btn-game-roll.btn-damage {
+  background: linear-gradient(180deg, #991b1b 0%, #5f1010 100%);
+  border-color: #ef4444;
+  color: #fee2e2;
+}
+
+.btn-game-roll.btn-heal {
+  background: linear-gradient(180deg, #065f46 0%, #033a2a 100%);
+  border-color: #10b981;
+  color: #d1fae5;
+}
+
+/* Micro Action Buttons (.btn-micro) */
+.btn-micro {
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  transition: all 0.2s ease;
-  border-radius: 6px 6px 0 0;
+  justify-content: center;
+  border-radius: 5px;
+  background: #1e202c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
 }
 
-.loom-sheet-tabs .tab-button:hover {
+.btn-micro:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(229, 169, 60, 0.5);
+  background: #282b3a;
+  transform: scale(1.05);
 }
 
-.loom-sheet-tabs .tab-button.active {
-  color: var(--rpg-gold);
-  border-bottom-color: var(--rpg-gold);
-  background: rgba(229, 169, 60, 0.08);
+.btn-micro.edit:hover {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.btn-micro.delete:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ── 5. FLOATING SIDE DOCK TABS (.cs-side-tabs) ─────────────── */
+.cs-side-tabs {
+  position: absolute;
+  top: 24px;
+  right: -52px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(18, 20, 28, 0.95);
+  backdrop-filter: blur(12px);
+  padding: 8px 5px;
+  border-radius: 0 10px 10px 0;
+  border: 1px solid rgba(229, 169, 60, 0.4);
+  border-left: none;
+  box-shadow: 4px 6px 16px rgba(0, 0, 0, 0.65);
+  z-index: 60;
+}
+
+.cs-side-tab-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cs-side-tab-btn i {
+  font-size: 1.15rem;
+}
+
+.cs-side-tab-btn:hover {
+  background: rgba(229, 169, 60, 0.18);
+  color: #fff;
+  border-color: rgba(229, 169, 60, 0.5);
+  transform: translateX(3px);
+}
+
+.cs-side-tab-btn.active {
+  background: linear-gradient(135deg, rgba(229, 169, 60, 0.3) 0%, rgba(180, 83, 9, 0.35) 100%);
+  color: #f59e0b;
+  border-color: #f59e0b;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
+.cs-side-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.cs-tab-tooltip {
+  position: absolute;
+  left: 54px;
+  background: #11131a;
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(229, 169, 60, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.15s ease;
+  z-index: 100;
+}
+
+.cs-side-tab-btn:hover .cs-tab-tooltip {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 /* ── 3. TAB 1: ATTRIBUTES GRID ───────────────────── */

@@ -1,18 +1,23 @@
-/* Chat roll card of the demo sandbox. All classes use the ldm-card- prefix.
-   The root has NO background or border: the chat message envelope is the only box. */
+/* ══════════════════════════════════════════════════════════════
+   Loom Demo System — Chat roll card
+   Seamless Dark Gothic Folio integration:
+   The chat message bubble is the only container.
+   No artificial left-bars (Discord/AI embed style) and no nested
+   card-in-a-card boxes. The roll flows as natural native content.
+   All classes use the ldm-card- prefix.
+   ══════════════════════════════════════════════════════════════ */
 
 .ldm-card {
-  --ldm-card-accent: #7c5cff;
-  --ldm-card-surface: var(--rpg-surface, #1c1e24);
-  --ldm-card-text: var(--rpg-text, #f3f4f6);
-  --ldm-card-muted: var(--rpg-text-muted, #9ca3af);
-  --ldm-card-border: var(--rpg-border, rgba(255, 255, 255, 0.08));
-  --ldm-card-gold: #e5a93c;
-  --ldm-card-red: #ef4444;
-  --ldm-card-green: #10b981;
-  --ldm-card-purple: #a78bfa;
+  --ldm-card-text: #eadfc7;
+  --ldm-card-muted: #9b907a;
+  --ldm-card-gold: #c9a45c;
+  --ldm-card-gold-bright: #e6c77f;
+  --ldm-card-red: #c0503f;
+  --ldm-card-green: #6f9a79;
+  --ldm-card-purple: #9fc7c4;
+  --folio-serif: "Palatino Linotype", "Book Antiqua", Palatino, "Iowan Old Style", Georgia, "Times New Roman", serif;
   color: var(--ldm-card-text);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.35;
   max-width: 100%;
   min-width: 0;
@@ -25,31 +30,42 @@
   box-sizing: border-box;
 }
 
+/* Seamless inner layout — no nested card box, no Discord left-border */
 .ldm-card-main {
-  background: var(--ldm-card-surface);
-  border: 1px solid var(--ldm-card-border);
-  border-left: 3px solid var(--ldm-card-accent, #7c5cff);
-  border-radius: 6px;
-  padding: 8px 10px;
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 0 2px 0;
   min-width: 0;
   max-width: 100%;
+  box-shadow: none;
 }
 
 .ldm-card-compact .ldm-card-main {
-  padding: 6px 8px;
+  padding: 2px 0 0 0;
 }
 
 .ldm-card-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
   min-width: 0;
+  padding: 0 0 6px 0;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(201, 164, 92, 0.2);
 }
 
 .ldm-card-title {
-  color: var(--ldm-card-accent);
-  font-weight: 600;
+  font-family: var(--folio-serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ldm-card-gold-bright, #e6c77f);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   overflow-wrap: anywhere;
   min-width: 0;
   max-width: 100%;
@@ -57,8 +73,14 @@
 
 .ldm-card-formula {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  color: var(--ldm-card-muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: #c9bda1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(201, 164, 92, 0.2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  letter-spacing: 0.02em;
   overflow-wrap: anywhere;
   max-width: 100%;
 }
@@ -67,125 +89,235 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 6px;
+  margin: 6px 0 8px 0;
 }
 
+/* Tactile 3D polyhedral die face chip */
 .ldm-card-die {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 26px;
-  height: 26px;
+  min-width: 30px;
+  height: 30px;
   padding: 0 6px;
   border-radius: 4px;
-  border: 1px solid var(--ldm-card-border);
+  background: linear-gradient(150deg, #222c2d 0%, #131a1b 100%);
+  border: 1px solid rgba(201, 164, 92, 0.28);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  font-family: var(--folio-serif);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  color: #eadfc7;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  transition: transform 0.12s ease;
+}
+
+.ldm-card-die:hover {
+  transform: translateY(-1px);
 }
 
 .ldm-card-die-hit {
-  background: var(--ldm-card-accent);
-  border-color: var(--ldm-card-accent);
-  color: #111318;
+  background: linear-gradient(150deg, #1b3524 0%, #0d1e13 100%);
+  border-color: #6f9a79;
+  color: #c9e6ce;
+  box-shadow: 0 0 8px rgba(111, 154, 121, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .ldm-card-die-miss {
   color: var(--ldm-card-muted);
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .ldm-card-die-one {
-  color: var(--ldm-card-red);
-  border-color: var(--ldm-card-red);
-  font-weight: 700;
+  background: linear-gradient(150deg, #481a17 0%, #200806 100%);
+  border-color: #c0503f;
+  color: #fca5a5;
+  box-shadow: 0 0 10px rgba(192, 80, 63, 0.45), inset 0 1px 0 rgba(255, 200, 200, 0.2);
+  font-weight: 800;
 }
 
 .ldm-card-die-dropped {
-  opacity: 0.45;
+  opacity: 0.35;
+  filter: grayscale(1);
   text-decoration: line-through;
 }
 
 .ldm-card-die-crit {
-  outline: 2px solid var(--ldm-card-gold);
-  outline-offset: 1px;
+  background: linear-gradient(150deg, #4d3816 0%, #2b1d07 100%);
+  border-color: #e6c77f;
+  color: #fff4ce;
+  box-shadow:
+    0 0 12px rgba(230, 199, 127, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  font-weight: 800;
 }
 
 .ldm-card-die-fumble {
-  outline: 2px solid var(--ldm-card-red);
-  outline-offset: 1px;
+  background: linear-gradient(150deg, #481a17 0%, #200806 100%);
+  border-color: #c0503f;
+  color: #fca5a5;
+  box-shadow:
+    0 0 12px rgba(192, 80, 63, 0.5),
+    inset 0 1px 0 rgba(255, 200, 200, 0.25);
+  font-weight: 800;
 }
 
 .ldm-card-more {
   color: var(--ldm-card-muted);
-  font-size: 12px;
+  font-size: 11px;
+  font-family: var(--folio-serif);
 }
 
 .ldm-card-result {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  gap: 8px 10px;
   margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(201, 164, 92, 0.18);
   min-width: 0;
 }
 
 .ldm-card-total {
-  font-size: 1.5rem;
+  font-family: var(--folio-serif);
+  font-size: 1.85rem;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  color: #f7f1e1;
+  letter-spacing: -0.02em;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(201, 164, 92, 0.25);
   overflow-wrap: anywhere;
 }
 
-.ldm-card-unit,
+.ldm-card-unit {
+  font-family: var(--folio-serif);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ldm-card-gold, #c9a45c);
+  overflow-wrap: anywhere;
+}
+
 .ldm-card-mod,
 .ldm-card-target {
-  color: var(--ldm-card-muted);
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(201, 164, 92, 0.18);
+  color: #c9bda1;
   overflow-wrap: anywhere;
 }
 
+.ldm-card-target {
+  border-color: rgba(201, 164, 92, 0.32);
+  color: var(--ldm-card-gold-bright, #e6c77f);
+}
+
+/* Embossed wax seal / heraldic medal badges */
 .ldm-card-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 3px;
+  font-family: var(--folio-serif);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   max-width: 100%;
   overflow-wrap: anywhere;
-}
-
-.ldm-card-badge-crit {
-  color: var(--ldm-card-gold);
-  background: rgba(229, 169, 60, 0.14);
-}
-
-.ldm-card-badge-fumble,
-.ldm-card-badge-fail {
-  color: var(--ldm-card-red);
-  background: rgba(239, 68, 68, 0.14);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .ldm-card-badge-pass {
-  color: var(--ldm-card-green);
-  background: rgba(16, 185, 129, 0.14);
+  background: linear-gradient(180deg, rgba(111, 154, 121, 0.25) 0%, rgba(35, 65, 45, 0.45) 100%);
+  color: #8ed09c;
+  border: 1px solid #6f9a79;
+  box-shadow: 0 0 8px rgba(111, 154, 121, 0.35), inset 0 1px 0 rgba(142, 208, 156, 0.25);
+}
+
+.ldm-card-badge-fail {
+  background: linear-gradient(180deg, rgba(192, 80, 63, 0.25) 0%, rgba(75, 20, 16, 0.45) 100%);
+  color: #fca5a5;
+  border: 1px solid #c0503f;
+  box-shadow: 0 0 8px rgba(192, 80, 63, 0.35), inset 0 1px 0 rgba(252, 165, 165, 0.25);
+}
+
+.ldm-card-badge-crit {
+  background: linear-gradient(180deg, rgba(230, 199, 127, 0.3) 0%, rgba(100, 75, 25, 0.5) 100%);
+  color: #fff0bd;
+  border: 1px solid #e6c77f;
+  box-shadow: 0 0 12px rgba(230, 199, 127, 0.45), inset 0 1px 0 rgba(255, 245, 200, 0.35);
+}
+
+.ldm-card-badge-fumble {
+  background: linear-gradient(180deg, rgba(142, 47, 42, 0.35) 0%, rgba(55, 12, 10, 0.6) 100%);
+  color: #ffb8b4;
+  border: 1px solid #8e2f2a;
+  box-shadow: 0 0 12px rgba(142, 47, 42, 0.5);
 }
 
 .ldm-card-badge-glitch {
-  color: var(--ldm-card-purple);
-  background: rgba(167, 139, 250, 0.14);
+  background: linear-gradient(180deg, rgba(159, 199, 196, 0.25) 0%, rgba(40, 70, 75, 0.45) 100%);
+  color: #bfe5e2;
+  border: 1px solid #9fc7c4;
+  box-shadow: 0 0 8px rgba(159, 199, 196, 0.35);
+}
+
+/* Damage roll card */
+.ldm-card-damage .ldm-card-total {
+  color: #ffc0b8;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(192, 80, 63, 0.35);
+}
+
+.ldm-card-damage .ldm-card-unit {
+  color: #c0503f;
+}
+
+/* Attack resolution panel */
+.ldm-card-attack-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(201, 164, 92, 0.18);
+  border-radius: 3px;
+  font-size: 11px;
+  color: #c9bda1;
+}
+
+.ldm-card-attack-result strong {
+  color: #e6c77f;
+  font-family: var(--folio-serif);
 }
 
 @media (max-width: 360px) {
   .ldm-card-main {
-    padding: 6px 8px;
+    padding: 2px 0 0 0;
   }
 
   .ldm-card-total {
-    font-size: 1.25rem;
+    font-size: 1.4rem;
   }
 }
 
@@ -199,7 +331,6 @@
     transition-duration: 0.01ms !important;
   }
 }
-
 
 /* Screen-reader summary of the result; invisible, but announced when the card is inserted. */
 .ldm-card-sr {

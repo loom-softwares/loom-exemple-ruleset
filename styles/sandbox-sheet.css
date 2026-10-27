@@ -9,13 +9,15 @@
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  position: relative !important;
 }
 
 .loom-window:has(.ldm-sheet) .loom-window-body {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   height: 100% !important;
-  padding: 8px 12px 10px 12px !important;
+  padding: 0 !important;
+  margin: 0 !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;

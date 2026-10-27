@@ -73,8 +73,9 @@ export class HeroSheet extends LoomHandlebarsMixin(LoomActorSheet) {
       ...props,
       id: props.id || `actor-sheet-${props.actorId}`,
       documentId: props.actorId,
-      width: props.width || 660,
-      height: props.height || 620,
+      width: props.width || 780,
+      height: props.height || 740,
+      showFooter: false,
     });
     this.actorId = props.actorId;
   }
