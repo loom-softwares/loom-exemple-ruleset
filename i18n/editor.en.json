@@ -212,5 +212,11 @@
   "sandbox.editor.critPairs": "Critical pairs add two successes",
   "sandbox.editor.critFace": "Critical face",
   "sandbox.editor.dieFaces": "Attack die faces",
-  "sandbox.editor.removedSource": "removed source"
+  "sandbox.editor.removedSource": "removed source",
+  "sandbox.editor.dotStyle": "Dot shape",
+  "sandbox.editor.dotRound": "Round",
+  "sandbox.editor.dotSquare": "Square",
+  "sandbox.editor.dotDiamond": "Diamond",
+  "sandbox.editor.dotGroup": "Dots per group (0 = none)",
+  "sandbox.editor.skillDisplay": "Skill ranks"
 }

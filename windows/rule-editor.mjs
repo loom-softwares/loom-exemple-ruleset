@@ -948,7 +948,17 @@ export function renderEditor(state) {
     ['number', T('sandbox.editor.displayNumbers', 'Numbers')],
     ['dots', T('sandbox.editor.displayDots', 'Dots')],
   ], draft.attributeDisplay === 'dots' ? 'dots' : 'number');
-  const attributes = `${attributesDisplay}<p class="ldm-editor-hint">${T('sandbox.editor.attributeDisplayHint', 'Max sets the highest score: that many dots in dot mode or the maximum number. Negative ranges and maximums above 20 stay numeric.')}</p>${listSection(
+  const dotOptions = selectField('dotStyle', T('sandbox.editor.dotStyle', 'Dot shape'), [
+    ['round', T('sandbox.editor.dotRound', 'Round')],
+    ['square', T('sandbox.editor.dotSquare', 'Square')],
+    ['diamond', T('sandbox.editor.dotDiamond', 'Diamond')],
+  ], ['round', 'square', 'diamond'].includes(draft.dotStyle) ? draft.dotStyle : 'round')
+    + numberField('dotGroup', T('sandbox.editor.dotGroup', 'Dots per group (0 = none)'), draft.dotGroup ?? 5, 0, 10);
+  const skillsDisplay = selectField('skillDisplay', T('sandbox.editor.skillDisplay', 'Skill ranks'), [
+    ['number', T('sandbox.editor.displayNumbers', 'Numbers')],
+    ['dots', T('sandbox.editor.displayDots', 'Dots')],
+  ], draft.skillDisplay === 'dots' ? 'dots' : 'number');
+  const attributes = `${attributesDisplay}${dotOptions}<p class="ldm-editor-hint">${T('sandbox.editor.attributeDisplayHint', 'Max sets the highest score: that many dots in dot mode or the maximum number. Negative ranges and maximums above 20 stay numeric.')}</p>${listSection(
     'attributes', 'sandbox.editor.sectionAttributes', 'Attributes',
     'sandbox.editor.attributesHint', 'Actors store one value per attribute. Removing one hides it; stored values are kept.',
     'attributes', draft.attributes ?? [], s,
@@ -963,7 +973,7 @@ export function renderEditor(state) {
     'sandbox.editor.addAttribute', 'Add attribute',
   )}`;
 
-  const skills = listSection(
+  const skills = skillsDisplay + listSection(
     'skills', 'sandbox.editor.sectionSkills', 'Skills',
     'sandbox.editor.skillsHint', 'Each skill is tied to an attribute.',
     'skills', draft.skills ?? [], s,

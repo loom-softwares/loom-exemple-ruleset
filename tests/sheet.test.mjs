@@ -316,6 +316,7 @@ describe('applyItemChange', () => {
 
 describe('changeFromField and safeImageUrl', () => {
   test('maps sheet fields to changes', () => {
+    assert.deepEqual(changeFromField({ field: 'name' }, 'Conan'), { kind: 'name', value: 'Conan' });
     assert.deepEqual(changeFromField({ field: 'attr', key: 'might' }, '4'), { kind: 'attr', key: 'might', value: '4' });
     assert.deepEqual(changeFromField({ field: 'item-qty', id: 'i1' }, '2'), { kind: 'item-qty', itemId: 'i1', value: '2' });
     assert.equal(changeFromField({ field: 'item-qty' }, '2'), null, 'no item id, no change');
@@ -345,9 +346,13 @@ describe('renderSheet controls', () => {
     const actor = { id: 'a8', name: 'N', type: 'hero', systemData: {} };
     const html = renderSheet(buildSheetContext(actor, [], cfg, { editable: false }));
     assert.match(html, /ldm-sheet--readonly/);
+    assert.match(html, /<h2 class="ldm-sheet-name">N<\/h2>/);
     assert.match(html, /data-action="attr-roll"/);
     assert.doesNotMatch(html, /data-action="res-delta"[^>]*>(?![\s\S]*disabled)/);
     assert.match(html, /data-action="res-delta"[^>]*disabled/);
+
+    const editableHtml = renderSheet(buildSheetContext(actor, [], cfg, { editable: true }));
+    assert.match(editableHtml, /<input[^>]*class="ldm-sheet-name ldm-sheet-name-input"[^>]*data-field="name"/);
   });
 
   test('resource bars never exceed 100 percent or go below 0', () => {
@@ -974,6 +979,24 @@ describe('item use copies the item effects onto the actor', () => {
     assert.equal(env.rolls[0].formula, '1d20+3');
   });
 
+  test('skill ranks render as dots grouped by dotGroup, and stay numeric above 20', () => {
+    const cfg = defaultConfig();
+    cfg.skillDisplay = 'dots';
+    cfg.dotStyle = 'square';
+    cfg.dotGroup = 5;
+    cfg.skills[0].max = 10;
+    cfg.skills[1].max = 21;
+    const actor = { id: 'sk', name: 'Ada', type: 'hero', systemData: { skills: { melee: 4, ranged: 2 } } };
+    const html = renderSheet(buildSheetContext(actor, [], cfg));
+    const melee = html.match(/<button[^>]*data-action="skill-dot" data-key="melee"[^>]*>/g) ?? [];
+    assert.equal(melee.length, 10);
+    assert.equal(melee.filter((b) => b.includes('is-filled')).length, 4);
+    assert.equal(melee.filter((b) => b.includes('is-group-end')).length, 1, 'one gap after the 5th dot, none after the last');
+    assert.match(html, /data-dot-style="square"/);
+    assert.doesNotMatch(html, /data-action="skill-dot" data-key="ranged"/);
+    assert.match(html, /name="skill\.ranged"/);
+  });
+
   test('clicking a dot writes that attribute score immediately', async () => {
     const env = installUseLoom();
     const sheet = useSheet(env, [], { attrs: { might: 2 } });
@@ -984,6 +1007,17 @@ describe('item use copies the item effects onto the actor', () => {
 
     const call = env.calls.find((entry) => entry[0] === 'put');
     assert.deepEqual(call[2], { systemData: { attrs: { might: 4 } } });
+  });
+
+  test('clicking a skill dot writes the rank, and the last filled dot lowers it by one', async () => {
+    const env = installUseLoom();
+    const sheet = useSheet(env, [], { skills: { melee: 3 } });
+    sheet._ldmCfg.skillDisplay = 'dots';
+
+    await sheet.onAction('skill-dot', null, { dataset: { key: 'melee', value: '3' } });
+
+    const call = env.calls.find((entry) => entry[0] === 'put');
+    assert.deepEqual(call[2], { systemData: { skills: { melee: 2 } } });
   });
 
   test('an item without effects reads its own effects, writes no copy and toasts nothing', async () => {

@@ -212,5 +212,11 @@
   "sandbox.editor.critPairs": "Pares críticos adicionam dois sucessos",
   "sandbox.editor.critFace": "Face crítica",
   "sandbox.editor.dieFaces": "Faces do dado de ataque",
-  "sandbox.editor.removedSource": "fonte removida"
+  "sandbox.editor.removedSource": "fonte removida",
+  "sandbox.editor.dotStyle": "Formato do ponto",
+  "sandbox.editor.dotRound": "Redondo",
+  "sandbox.editor.dotSquare": "Quadrado",
+  "sandbox.editor.dotDiamond": "Losango",
+  "sandbox.editor.dotGroup": "Pontos por grupo (0 = sem grupo)",
+  "sandbox.editor.skillDisplay": "Ranks das perícias"
 }

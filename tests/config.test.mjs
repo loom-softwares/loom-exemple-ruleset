@@ -1502,3 +1502,14 @@ describe('group field and migration of configs written before layout', () => {
     assert.equal(r.config.attributes[0].group, '');
   });
 });
+
+test('skill display, dot shape and dot grouping validate and fall back to defaults', () => {
+  const cfg = defaultConfig();
+  assert.deepEqual([cfg.skillDisplay, cfg.dotStyle, cfg.dotGroup], ['number', 'round', 5]);
+  Object.assign(cfg, { skillDisplay: 'dots', dotStyle: 'diamond', dotGroup: 3 });
+  const ok = validateConfig(cfg).config;
+  assert.deepEqual([ok.skillDisplay, ok.dotStyle, ok.dotGroup], ['dots', 'diamond', 3]);
+  Object.assign(cfg, { skillDisplay: 'bars', dotStyle: 'star', dotGroup: 99 });
+  const bad = validateConfig(cfg).config;
+  assert.deepEqual([bad.skillDisplay, bad.dotStyle, bad.dotGroup], ['number', 'round', 10]);
+});
